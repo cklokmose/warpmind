@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warpmind Multi-Modal Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .section h2 {
+            color: #007cba;
+            margin-top: 0;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007cba;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #005a87;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #007cba;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .success {
+            color: #155724;
+            background-color: #d4edda;
+            border-left-color: #28a745;
+        }
+        .recording {
+            background-color: #ff4444;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .image-preview {
+            max-width: 300px;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .conversation {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #fafafa;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .user-message {
+            background-color: #007cba;
+            color: white;
+            text-align: right;
+        }
+        .ai-message {
+            background-color: #e9ecef;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Warpmind Multi-Modal AI Demo</h1>
+        <p>Experience the power of AI with text, images, and voice through your school's proxy!</p>
+
+        <!-- API Configuration -->
+        <div class="section">
+            <h2>🔧 Configuration</h2>
+            <div class="input-group">
+                <label for="apiKey">Proxy Authentication Key:</label>
+                <input type="password" id="apiKey" value="test-api-key-123">
+            </div>
+            <div class="input-group">
+                <label for="baseURL">School Proxy URL:</label>
+                <input type="text" id="baseURL" value="http://localhost:8080" placeholder="http://localhost:8080 (auto-adds /v1)">
+            </div>
+            <div style="text-align: center; margin: 15px 0;">
+                <button onclick="initializeWarpmind()">🔗 Connect to Proxy</button>
+                <button onclick="saveConfiguration()" style="background-color: #6c757d;">💾 Save Config</button>
+                <button onclick="loadConfiguration()" style="background-color: #28a745;">📂 Load Config</button>
+            </div>
+            <div id="debugInfo" style="margin-top: 10px; padding: 10px; background: #f0f0f0; font-family: monospace; font-size: 12px; display: none;"></div>
+        </div>
+
+        <!-- Image Analysis Section -->
+        <div class="section">
+            <h2>🖼️ Image Analysis</h2>
+            <div class="input-group">
+                <label for="imageInput">Upload Image:</label>
+                <input type="file" id="imageInput" accept="image/*">
+                <img id="imagePreview" class="image-preview" style="display: none;">
+            </div>
+            <div class="input-group">
+                <label for="imagePrompt">What would you like to know about the image?</label>
+                <textarea id="imagePrompt" rows="2" placeholder="Describe what you see in this image">What do you see in this image? Please describe it in detail.</textarea>
+            </div>
+            <button onclick="analyzeImage()">🔍 Analyze Image</button>
+            <div id="imageResponse"></div>
+        </div>
+
+        <!-- Text to Speech Section -->
+        <div class="section">
+            <h2>🔊 Text-to-Speech</h2>
+            <div class="input-group">
+                <label for="ttsText">Text to speak:</label>
+                <textarea id="ttsText" rows="3" placeholder="Enter text to convert to speech">Hello! Welcome to the amazing world of AI. This is a demonstration of text-to-speech technology.</textarea>
+            </div>
+            <div class="input-group">
+                <label for="voiceSelect">Voice:</label>
+                <select id="voiceSelect">
+                    <option value="alloy">Alloy</option>
+                    <option value="echo">Echo</option>
+                    <option value="fable">Fable</option>
+                    <option value="onyx">Onyx</option>
+                    <option value="nova">Nova</option>
+                    <option value="shimmer">Shimmer</option>
+                </select>
+            </div>
+            <button onclick="generateSpeech()">🎵 Generate Speech</button>
+            <button onclick="playSpeech()" id="playButton" disabled>▶️ Play Audio</button>
+            <div id="ttsResponse"></div>
+        </div>
+
+        <!-- Speech to Text Section -->
+        <div class="section">
+            <h2>🎤 Speech-to-Text</h2>
+            <div class="input-group">
+                <label for="audioInput">Upload Audio File:</label>
+                <input type="file" id="audioInput" accept="audio/*">
+            </div>
+            <button onclick="transcribeAudio()">📝 Transcribe Audio</button>
+            <div id="sttResponse"></div>
+        </div>
+
+        <!-- Voice Chat Section -->
+        <div class="section">
+            <h2>🎙️ Interactive Voice Chat</h2>
+            <div class="input-group">
+                <label for="chatSystemPrompt">AI Personality:</label>
+                <select id="chatSystemPrompt">
+                    <option value="You are a friendly and helpful tutor for students.">Friendly Tutor</option>
+                    <option value="You are an expert science teacher who explains concepts clearly.">Science Teacher</option>
+                    <option value="You are a patient language learning assistant.">Language Assistant</option>
+                    <option value="You are a creative writing coach who inspires students.">Writing Coach</option>
+                </select>
+            </div>
+            <div class="conversation" id="conversationHistory"></div>
+            <button onclick="startVoiceChat()" id="voiceStartButton">🎤 Start Recording</button>
+            <button onclick="stopVoiceChat()" id="voiceStopButton" disabled>⏹️ Stop & Get Response</button>
+            <button onclick="clearConversation()">🗑️ Clear Chat</button>
+            <div id="voiceChatResponse"></div>
+        </div>
+    </div>
+
+    <script src="../src/warpmind.js?v=1"></script>
+    <script>
+        let warpmind;
+        let currentAudioBlob = null;
+        let voiceChat = null;
+
+        // Initialize Warpmind
+        function initializeWarpmind() {
+            const apiKey = document.getElementById('apiKey').value;
+            const baseURL = document.getElementById('baseURL').value;
+            
+            // Automatically append /v1 if not present
+            const formattedURL = baseURL.endsWith('/v1') ? baseURL : baseURL.replace(/\/$/, '') + '/v1';
+            
+            warpmind = new Warpmind({
+                baseURL: formattedURL,
+                apiKey: apiKey
+            });
+
+            // Debug: Check what methods are available
+            const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(warpmind));
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.innerHTML = `
+                <strong>Debug Info:</strong><br>
+                Server URL: ${formattedURL}<br>
+                Available methods: ${methods.join(', ')}<br>
+                speechToText function: ${typeof warpmind.speechToText}<br>
+                textToSpeech function: ${typeof warpmind.textToSpeech}<br>
+                analyzeImage function: ${typeof warpmind.analyzeImage}
+            `;
+            debugInfo.style.display = 'block';
+            
+            console.log('Available methods:', methods);
+            console.log('speechToText function:', typeof warpmind.speechToText);
+        }
+
+        // Image Analysis
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        async function analyzeImage() {
+            initializeWarpmind();
+            const imageInput = document.getElementById('imageInput');
+            const prompt = document.getElementById('imagePrompt').value;
+            const responseDiv = document.getElementById('imageResponse');
+
+            if (!imageInput.files[0]) {
+                showResponse(responseDiv, 'Please select an image file.', 'error');
+                return;
+            }
+
+            showResponse(responseDiv, 'Analyzing image...', '');
+
+            try {
+                const analysis = await warpmind.analyzeImage(imageInput.files[0], prompt);
+                showResponse(responseDiv, analysis, 'success');
+            } catch (error) {
+                showResponse(responseDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Text-to-Speech
+        async function generateSpeech() {
+            initializeWarpmind();
+            const text = document.getElementById('ttsText').value;
+            const voice = document.getElementById('voiceSelect').value;
+            const responseDiv = document.getElementById('ttsResponse');
+
+            if (!text.trim()) {
+                showResponse(responseDiv, 'Please enter text to convert to speech.', 'error');
+                return;
+            }
+
+            showResponse(responseDiv, 'Generating speech...', '');
+
+            try {
+                currentAudioBlob = await warpmind.textToSpeech(text, { voice: voice });
+                document.getElementById('playButton').disabled = false;
+                showResponse(responseDiv, `Speech generated successfully with ${voice} voice!`, 'success');
+            } catch (error) {
+                showResponse(responseDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function playSpeech() {
+            if (currentAudioBlob) {
+                try {
+                    console.log('audioBlob.type:', currentAudioBlob.type);
+                    console.log('audioBlob.size:', currentAudioBlob.size);
+                    // Always update or create a download link outside the response div
+                    let downloadLink = document.getElementById('ttsDownloadLink');
+                    const url = URL.createObjectURL(currentAudioBlob);
+                    if (!downloadLink) {
+                        downloadLink = document.createElement('a');
+                        downloadLink.id = 'ttsDownloadLink';
+                        downloadLink.download = 'tts-audio.mp3';
+                        downloadLink.style.display = 'block';
+                        downloadLink.textContent = '⬇️ Download audio file';
+                        document.getElementById('ttsResponse').parentNode.appendChild(downloadLink);
+                    }
+                    downloadLink.href = url;
+
+                    if (currentAudioBlob.type && currentAudioBlob.type.startsWith('audio/')) {
+                        await warpmind.playAudio(currentAudioBlob);
+                    } else {
+                        const text = await currentAudioBlob.text();
+                        showResponse(document.getElementById('ttsResponse'), `TTS error: ${text}`, 'error');
+                        console.error('TTS error response:', text);
+                    }
+                } catch (error) {
+                    showResponse(document.getElementById('ttsResponse'), `Playback error: ${error.message}`, 'error');
+                    console.error('Playback error:', error);
+                }
+            }
+        }
+
+        // Speech-to-Text
+        async function transcribeAudio() {
+            initializeWarpmind();
+            const audioInput = document.getElementById('audioInput');
+            const responseDiv = document.getElementById('sttResponse');
+
+            if (!audioInput.files[0]) {
+                showResponse(responseDiv, 'Please select an audio file.', 'error');
+                return;
+            }
+
+            showResponse(responseDiv, 'Transcribing audio...', '');
+
+            try {
+                const transcription = await warpmind.speechToText(audioInput.files[0]);
+                showResponse(responseDiv, `Transcription: "${transcription}"`, 'success');
+            } catch (error) {
+                showResponse(responseDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Voice Chat
+        async function startVoiceChat() {
+            initializeWarpmind();
+            
+            if (!voiceChat) {
+                const systemPrompt = document.getElementById('chatSystemPrompt').value;
+                voiceChat = warpmind.createVoiceChat(systemPrompt);
+            }
+
+            try {
+                await voiceChat.startRecording();
+                document.getElementById('voiceStartButton').disabled = true;
+                document.getElementById('voiceStartButton').classList.add('recording');
+                document.getElementById('voiceStopButton').disabled = false;
+                showResponse(document.getElementById('voiceChatResponse'), '🎤 Recording... Speak now!', '');
+            } catch (error) {
+                showResponse(document.getElementById('voiceChatResponse'), `Recording error: ${error.message}`, 'error');
+            }
+        }
+
+        async function stopVoiceChat() {
+            if (!voiceChat) return;
+
+            showResponse(document.getElementById('voiceChatResponse'), 'Processing your message...', '');
+
+            try {
+                const result = await voiceChat.stopRecordingAndRespond();
+                
+                // Update conversation display
+                updateConversationDisplay(voiceChat.getConversation());
+                
+                // Play AI response
+                await warpmind.playAudio(result.speechBlob);
+                
+                showResponse(document.getElementById('voiceChatResponse'), 
+                    `You said: "${result.userMessage}"\n\nAI replied: "${result.aiResponse}"`, 'success');
+            } catch (error) {
+                showResponse(document.getElementById('voiceChatResponse'), `Error: ${error.message}`, 'error');
+            }
+
+            // Reset buttons
+            document.getElementById('voiceStartButton').disabled = false;
+            document.getElementById('voiceStartButton').classList.remove('recording');
+            document.getElementById('voiceStopButton').disabled = true;
+        }
+
+        function clearConversation() {
+            if (voiceChat) {
+                voiceChat.clearConversation();
+                document.getElementById('conversationHistory').innerHTML = '';
+                showResponse(document.getElementById('voiceChatResponse'), 'Conversation cleared!', 'success');
+            }
+        }
+
+        function updateConversationDisplay(conversation) {
+            const historyDiv = document.getElementById('conversationHistory');
+            historyDiv.innerHTML = '';
+            
+            conversation.forEach(message => {
+                if (message.role !== 'system') {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${message.role === 'user' ? 'user-message' : 'ai-message'}`;
+                    messageDiv.textContent = `${message.role === 'user' ? 'You' : 'AI'}: ${message.content}`;
+                    historyDiv.appendChild(messageDiv);
+                }
+            });
+            
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+        }
+
+        // Utility function
+        function showResponse(element, text, type) {
+            element.innerHTML = `<div class="response ${type}">${text}</div>`;
+        }
+
+        // Configuration management functions
+        function saveConfiguration() {
+            const apiKey = document.getElementById('apiKey').value;
+            const baseURL = document.getElementById('baseURL').value;
+            
+            if (!apiKey) {
+                showResponse(document.getElementById('debugInfo'), 'Please enter your proxy authentication key before saving.', 'error');
+                document.getElementById('debugInfo').style.display = 'block';
+                return;
+            }
+            
+            const config = {
+                apiKey: apiKey,
+                baseURL: baseURL
+            };
+            
+            localStorage.setItem('warpmind-multimodal-config', JSON.stringify(config));
+            showResponse(document.getElementById('debugInfo'), 'Configuration saved successfully!', 'success');
+            document.getElementById('debugInfo').style.display = 'block';
+            
+            setTimeout(() => {
+                document.getElementById('debugInfo').style.display = 'none';
+            }, 3000);
+        }
+
+        function loadConfiguration() {
+            const savedConfig = localStorage.getItem('warpmind-multimodal-config');
+            
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    document.getElementById('apiKey').value = config.apiKey || '';
+                    // Show URL without /v1 in the form for better UX
+                    const displayURL = config.baseURL && config.baseURL.endsWith('/v1') 
+                        ? config.baseURL.slice(0, -3) 
+                        : config.baseURL || '';
+                    document.getElementById('baseURL').value = displayURL;
+                    showResponse(document.getElementById('debugInfo'), 'Configuration loaded successfully!', 'success');
+                    document.getElementById('debugInfo').style.display = 'block';
+                    
+                    setTimeout(() => {
+                        document.getElementById('debugInfo').style.display = 'none';
+                    }, 3000);
+                } catch (error) {
+                    showResponse(document.getElementById('debugInfo'), 'Failed to load saved configuration.', 'error');
+                    document.getElementById('debugInfo').style.display = 'block';
+                }
+            } else {
+                showResponse(document.getElementById('debugInfo'), 'No saved configuration found.', 'error');
+                document.getElementById('debugInfo').style.display = 'block';
+            }
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            console.log('Warpmind Multi-Modal Demo loaded!');
+            
+            // Auto-load configuration if available
+            const savedConfig = localStorage.getItem('warpmind-multimodal-config');
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    document.getElementById('apiKey').value = config.apiKey || '';
+                    // Show URL without /v1 in the form for better UX
+                    const displayURL = config.baseURL && config.baseURL.endsWith('/v1') 
+                        ? config.baseURL.slice(0, -3) 
+                        : config.baseURL || '';
+                    document.getElementById('baseURL').value = displayURL;
+                    console.log('Auto-loaded saved configuration');
+                } catch (error) {
+                    console.warn('Failed to auto-load configuration:', error);
+                }
+            }
+        };
+    </script>
+</body>
+</html>

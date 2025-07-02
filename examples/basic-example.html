@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=            i            if (!apiKey) {
+                showResponse('Please enter your proxy authentication key.', 'error');
+                return;
+            }
+
+            if (!question.trim()) {
+                showResponse('Please enter a question.', 'error');
+                return;
+            }
+
+            // Initialize Warpmind with proxy configuration
+            const warpmind = new Warpmind(); {
+                showResponse('Please enter your proxy authentication key.', 'error');
+                return;
+            }
+
+            if (!question.trim()) {
+                showResponse('Please enter a question.', 'error');
+                return;
+            }
+
+            // Initialize Warpmind with proxy configuration
+            const warpmind = new Warpmind();
+            warpmind.setApiKey(apiKey);
+            if (baseURL) warpmind.setBaseURL(baseURL); initial-scale=1.0">
+    <title>Warpmind Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007cba;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #005a87;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #007cba;
+            border-radius: 4px;
+        }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .success {
+            color: #155724;
+            background-color: #d4edda;
+            border-left-color: #28a745;
+        }
+        .loading {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Warpmind AI Library Demo</h1>
+        <p>A simple example of how to use the Warpmind library with school proxy servers.</p>
+
+        <div class="input-group">
+            <label for="apiKey">Proxy Authentication Key:</label>
+            <input type="password" id="apiKey" placeholder="Enter your proxy authentication key" value="test-api-key-123">
+        </div>
+
+        <div class="input-group">
+            <label for="baseURL">Proxy Server URL:</label>
+            <input type="text" id="baseURL" placeholder="http://localhost:8080" value="http://localhost:8080">
+        </div>
+
+        <div style="text-align: center; margin: 20px 0;">
+            <button onclick="saveConfiguration()" style="background-color: #6c757d;">💾 Save Configuration</button>
+            <button onclick="loadConfiguration()" style="background-color: #28a745;">📂 Load Configuration</button>
+        </div>
+
+        <div class="input-group">
+            <label for="question">Ask a Question:</label>
+            <textarea id="question" placeholder="What would you like to know?">What is the capital of France?</textarea>
+        </div>
+
+        <button onclick="askQuestion()">Ask AI</button>
+        <button onclick="streamQuestion()">Stream Response</button>
+
+        <div id="response"></div>
+    </div>
+
+    <script src="../src/warpmind.js"></script>
+    <script>
+        let warpmind = new Warpmind();
+
+        async function askQuestion() {
+            const apiKey = document.getElementById('apiKey').value;
+            const baseURL = document.getElementById('baseURL').value;
+            const question = document.getElementById('question').value;
+            const responseDiv = document.getElementById('response');
+
+            if (!apiKey) {
+                showResponse('Please enter your proxy authentication key.', 'error');
+                return;
+            }
+
+            if (!question.trim()) {
+                showResponse('Please enter a question.', 'error');
+                return;
+            }
+
+            // Configure Warpmind
+            warpmind.setApiKey(apiKey);
+            if (baseURL) {
+                // Automatically append /v1 if not present
+                const formattedURL = baseURL.endsWith('/v1') ? baseURL : baseURL.replace(/\/$/, '') + '/v1';
+                warpmind.setBaseURL(formattedURL);
+            }
+
+            showResponse('Thinking...', 'loading');
+
+            try {
+                const response = await warpmind.ask(question);
+                showResponse(response);
+            } catch (error) {
+                showResponse(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function streamQuestion() {
+            const apiKey = document.getElementById('apiKey').value;
+            const baseURL = document.getElementById('baseURL').value;
+            const question = document.getElementById('question').value;
+            const responseDiv = document.getElementById('response');
+
+            if (!apiKey) {
+                showResponse('Please enter your proxy authentication key.', 'error');
+                return;
+            }
+
+            if (!question.trim()) {
+                showResponse('Please enter a question.', 'error');
+                return;
+            }
+
+            // Configure Warpmind
+            warpmind.setApiKey(apiKey);
+            if (baseURL) {
+                // Automatically append /v1 if not present
+                const formattedURL = baseURL.endsWith('/v1') ? baseURL : baseURL.replace(/\/$/, '') + '/v1';
+                warpmind.setBaseURL(formattedURL);
+            }
+
+            responseDiv.innerHTML = '<div class="response">Streaming response...<br><span id="streamContent"></span></div>';
+            const streamContent = document.getElementById('streamContent');
+
+            try {
+                await warpmind.streamChat(question, (chunk) => {
+                    streamContent.innerHTML += chunk;
+                });
+            } catch (error) {
+                showResponse(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function showResponse(text, type = '') {
+            const responseDiv = document.getElementById('response');
+            responseDiv.innerHTML = `<div class="response ${type}">${text}</div>`;
+        }
+
+        // Configuration management functions
+        function saveConfiguration() {
+            const apiKey = document.getElementById('apiKey').value;
+            const baseURL = document.getElementById('baseURL').value;
+            
+            if (!apiKey) {
+                showResponse('Please enter your proxy authentication key before saving.', 'error');
+                return;
+            }
+            
+            const config = {
+                apiKey: apiKey,
+                baseURL: baseURL
+            };
+            
+            localStorage.setItem('warpmind-basic-config', JSON.stringify(config));
+            showResponse('Configuration saved successfully!', 'success');
+            
+            setTimeout(() => {
+                document.getElementById('response').innerHTML = '';
+            }, 2000);
+        }
+
+        function loadConfiguration() {
+            const savedConfig = localStorage.getItem('warpmind-basic-config');
+            
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    document.getElementById('apiKey').value = config.apiKey || '';
+                    document.getElementById('baseURL').value = config.baseURL || '';
+                    showResponse('Configuration loaded successfully!', 'success');
+                    
+                    setTimeout(() => {
+                        document.getElementById('response').innerHTML = '';
+                    }, 2000);
+                } catch (error) {
+                    showResponse('Failed to load saved configuration.', 'error');
+                }
+            } else {
+                showResponse('No saved configuration found.', 'error');
+            }
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            try {
+                console.log('Warpmind library loaded successfully!');
+                console.log('Warpmind type:', typeof Warpmind);
+                console.log('Available methods:', Object.getOwnPropertyNames(Warpmind.prototype));
+                
+                // Auto-load configuration if available
+                const savedConfig = localStorage.getItem('warpmind-basic-config');
+                if (savedConfig) {
+                    try {
+                        const config = JSON.parse(savedConfig);
+                        document.getElementById('apiKey').value = config.apiKey || '';
+                        document.getElementById('baseURL').value = config.baseURL || '';
+                        console.log('Auto-loaded saved configuration');
+                    } catch (error) {
+                        console.warn('Failed to auto-load configuration:', error);
+                    }
+                }
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Warpmind Test Suite</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .test-section { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 5px; }
+        .test-section h2 { margin-top: 0; color: #333; }
+        button { padding: 10px 15px; margin: 5px; font-size: 14px; cursor: pointer; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        #output { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px; 
+                 max-height: 400px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; }
+        .recording { background-color: #dc3545 !important; color: white; }
+        input[type="file"] { margin: 10px 0; }
+        textarea { width: 100%; height: 60px; margin: 5px 0; }
+        .test-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .test-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <h1>🚀 Complete Warpmind Test Suite</h1>
+    <p>Testing all functionality with configurable proxy server settings</p>
+    
+    <!-- Configuration Section -->
+    <div class="test-section" style="background-color: #f8f9fa; border: 2px solid #007cba;">
+        <h2>⚙️ Configuration</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+            <div>
+                <label for="serverURL" style="display: block; margin-bottom: 5px; font-weight: bold;">Proxy Server URL:</label>
+                <input type="text" id="serverURL" placeholder="http://localhost:8080 (auto-adds /v1)" 
+                       style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div>
+                <label for="apiKeyInput" style="display: block; margin-bottom: 5px; font-weight: bold;">Proxy Authentication Key:</label>
+                <input type="password" id="apiKeyInput" placeholder="Enter your proxy key" 
+                       style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+        </div>
+        <div style="text-align: center;">
+            <button onclick="updateConfiguration()" style="background-color: #007cba; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                🔄 Update Configuration
+            </button>
+            <button onclick="resetConfiguration()" style="background-color: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                🔄 Reset to Defaults
+            </button>
+        </div>
+        <div id="configStatus" style="margin-top: 10px; padding: 10px; border-radius: 4px; text-align: center; display: none;"></div>
+    </div>
+    
+    <div id="output">Initializing tests...</div>
+
+    <div class="test-grid">
+        <!-- Basic Tests -->
+        <div class="test-section">
+            <h2>📝 Basic Text Functions</h2>
+            <button onclick="testChat()">Test Chat</button>
+            <button onclick="testCompletion()">Test Completion</button>
+            <button onclick="testStreaming()">Test Streaming</button>
+            <textarea id="chatInput" placeholder="Enter your message here...">Hello, how are you?</textarea>
+        </div>
+
+        <!-- Image Analysis -->
+        <div class="test-section">
+            <h2>🖼️ Image Analysis</h2>
+            <input type="file" id="imageFile" accept="image/*">
+            <button onclick="testImageAnalysis()">Analyze Image</button>
+            <button onclick="testImageURL()">Test with URL</button>
+            <textarea id="imagePrompt" placeholder="What to ask about the image...">What do you see in this image?</textarea>
+        </div>
+
+        <!-- Text to Speech -->
+        <div class="test-section">
+            <h2>🔊 Text-to-Speech</h2>
+            <button onclick="testTTS()">Generate Speech</button>
+            <button onclick="testTTSVoices()">Test Different Voices</button>
+            <textarea id="ttsText" placeholder="Text to convert to speech...">Hello, this is a test of text to speech functionality.</textarea>
+        </div>
+
+        <!-- Speech to Text -->
+        <div class="test-section">
+            <h2>🎤 Speech-to-Text</h2>
+            <button id="recordBtn" onclick="startRecording()">🎤 Start Recording</button>
+            <button id="stopBtn" onclick="stopRecording()" disabled>⏹️ Stop Recording</button>
+            <input type="file" id="audioFile" accept="audio/*">
+            <button onclick="testSTTFile()">Test Audio File</button>
+        </div>
+
+        <!-- Voice Chat -->
+        <div class="test-section">
+            <h2>💬 Voice Chat</h2>
+            <button id="voiceStartBtn" onclick="startVoiceChat()">🎤 Start Voice Chat</button>
+            <button id="voiceStopBtn" onclick="stopVoiceChat()" disabled>⏹️ Stop Voice Chat</button>
+            <button onclick="clearVoiceChat()">🗑️ Clear History</button>
+            <textarea id="systemPrompt" placeholder="System prompt...">You are a helpful assistant. Keep responses brief.</textarea>
+        </div>
+
+        <!-- Stress Tests -->
+        <div class="test-section">
+            <h2>⚡ Performance Tests</h2>
+            <button onclick="runStressTest()">Run Stress Test</button>
+            <button onclick="testConcurrency()">Test Concurrent Requests</button>
+            <button onclick="testLargeFile()">Test Large Audio File</button>
+        </div>
+    </div>
+
+    <script src="../src/warpmind.js"></script>
+    <script>
+        // Configuration management
+        const DEFAULT_CONFIG = {
+            baseURL: 'http://localhost:8080/v1',
+            apiKey: 'test-api-key-123'
+        };
+
+        // Load configuration from localStorage or use defaults
+        function loadConfiguration() {
+            const savedConfig = localStorage.getItem('warpmind-test-config');
+            if (savedConfig) {
+                try {
+                    return JSON.parse(savedConfig);
+                } catch (e) {
+                    console.warn('Failed to parse saved config, using defaults');
+                    return DEFAULT_CONFIG;
+                }
+            }
+            return DEFAULT_CONFIG;
+        }
+
+        // Save configuration to localStorage
+        function saveConfiguration(config) {
+            localStorage.setItem('warpmind-test-config', JSON.stringify(config));
+        }
+
+        // Initialize configuration
+        let currentConfig = loadConfiguration();
+        
+        // Initialize Warpmind with current configuration
+        let wm = new Warpmind(currentConfig);
+
+        // Update configuration from form inputs
+        function updateConfiguration() {
+            const serverURL = document.getElementById('serverURL').value.trim();
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            
+            if (!serverURL || !apiKey) {
+                showConfigStatus('Please fill in both server URL and API key', 'error');
+                return;
+            }
+
+            // Automatically append /v1 if not present
+            const formattedURL = serverURL.endsWith('/v1') ? serverURL : serverURL.replace(/\/$/, '') + '/v1';
+
+            currentConfig = { baseURL: formattedURL, apiKey: apiKey };
+            saveConfiguration(currentConfig);
+            
+            // Reinitialize Warpmind with new config
+            wm = new Warpmind(currentConfig);
+            
+            showConfigStatus('Configuration updated successfully!', 'success');
+            log('🔄 Configuration updated and saved to localStorage');
+            log(`🌐 Using server: ${formattedURL}`);
+            
+            // Test the new configuration
+            testConnection();
+        }
+
+        // Reset configuration to defaults
+        function resetConfiguration() {
+            currentConfig = { ...DEFAULT_CONFIG };
+            saveConfiguration(currentConfig);
+            
+            // Update form inputs (show URL without /v1 for better UX)
+            const displayURL = currentConfig.baseURL.endsWith('/v1') 
+                ? currentConfig.baseURL.slice(0, -3) 
+                : currentConfig.baseURL;
+            document.getElementById('serverURL').value = displayURL;
+            document.getElementById('apiKeyInput').value = currentConfig.apiKey;
+            
+            // Reinitialize Warpmind
+            wm = new Warpmind(currentConfig);
+            
+            showConfigStatus('Configuration reset to defaults', 'info');
+            log('🔄 Configuration reset to defaults');
+            
+            // Test the configuration
+            testConnection();
+        }
+
+        // Show configuration status message
+        function showConfigStatus(message, type) {
+            const statusDiv = document.getElementById('configStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize form inputs with current configuration
+        function initializeForm() {
+            // Show URL without /v1 in the form for better UX
+            const displayURL = currentConfig.baseURL.endsWith('/v1') 
+                ? currentConfig.baseURL.slice(0, -3) 
+                : currentConfig.baseURL;
+            document.getElementById('serverURL').value = displayURL;
+            document.getElementById('apiKeyInput').value = currentConfig.apiKey;
+        }
+
+        const output = document.getElementById('output');
+        let voiceChat = null;
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearLog() {
+            output.textContent = '';
+        }
+
+        // Basic Text Tests
+        async function testChat() {
+            try {
+                log('Testing basic chat...');
+                const message = document.getElementById('chatInput').value;
+                const response = await wm.chat(message);
+                log(`Chat response: "${response}"`, 'success');
+            } catch (error) {
+                log(`Chat failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCompletion() {
+            try {
+                log('Testing completion...');
+                const response = await wm.complete('The sky is', { maxTokens: 20 });
+                log(`Completion response: "${response}"`, 'success');
+            } catch (error) {
+                log(`Completion failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testStreaming() {
+            try {
+                log('Testing streaming chat...');
+                let streamedText = '';
+                await wm.streamChat('Tell me a short joke', (chunk) => {
+                    streamedText += chunk;
+                });
+                log(`Streamed response: "${streamedText}"`, 'success');
+            } catch (error) {
+                log(`Streaming failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Image Analysis Tests
+        async function testImageAnalysis() {
+            const file = document.getElementById('imageFile').files[0];
+            if (!file) {
+                log('Please select an image file first', 'error');
+                return;
+            }
+
+            try {
+                log(`Analyzing image: ${file.name}...`);
+                const prompt = document.getElementById('imagePrompt').value;
+                const response = await wm.analyzeImage(file, prompt);
+                log(`Image analysis: "${response}"`, 'success');
+            } catch (error) {
+                log(`Image analysis failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testImageURL() {
+            try {
+                log('Testing image analysis with URL...');
+                const prompt = document.getElementById('imagePrompt').value;
+                const response = await wm.analyzeImage(
+                    'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg',
+                    prompt
+                );
+                log(`URL image analysis: "${response}"`, 'success');
+            } catch (error) {
+                log(`URL image analysis failed: ${error.message}`, 'error');
+            }
+        }
+
+        // TTS Tests
+        async function testTTS() {
+            try {
+                log('Testing text-to-speech...');
+                const text = document.getElementById('ttsText').value;
+                const audioBlob = await wm.textToSpeech(text);
+                log(`TTS successful: ${audioBlob.size} bytes`, 'success');
+                
+                // Play the audio
+                await wm.playAudio(audioBlob);
+                log('TTS audio played successfully', 'success');
+            } catch (error) {
+                log(`TTS failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testTTSVoices() {
+            const voices = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
+            const text = 'Testing different voices';
+            
+            for (const voice of voices) {
+                try {
+                    log(`Testing TTS with voice: ${voice}...`);
+                    const audioBlob = await wm.textToSpeech(text, { voice });
+                    log(`Voice ${voice}: ${audioBlob.size} bytes`, 'success');
+                } catch (error) {
+                    log(`Voice ${voice} failed: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // STT Tests
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                
+                document.getElementById('recordBtn').disabled = true;
+                document.getElementById('recordBtn').classList.add('recording');
+                document.getElementById('stopBtn').disabled = false;
+                
+                log('🎤 Recording started... Speak now!');
+            } catch (error) {
+                log(`Recording failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function stopRecording() {
+            if (!isRecording || !mediaRecorder) return;
+
+            mediaRecorder.onstop = async () => {
+                try {
+                    log('⏳ Processing recorded audio...');
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    
+                    const transcription = await wm.speechToText(audioBlob);
+                    log(`STT result: "${transcription}"`, 'success');
+                    
+                } catch (error) {
+                    log(`STT failed: ${error.message}`, 'error');
+                } finally {
+                    // Clean up
+                    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                    isRecording = false;
+                    document.getElementById('recordBtn').disabled = false;
+                    document.getElementById('recordBtn').classList.remove('recording');
+                    document.getElementById('stopBtn').disabled = true;
+                }
+            };
+
+            mediaRecorder.stop();
+        }
+
+        async function testSTTFile() {
+            const file = document.getElementById('audioFile').files[0];
+            if (!file) {
+                log('Please select an audio file first', 'error');
+                return;
+            }
+
+            try {
+                log(`Transcribing file: ${file.name}...`);
+                const transcription = await wm.speechToText(file);
+                log(`File STT result: "${transcription}"`, 'success');
+            } catch (error) {
+                log(`File STT failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Voice Chat Tests
+        async function startVoiceChat() {
+            try {
+                const systemPrompt = document.getElementById('systemPrompt').value;
+                voiceChat = wm.createVoiceChat(systemPrompt);
+                
+                await voiceChat.startRecording();
+                
+                document.getElementById('voiceStartBtn').disabled = true;
+                document.getElementById('voiceStartBtn').classList.add('recording');
+                document.getElementById('voiceStopBtn').disabled = false;
+                
+                log('🎤 Voice chat started... Speak your message!');
+            } catch (error) {
+                log(`Voice chat start failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function stopVoiceChat() {
+            if (!voiceChat) return;
+
+            try {
+                log('⏳ Processing voice chat...');
+                const result = await voiceChat.stopRecordingAndRespond();
+                
+                log(`You said: "${result.userMessage}"`, 'success');
+                log(`AI replied: "${result.aiResponse}"`, 'success');
+                
+                // Play AI response
+                await wm.playAudio(result.speechBlob);
+                log('AI response played', 'success');
+                
+            } catch (error) {
+                log(`Voice chat failed: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('voiceStartBtn').disabled = false;
+                document.getElementById('voiceStartBtn').classList.remove('recording');
+                document.getElementById('voiceStopBtn').disabled = true;
+            }
+        }
+
+        function clearVoiceChat() {
+            if (voiceChat) {
+                voiceChat.clearConversation();
+                log('Voice chat history cleared', 'success');
+            }
+        }
+
+        // Performance Tests
+        async function runStressTest() {
+            log('🔥 Starting stress test...');
+            const promises = [];
+            
+            // Multiple concurrent requests
+            for (let i = 0; i < 5; i++) {
+                promises.push(wm.chat(`Test message ${i + 1}`));
+            }
+            
+            try {
+                const results = await Promise.all(promises);
+                log(`Stress test completed: ${results.length} responses`, 'success');
+            } catch (error) {
+                log(`Stress test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testConcurrency() {
+            log('⚡ Testing concurrent different operations...');
+            
+            try {
+                const [chatResult, ttsResult, completionResult] = await Promise.all([
+                    wm.chat('Quick test'),
+                    wm.textToSpeech('Concurrent test'),
+                    wm.complete('The weather is', { maxTokens: 10 })
+                ]);
+                
+                log('Concurrent operations completed successfully', 'success');
+                log(`Chat: "${chatResult}"`, 'success');
+                log(`TTS: ${ttsResult.size} bytes`, 'success');
+                log(`Completion: "${completionResult}"`, 'success');
+            } catch (error) {
+                log(`Concurrency test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLargeFile() {
+            // Create a synthetic large audio file (silence)
+            try {
+                log('Testing with large audio file...');
+                const audioContext = new AudioContext();
+                const sampleRate = 44100;
+                const duration = 10; // 10 seconds
+                const numChannels = 1;
+                const length = sampleRate * duration * numChannels;
+                
+                const audioBuffer = audioContext.createBuffer(numChannels, length, sampleRate);
+                
+                // Fill with low-volume noise
+                for (let channel = 0; channel < numChannels; channel++) {
+                    const channelData = audioBuffer.getChannelData(channel);
+                    for (let i = 0; i < length; i++) {
+                        channelData[i] = (Math.random() - 0.5) * 0.1;
+                    }
+                }
+                
+                // Convert to WAV blob (simplified)
+                const blob = new Blob([new ArrayBuffer(1000000)], { type: 'audio/wav' });
+                
+                const transcription = await wm.speechToText(blob);
+                log(`Large file STT result: "${transcription}"`, 'success');
+            } catch (error) {
+                log(`Large file test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize and run basic connectivity test
+        async function initTests() {
+            log('🚀 Initializing Warpmind test suite...');
+            log(`Current server: ${currentConfig.baseURL}`);
+            log(`Using API key: ${currentConfig.apiKey.substring(0, 8)}...`);
+            
+            // Initialize form with current config
+            initializeForm();
+            
+            // Test connection
+            await testConnection();
+        }
+
+        // Test connection with current configuration
+        async function testConnection() {
+            log('Testing connectivity...');
+            
+            try {
+                const response = await wm.chat('Hello, are you working?', { maxTokens: 20 });
+                log('✅ Connectivity test passed!', 'success');
+                log(`Response: "${response}"`, 'success');
+                log('🎯 Ready to run full test suite!', 'success');
+                showConfigStatus('Connected successfully!', 'success');
+            } catch (error) {
+                log(`❌ Connectivity failed: ${error.message}`, 'error');
+                log('Check your server URL and API key in the configuration section above', 'error');
+                showConfigStatus('Connection failed - check configuration', 'error');
+            }
+        }
+
+        // Run initialization
+        initTests();
+    </script>
+</body>
+</html>
