@@ -26,13 +26,13 @@ Download the built library from the `dist/` folder and include it in your HTML:
 
 ```javascript
 // Initialize with school proxy server
-const ai = new Warpmind({
+const mind = new Warpmind({
     baseURL: 'http://localhost:8080/v1',  // Your school's proxy server
     apiKey: 'your-proxy-auth-key'         // Proxy authentication key
 });
 
 // Ask a question
-const response = await ai.chat("What is the capital of France?");
+const response = await mind.chat("What is the capital of France?");
 console.log(response);
 ```
 
@@ -41,21 +41,20 @@ console.log(response);
 ### Constructor Options
 
 ```javascript
-const ai = new Warpmind({
+const mind = new Warpmind({
     baseURL: 'http://localhost:8080/v1',  // Proxy server URL (auto-adds /v1)
     apiKey: 'your-auth-key',              // Proxy authentication key
     model: 'gpt-3.5-turbo',               // Default model
-    maxTokens: 150,                       // Default max tokens
-    temperature: 0.7                      // Default temperature
+    temperature: 0.7                      // Default temperature (0-2)
 });
 ```
 
 ### Setting Configuration
 
 ```javascript
-ai.setApiKey('your-auth-key');
-ai.setBaseURL('http://localhost:8080/v1');
-ai.setModel('gpt-4');
+mind.setApiKey('your-auth-key');
+mind.setBaseURL('http://localhost:8080/v1');
+mind.setModel('gpt-4');
 ```
 
 ## Core Methods
@@ -67,10 +66,10 @@ Send a message and get a response. Accepts either a string or an array of messag
 
 ```javascript
 // Simple string message
-const response = await ai.chat("Explain quantum physics");
+const response = await mind.chat("Explain quantum physics");
 
 // Array of message objects (conventional format)
-const response = await ai.chat([
+const response = await mind.chat([
     { role: 'system', content: 'You are a helpful tutor' },
     { role: 'user', content: 'Explain quantum physics' },
     { role: 'assistant', content: 'Quantum physics is...' },
@@ -87,14 +86,14 @@ const response = await ai.chat([
 Generate a completion for text.
 
 ```javascript
-const response = await ai.complete("The weather today is", { maxTokens: 50 });
+const response = await mind.complete("The weather today is");
 ```
 
 #### `streamChat(message, onChunk, options)`
 Stream responses in real-time.
 
 ```javascript
-await ai.streamChat("Tell me a story", (chunk) => {
+await mind.streamChat("Tell me a story", (chunk) => {
     console.log(chunk);
 });
 ```
@@ -107,10 +106,10 @@ Analyze images with AI vision.
 ```javascript
 // With image file (from an HTML file input)
 const imageFile = document.getElementById('imageInput').files[0];
-const analysis = await ai.analyzeImage(imageFile, "What's in this image?");
+const analysis = await mind.analyzeImage(imageFile, "What's in this image?");
 
 // With image URL
-const analysis = await ai.analyzeImage(
+const analysis = await mind.analyzeImage(
     'https://example.com/image.jpg',
     'Describe this image'
 );
@@ -120,13 +119,13 @@ const analysis = await ai.analyzeImage(
 Convert text to speech.
 
 ```javascript
-const audioBlob = await ai.textToSpeech("Hello world", {
-    voice: 'alloy',
-    speed: 1.0
+const audioBlob = await mind.textToSpeech("Hello world", {
+    voice: 'alloy',  // Available voices: 'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'
+    speed: 1.0       // Speed from 0.25 to 4.0
 });
 
 // Play the audio
-await ai.playAudio(audioBlob);
+await mind.playAudio(audioBlob);
 ```
 
 #### `speechToText(audioFile, options)`
@@ -135,7 +134,7 @@ Transcribe audio to text.
 ```javascript
 // From an HTML file input
 const audioFile = document.getElementById('audioInput').files[0];
-const transcription = await ai.speechToText(audioFile, {
+const transcription = await mind.speechToText(audioFile, {
     language: 'en'
 });
 ```
@@ -144,7 +143,7 @@ const transcription = await ai.speechToText(audioFile, {
 Create interactive voice conversations.
 
 ```javascript
-const voiceChat = ai.createVoiceChat("You are a helpful tutor");
+const voiceChat = mind.createVoiceChat("You are a helpful tutor");
 await voiceChat.startRecording();
 const result = await voiceChat.stopRecordingAndRespond();
 console.log('You said:', result.userMessage);
@@ -158,7 +157,7 @@ Process data and get structured JSON output with automatic retries.
 
 ```javascript
 // Basic sentiment analysis
-const result = await ai.process(
+const result = await mind.process(
     "Analyze this review", 
     "This product is amazing! I love it.", 
     {
@@ -170,7 +169,7 @@ const result = await ai.process(
 // Returns: { sentiment: "positive", confidence: 0.9, keywords: ["amazing", "love"] }
 
 // Data extraction from text
-const contacts = await ai.process(
+const contacts = await mind.process(
     "Extract contact information",
     "Call John Smith at 555-123-4567 or email john@company.com",
     {
@@ -182,7 +181,7 @@ const contacts = await ai.process(
 // Returns: { name: "John Smith", phone: "555-123-4567", email: "john@company.com" }
 
 // Complex data analysis
-const analysis = await ai.process(
+const analysis = await mind.process(
     "Analyze sales performance",
     { q1: 15000, q2: 18000, q3: 16000, q4: 22000 },
     {
@@ -240,7 +239,7 @@ warpmind/
 
 ```javascript
 try {
-    const response = await ai.chat("Hello");
+    const response = await mind.chat("Hello");
     console.log(response);
 } catch (error) {
     if (error.message.includes('authentication')) {

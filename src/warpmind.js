@@ -8,7 +8,6 @@ class Warpmind {
     this.baseURL = config.baseURL || 'https://api.openai.com/v1';
     this.apiKey = config.apiKey || '';
     this.model = config.model || 'gpt-3.5-turbo';
-    this.maxTokens = config.maxTokens || 150;
     this.temperature = config.temperature || 0.7;
   }
 
@@ -39,11 +38,9 @@ class Warpmind {
   /**
    * Configure generation parameters
    * @param {Object} params - Parameters object
-   * @param {number} params.maxTokens - Maximum tokens to generate
    * @param {number} params.temperature - Temperature for randomness (0-2)
    */
   configure(params = {}) {
-    if (params.maxTokens !== undefined) this.maxTokens = params.maxTokens;
     if (params.temperature !== undefined) this.temperature = params.temperature;
     if (params.model !== undefined) this.model = params.model;
   }
@@ -100,14 +97,11 @@ class Warpmind {
     const requestData = {
       model: options.model || this.model,
       messages: messages,
-      max_tokens: options.max_tokens || options.maxTokens || this.maxTokens,
       temperature: options.temperature !== undefined ? options.temperature : this.temperature
     };
 
     // Add other options, but filter out our custom ones to avoid conflicts
     const filteredOptions = { ...options };
-    delete filteredOptions.maxTokens;
-    delete filteredOptions.max_tokens;
     delete filteredOptions.model;
     delete filteredOptions.temperature;
     
@@ -127,14 +121,11 @@ class Warpmind {
     const requestData = {
       model: options.model || 'gpt-3.5-turbo-instruct',
       prompt: prompt,
-      max_tokens: options.max_tokens || options.maxTokens || this.maxTokens,
       temperature: options.temperature !== undefined ? options.temperature : this.temperature
     };
 
     // Add other options, but filter out our custom ones to avoid conflicts
     const filteredOptions = { ...options };
-    delete filteredOptions.maxTokens;
-    delete filteredOptions.max_tokens;
     delete filteredOptions.model;
     delete filteredOptions.temperature;
     
@@ -169,15 +160,12 @@ class Warpmind {
     const requestData = {
       model: options.model || this.model,
       messages: messages,
-      max_tokens: options.max_tokens || options.maxTokens || this.maxTokens,
       temperature: options.temperature !== undefined ? options.temperature : this.temperature,
       stream: true
     };
 
     // Add other options, but filter out our custom ones to avoid conflicts
     const filteredOptions = { ...options };
-    delete filteredOptions.maxTokens;
-    delete filteredOptions.max_tokens;
     delete filteredOptions.model;
     delete filteredOptions.temperature;
     delete filteredOptions.stream;
