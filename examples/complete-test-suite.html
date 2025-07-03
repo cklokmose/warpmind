@@ -698,81 +698,96 @@
             const listDiv = document.getElementById('toolsList');
             
             if (wm._tools && wm._tools.length > 0) {
-                const toolNames = wm._tools.map(t => t.schema.function.name);
-                listDiv.innerHTML = `
-                    <div><strong>Count:</strong> ${wm._tools.length}</div>
-                    <div><strong>Tools:</strong> ${toolNames.join(', ')}</div>
-                `;
                 toolsDiv.style.display = 'block';
+                listDiv.innerHTML = wm._tools.map(tool => `• ${tool.name}`).join('<br>');
             } else {
                 toolsDiv.style.display = 'none';
             }
         }
 
-        // Performance Tests
+        // Performance and Stress Tests
         async function runStressTest() {
-            log('🔥 Starting stress test...');
-            const promises = [];
-            
-            // Multiple concurrent requests
-            for (let i = 0; i < 5; i++) {
-                promises.push(wm.chat(`Test message ${i + 1}`));
-            }
-            
             try {
-                const results = await Promise.all(promises);
-                log(`Stress test completed: ${results.length} responses`, 'success');
+                log('🔥 Running stress test with exponential backoff...');
+                
+                // Mock the original fetch to simulate retry behavior
+                const originalFetch = window.fetch;
+                let attemptCount = 0;
+                
+                window.fetch = async (url, options) => {
+                    attemptCount++;
+                    log(`Retry attempt ${attemptCount} to ${url}`);
+                    
+                    if (attemptCount < 3) {
+                        // Simulate rate limiting for first 2 attempts
+                        return {
+                            ok: false,
+                            status: 429,
+                            statusText: 'Too Many Requests',
+                            headers: new Headers({ 'retry-after': '1' }),
+                            json: async () => ({ error: 'Rate limited' })
+                        };
+                    }
+                    
+                    // Restore original fetch and allow success
+                    window.fetch = originalFetch;
+                    return originalFetch(url, options);
+                };
+                
+                const response = await wm.chat('Test message for retry logic');
+                log(`✅ Stress test completed after ${attemptCount} attempts: "${response}"`, 'success');
+                
+                // Restore original fetch
+                window.fetch = originalFetch;
             } catch (error) {
-                log(`Stress test failed: ${error.message}`, 'error');
+                log(`❌ Stress test failed: ${error.message}`, 'error');
+                // Restore original fetch in case of error
+                if (window.fetch !== fetch) {
+                    window.fetch = fetch;
+                }
             }
         }
 
         async function testConcurrency() {
-            log('⚡ Testing concurrent different operations...');
-            
             try {
-                const [chatResult, ttsResult, completionResult] = await Promise.all([
-                    wm.chat('Quick test'),
-                    wm.textToSpeech('Concurrent test'),
-                    wm.complete('The weather is')
-                ]);
+                log('🔄 Testing concurrent requests...');
+                const startTime = Date.now();
                 
-                log('Concurrent operations completed successfully', 'success');
-                log(`Chat: "${chatResult}"`, 'success');
-                log(`TTS: ${ttsResult.size} bytes`, 'success');
-                log(`Completion: "${completionResult}"`, 'success');
+                // Run 5 concurrent chat requests
+                const promises = [];
+                for (let i = 1; i <= 5; i++) {
+                    promises.push(wm.chat(`Concurrent request ${i}: What is 2+2?`));
+                }
+                
+                const results = await Promise.all(promises);
+                const endTime = Date.now();
+                
+                log(`✅ Concurrency test completed in ${endTime - startTime}ms`, 'success');
+                results.forEach((result, i) => {
+                    log(`Response ${i + 1}: "${result}"`, 'success');
+                });
             } catch (error) {
-                log(`Concurrency test failed: ${error.message}`, 'error');
+                log(`❌ Concurrency test failed: ${error.message}`, 'error');
             }
         }
 
         async function testLargeFile() {
-            // Create a synthetic large audio file (silence)
             try {
-                log('Testing with large audio file...');
-                const audioContext = new AudioContext();
-                const sampleRate = 44100;
-                const duration = 10; // 10 seconds
-                const numChannels = 1;
-                const length = sampleRate * duration * numChannels;
+                log('📁 Testing large file handling...');
                 
-                const audioBuffer = audioContext.createBuffer(numChannels, length, sampleRate);
+                // Create a large text for TTS
+                const largeText = 'This is a test of large file processing. '.repeat(100);
+                log(`Generating TTS for ${largeText.length} characters...`);
                 
-                // Fill with low-volume noise
-                for (let channel = 0; channel < numChannels; channel++) {
-                    const channelData = audioBuffer.getChannelData(channel);
-                    for (let i = 0; i < length; i++) {
-                        channelData[i] = (Math.random() - 0.5) * 0.1;
-                    }
-                }
+                const audioBlob = await wm.textToSpeech(largeText);
+                log(`✅ Large TTS completed: ${audioBlob.size} bytes`, 'success');
                 
-                // Convert to WAV blob (simplified)
-                const blob = new Blob([new ArrayBuffer(1000000)], { type: 'audio/wav' });
-                
-                const transcription = await wm.speechToText(blob);
-                log(`Large file STT result: "${transcription}"`, 'success');
+                // Test with the generated audio for STT
+                log('Testing STT with large audio file...');
+                const transcript = await wm.speechToText(audioBlob);
+                log(`✅ Large STT completed: "${transcript.substring(0, 100)}..."`, 'success');
             } catch (error) {
-                log(`Large file test failed: ${error.message}`, 'error');
+                log(`❌ Large file test failed: ${error.message}`, 'error');
             }
         }
 
