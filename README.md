@@ -105,7 +105,8 @@ await ai.streamChat("Tell me a story", (chunk) => {
 Analyze images with AI vision.
 
 ```javascript
-// With image file
+// With image file (from an HTML file input)
+const imageFile = document.getElementById('imageInput').files[0];
 const analysis = await ai.analyzeImage(imageFile, "What's in this image?");
 
 // With image URL
@@ -132,6 +133,8 @@ await ai.playAudio(audioBlob);
 Transcribe audio to text.
 
 ```javascript
+// From an HTML file input
+const audioFile = document.getElementById('audioInput').files[0];
 const transcription = await ai.speechToText(audioFile, {
     language: 'en'
 });
