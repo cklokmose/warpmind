@@ -134,6 +134,55 @@ console.log('You said:', result.userMessage);
 console.log('AI replied:', result.aiResponse);
 ```
 
+### Structured Data Processing
+
+#### `process(prompt, data, schema, options)`
+Process data and get structured JSON output with automatic retries.
+
+```javascript
+// Basic sentiment analysis
+const result = await ai.process(
+    "Analyze this review", 
+    "This product is amazing! I love it.", 
+    {
+        sentiment: "positive, negative, or neutral",
+        confidence: "confidence score from 0 to 1",
+        keywords: "array of important words"
+    }
+);
+// Returns: { sentiment: "positive", confidence: 0.9, keywords: ["amazing", "love"] }
+
+// Data extraction from text
+const contacts = await ai.process(
+    "Extract contact information",
+    "Call John Smith at 555-123-4567 or email john@company.com",
+    {
+        name: "person's name",
+        phone: "phone number",
+        email: "email address"
+    }
+);
+// Returns: { name: "John Smith", phone: "555-123-4567", email: "john@company.com" }
+
+// Complex data analysis
+const analysis = await ai.process(
+    "Analyze sales performance",
+    { q1: 15000, q2: 18000, q3: 16000, q4: 22000 },
+    {
+        total: "total sales",
+        trend: "growth trend description",
+        bestQuarter: "quarter with highest sales"
+    },
+    { retries: 3 } // Custom retry count
+);
+```
+
+The `process` method automatically:
+- Validates the response against your schema
+- Retries up to 3 times on failures (configurable)
+- Ensures all required fields are present
+- Returns parsed JSON objects
+
 ## HTML Integration
 
 See the examples in the `examples/` folder for complete working demonstrations:

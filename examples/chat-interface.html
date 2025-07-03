@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Chat with AI</title>
+    <style>
+        /* Simple, clean styling */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .chat-box {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        /* Configuration section */
+        .config {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .config input, .config textarea, .config select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        /* Chat messages area */
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 20px 0;
+            background: #fafafa;
+            border-radius: 5px;
+        }
+        
+        /* Individual message styles */
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .user-message {
+            background: #2196f3;
+            color: white;
+            text-align: right;
+        }
+        
+        .ai-message {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .system-message {
+            background: #fff3cd;
+            color: #856404;
+            text-align: center;
+            font-style: italic;
+        }
+        
+        /* Input area */
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        
+        #userInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #1976d2;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-box">
+        <h1>Simple AI Chat</h1>
+        
+        <!-- Configuration -->
+        <div class="config">
+            <label>Server URL:</label>
+            <input type="text" id="serverURL" value="http://localhost:8080" placeholder="http://localhost:8080">
+            
+            <label>API Key:</label>
+            <input type="password" id="apiKey" value="test-api-key-123" placeholder="Your API key">
+            
+            <label>AI Model:</label>
+            <select id="aiModel">
+                <option value="gpt-4">GPT-4</option>
+                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                <option value="gpt-4o">GPT-4o</option>
+            </select>
+            
+            <label>System Prompt (tells AI how to behave):</label>
+            <textarea id="systemPrompt" rows="2">You are a helpful assistant. Give short, clear answers.</textarea>
+            
+            <button onclick="clearChat()">Clear Chat</button>
+        </div>
+        
+        <!-- Messages will appear here -->
+        <div class="messages" id="messagesDiv">
+            <div class="message system-message">
+                Welcome! Type a message below to start chatting with AI.
+            </div>
+        </div>
+        
+        <!-- Input area -->
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Type your message here..." 
+                   onkeypress="handleEnterKey(event)">
+            <button onclick="sendMessage()" id="sendBtn">Send</button>
+        </div>
+    </div>
+
+    <!-- Load the Warpmind library -->
+    <script src="../src/warpmind.js"></script>
+    <script>
+        // Simple variables to store our data
+        let warpmind = null;
+        let messages = [];
+        
+        // Set up AI connection
+        function connectToWarpMind() {
+            let serverURL = document.getElementById('serverURL').value;
+            let apiKey = document.getElementById('apiKey').value;
+            let model = document.getElementById('aiModel').value;
+            
+            if (!serverURL || !apiKey) {
+                alert('Please enter server URL and API key!');
+                return null;
+            }
+            
+            if (!serverURL.endsWith('/v1')) serverURL += '/v1';
+            
+            return new Warpmind({ baseURL: serverURL, apiKey: apiKey, model: model });
+        }
+        
+        // Add message to chat
+        function showMessage(type, text) {
+            let messagesDiv = document.getElementById('messagesDiv');
+            let messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + type + '-message';
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Send message to AI
+        function sendMessage() {
+            let input = document.getElementById('userInput');
+            let userMessage = input.value.trim();
+            
+            // Check if user typed something
+            if (!userMessage) {
+                return; // Stop here if no message
+            }
+            
+            // Connect to AI if not already connected
+            if (!warpmind) {
+                warpmind = connectToWarpMind();
+                if (!warpmind) {
+                    return; // Stop here if connection failed
+                }
+            }
+            
+            // Clear input and disable button
+            input.value = '';
+            let sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+            
+            // Show user message
+            showMessage('user', userMessage);
+            messages.push({ role: 'user', content: userMessage });
+            
+            // Show thinking
+            showMessage('ai', 'Thinking...');
+            
+            // Prepare messages for AI
+            let chatMessages = [];
+            let systemPrompt = document.getElementById('systemPrompt').value.trim();
+            if (systemPrompt) {
+                chatMessages.push({ role: 'system', content: systemPrompt });
+            }
+            
+            // Add all previous messages
+            for (let i = 0; i < messages.length; i++) {
+                chatMessages.push(messages[i]);
+            }
+            
+            // Send to AI and handle response
+            warpmind.chat(chatMessages).then(function(response) {
+                // Remove thinking message (it's always the last one)
+                let messagesDiv = document.getElementById('messagesDiv');
+                let lastMessage = messagesDiv.lastElementChild;
+                messagesDiv.removeChild(lastMessage);
+                
+                // Show AI response
+                showMessage('ai', response);
+                messages.push({ role: 'assistant', content: response });
+                
+                // Re-enable button
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send';
+                input.focus();
+                
+            }, function(error) {
+                // Remove thinking message (it's always the last one)
+                let messagesDiv = document.getElementById('messagesDiv');
+                let lastMessage = messagesDiv.lastElementChild;
+                messagesDiv.removeChild(lastMessage);
+                showMessage('system', 'Error: ' + error.message);
+                
+                // Re-enable button
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send';
+                input.focus();
+            });
+        }
+        
+        // Handle Enter key
+        function handleEnterKey(event) {
+            if (event.key === 'Enter') sendMessage();
+        }
+        
+        // Clear chat
+        function clearChat() {
+            messages = [];
+            document.getElementById('messagesDiv').innerHTML = 
+                '<div class="message system-message">Chat cleared! Start a new conversation.</div>';
+        }
+        
+        // Focus input when page loads
+        window.onload = function() {
+            document.getElementById('userInput').focus();
+        };
+    </script>
+</body>
+</html>

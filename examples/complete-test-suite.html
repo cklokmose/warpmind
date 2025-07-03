@@ -98,6 +98,20 @@
             <textarea id="systemPrompt" placeholder="System prompt...">You are a helpful assistant. Keep responses brief.</textarea>
         </div>
 
+        <!-- Structured Data Processing -->
+        <div class="test-section">
+            <h2>🔧 Structured Data Processing</h2>
+            <button onclick="testSimpleProcess()">Simple Processing</button>
+            <button onclick="testSentimentAnalysis()">Sentiment Analysis</button>
+            <button onclick="testDataExtraction()">Data Extraction</button>
+            <button onclick="testComplexProcessing()">Complex Processing</button>
+            <button onclick="testProcessingEdgeCases()">Edge Cases</button>
+            <div id="currentTest" style="background: #e9ecef; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 150px; overflow-y: auto; display: none;">
+                <strong>Current Test Data:</strong>
+                <div id="testData"></div>
+            </div>
+        </div>
+
         <!-- Stress Tests -->
         <div class="test-section">
             <h2>⚡ Performance Tests</h2>
@@ -227,6 +241,30 @@
 
         function clearLog() {
             output.textContent = '';
+        }
+
+        // Show what data is being processed in each test
+        function showTestData(testName, prompt, data, schema) {
+            const testDiv = document.getElementById('currentTest');
+            const dataDiv = document.getElementById('testData');
+            
+            let dataDisplay = '';
+            if (data === null) {
+                dataDisplay = 'null (no input data)';
+            } else if (typeof data === 'string') {
+                dataDisplay = `"${data}"`;
+            } else {
+                dataDisplay = JSON.stringify(data, null, 2);
+            }
+            
+            dataDiv.innerHTML = `
+                <div><strong>Test:</strong> ${testName}</div>
+                <div><strong>Prompt:</strong> "${prompt}"</div>
+                <div><strong>Input Data:</strong> ${dataDisplay}</div>
+                <div><strong>Expected Schema:</strong> ${JSON.stringify(schema, null, 2)}</div>
+            `;
+            
+            testDiv.style.display = 'block';
         }
 
         // Basic Text Tests
@@ -507,6 +545,181 @@
                 log(`Large file STT result: "${transcription}"`, 'success');
             } catch (error) {
                 log(`Large file test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Process Method Tests
+        async function testSimpleProcess() {
+            try {
+                log('Testing simple process method...');
+                const data = "I just received my order and I'm really impressed! The quality is excellent and it arrived faster than expected. Definitely recommend this to others.";
+                const prompt = "Analyze this text";
+                const schema = {
+                    sentiment: "positive, negative, or neutral",
+                    confidence: "confidence score from 0 to 1",
+                    wordCount: "number of words"
+                };
+                
+                showTestData('Simple Processing', prompt, data, schema);
+                
+                const result = await wm.process(prompt, data, schema);
+                log(`Simple process result: ${JSON.stringify(result, null, 2)}`, 'success');
+            } catch (error) {
+                log(`Simple process failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSentimentAnalysis() {
+            try {
+                log('Testing sentiment analysis...');
+                const testTexts = [
+                    "I absolutely love this product! Best purchase ever!",
+                    "This is terrible. Worst experience of my life.",
+                    "It's okay, nothing special but not bad either."
+                ];
+                const prompt = "Analyze the sentiment and emotions";
+                const schema = {
+                    sentiment: "positive, negative, or neutral",
+                    emotions: "array of detected emotions",
+                    intensity: "emotional intensity from 1-10",
+                    keywords: "array of important sentiment words"
+                };
+                
+                showTestData('Sentiment Analysis', prompt, testTexts, schema);
+                
+                for (let i = 0; i < testTexts.length; i++) {
+                    const result = await wm.process(prompt, testTexts[i], schema);
+                    log(`Sentiment ${i+1}: ${JSON.stringify(result, null, 2)}`, 'success');
+                }
+            } catch (error) {
+                log(`Sentiment analysis failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDataExtraction() {
+            try {
+                log('Testing data extraction...');
+                const messyData = "Contact John Smith at john.smith@company.com or call 555-123-4567. He works at Tech Corp, 123 Main St, San Francisco, CA 94105. Meeting scheduled for March 15th at 2:30 PM.";
+                const prompt = "Extract all structured information from this text";
+                const schema = {
+                    name: "person's full name",
+                    email: "email address",
+                    phone: "phone number",
+                    company: "company name",
+                    address: "full address",
+                    meetingDate: "meeting date",
+                    meetingTime: "meeting time"
+                };
+                
+                showTestData('Data Extraction', prompt, messyData, schema);
+                
+                const result = await wm.process(prompt, messyData, schema);
+                log(`Data extraction result: ${JSON.stringify(result, null, 2)}`, 'success');
+            } catch (error) {
+                log(`Data extraction failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testComplexProcessing() {
+            try {
+                log('Testing complex data processing...');
+                const salesData = {
+                    regions: [
+                        { name: "North", q1: 15000, q2: 18000, q3: 12000, q4: 22000 },
+                        { name: "South", q1: 12000, q2: 14000, q3: 16000, q4: 18000 },
+                        { name: "East", q1: 20000, q2: 19000, q3: 21000, q4: 25000 },
+                        { name: "West", q1: 8000, q2: 9500, q3: 11000, q4: 13000 }
+                    ]
+                };
+                const prompt = "Analyze this sales data and provide insights";
+                const schema = {
+                    totalSales: "total sales across all regions and quarters",
+                    bestRegion: "region with highest total sales",
+                    worstRegion: "region with lowest total sales",
+                    growthTrend: "overall growth trend analysis",
+                    quarterlyTrends: "object with trends for each quarter",
+                    recommendations: "array of actionable business recommendations"
+                };
+                
+                showTestData('Complex Processing', prompt, salesData, schema);
+                
+                const result = await wm.process(prompt, salesData, schema);
+                log(`Complex processing result: ${JSON.stringify(result, null, 2)}`, 'success');
+            } catch (error) {
+                log(`Complex processing failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testProcessingEdgeCases() {
+            try {
+                log('Testing edge cases...');
+                
+                // Test 1: Empty data
+                log('Testing with null data...');
+                const prompt1 = "Generate a random person";
+                const schema1 = {
+                    name: "random full name",
+                    age: "age between 18-65",
+                    profession: "realistic job title"
+                };
+                showTestData('Edge Case: Null Data', prompt1, null, schema1);
+                
+                const result1 = await wm.process(prompt1, null, schema1);
+                log(`Null data result: ${JSON.stringify(result1, null, 2)}`, 'success');
+                
+                // Test 2: Array data
+                log('Testing with array data...');
+                const arrayData = ["apple", "banana", "cherry", "date", "elderberry"];
+                const prompt2 = "Categorize and analyze these fruits";
+                const schema2 = {
+                    count: "total number of fruits",
+                    categories: "object grouping fruits by some criteria",
+                    alphabetical: "fruits sorted alphabetically",
+                    healthiest: "which fruit is considered healthiest"
+                };
+                showTestData('Edge Case: Array Data', prompt2, arrayData, schema2);
+                
+                const result2 = await wm.process(prompt2, arrayData, schema2);
+                log(`Array data result: ${JSON.stringify(result2, null, 2)}`, 'success');
+                
+                // Test 3: Mixed language data
+                log('Testing with mixed language data...');
+                const mixedData = "Hello world! Bonjour le monde! Hola mundo! こんにちは世界！";
+                const prompt3 = "Identify and translate languages";
+                const schema3 = {
+                    languages: "array of detected languages",
+                    translations: "object with English translations",
+                    mainLanguage: "most likely primary language"
+                };
+                showTestData('Edge Case: Mixed Languages', prompt3, mixedData, schema3);
+                
+                const result3 = await wm.process(prompt3, mixedData, schema3);
+                log(`Mixed language result: ${JSON.stringify(result3, null, 2)}`, 'success');
+                
+                // Test 4: Large structured data
+                log('Testing with large structured data...');
+                const largeData = {
+                    users: Array.from({length: 50}, (_, i) => ({
+                        id: i + 1,
+                        score: Math.floor(Math.random() * 100),
+                        active: Math.random() > 0.3
+                    }))
+                };
+                const prompt4 = "Summarize user statistics";
+                const schema4 = {
+                    totalUsers: "total number of users",
+                    activeUsers: "number of active users",
+                    averageScore: "average score of all users",
+                    topScorers: "array of top 5 user IDs by score",
+                    summary: "brief summary of the data"
+                };
+                showTestData('Edge Case: Large Dataset', prompt4, `{users: [50 user objects with id, score, active]}`, schema4);
+                
+                const result4 = await wm.process(prompt4, largeData, schema4);
+                log(`Large data result: ${JSON.stringify(result4, null, 2)}`, 'success');
+                
+            } catch (error) {
+                log(`Edge cases test failed: ${error.message}`, 'error');
             }
         }
 
