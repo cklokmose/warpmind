@@ -243,12 +243,34 @@ class Warpmind extends BaseClient {
       messages = [{ role: 'user', content: messages }];
     }
 
+    // Support tool calling with depth limit
+    return await this._streamChatWithTools(messages, onChunk, options, 0);
+  }
+
+  /**
+   * Internal streaming chat method that handles tool calling with depth limit
+   * @private
+   * @param {Array} messages - Array of message objects
+   * @param {Function} onChunk - Callback function for each chunk
+   * @param {Object} options - Chat options
+   * @param {number} depth - Current recursion depth
+   * @returns {Promise<string>} - The final response
+   */
+  async _streamChatWithTools(messages, onChunk, options = {}, depth = 0) {
+    const MAX_TOOL_CALL_DEPTH = 2;
+    
     const requestData = {
       model: options.model || this.model,
       messages: messages,
       temperature: options.temperature !== undefined ? options.temperature : this.temperature,
       stream: true
     };
+
+    // Include tools if registered and not at max depth
+    if (this._tools.length > 0 && depth < MAX_TOOL_CALL_DEPTH) {
+      requestData.tools = this._tools.map(t => t.schema);
+      requestData.tool_choice = 'auto'; // Let the model decide when to use tools
+    }
 
     // Add other options, but filter out our custom ones to avoid conflicts
     const filteredOptions = { ...options };
@@ -264,6 +286,8 @@ class Warpmind extends BaseClient {
     
     // Internal accumulator for full response
     let fullResponse = '';
+    let currentMessage = { role: 'assistant', content: '', tool_calls: [] };
+    let hasToolCalls = false;
     
     try {
       const response = await fetch(`${this.baseURL}/chat/completions`, {
@@ -287,21 +311,64 @@ class Warpmind extends BaseClient {
       const reader = response.body.getReader();
       
       // Use the new SSE parser with enhanced event callback
-      const finalResponse = await this.parseSSE(reader, (event) => {
-        // Accumulate content internally
-        fullResponse += event.delta;
+      await this.parseSSE(reader, (event) => {
+        // Handle different types of streaming events
+        if (event.delta !== undefined) { // Check for undefined instead of truthy to allow empty strings
+          fullResponse += event.delta;
+          currentMessage.content += event.delta;
+          
+          // Emit chunk in the new enhanced format immediately to callback
+          if (onChunk) {
+            onChunk({
+              type: "chunk",
+              content: event.delta
+            });
+          }
+        }
         
-        // Emit chunk in the new enhanced format immediately to callback
-        if (onChunk) {
-          onChunk({
-            type: "chunk",
-            content: event.delta
-          });
+        // Check for tool calls in the event
+        if (event.tool_calls) {
+          hasToolCalls = true;
+          if (!currentMessage.tool_calls) {
+            currentMessage.tool_calls = [];
+          }
+          currentMessage.tool_calls.push(...event.tool_calls);
         }
       });
 
       // Clear timeout only after streaming completes
       clearTimeout(timeoutId);
+      
+      // Check if we need to handle tool calls
+      if (hasToolCalls && currentMessage.tool_calls && currentMessage.tool_calls.length > 0 && depth < MAX_TOOL_CALL_DEPTH) {
+        // Add the assistant's message to the conversation
+        const newMessages = [...messages, currentMessage];
+
+        // Execute each tool call
+        for (const toolCall of currentMessage.tool_calls) {
+          try {
+            const result = await this._executeTool(toolCall);
+            
+            // Add tool result to messages
+            newMessages.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(result)
+            });
+          } catch (error) {
+            // Add error result to messages
+            newMessages.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ error: error.message })
+            });
+          }
+        }
+
+        // Recursively call streamChat to let the model respond to tool results
+        const toolResponse = await this._streamChatWithTools(newMessages, onChunk, options, depth + 1);
+        return fullResponse + toolResponse;
+      }
       
       // Return the accumulated full response
       return fullResponse;

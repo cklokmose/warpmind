@@ -337,6 +337,19 @@ class Warpmind extends BaseClient {
 
 ## 4. Quality-of-Life Improvements
 
+### Tool Calling Support Gaps
+- [ ] **`streamChat()` method**: Currently doesn't support tool calling, but should for consistency
+  - [ ] Add tool calling support similar to `chat()` method
+  - [ ] Handle tool calls in streaming responses (may need to pause streaming for tool execution)
+  - [ ] Ensure proper recursion and depth limiting like in `chat()`
+- [ ] **`complete()` method**: Uses `/completions` endpoint which doesn't support tools
+  - [ ] Consider migrating to `/chat/completions` with single message for tool support
+  - [ ] Or document that tool calling is not available for completion mode
+- [ ] **Tool calling documentation**: Document which methods support tools and which don't
+  - [ ] `chat()`, `ask()`, `analyzeImage()`, `process()` ✅ support tools  
+  - [ ] `streamChat()`, `complete()` ❌ currently don't support tools
+  - [ ] Audio/voice methods intentionally don't support tools
+
 ### Usage Information
 - [ ] Modify all generation methods to return:
   ```javascript

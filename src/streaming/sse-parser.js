@@ -45,13 +45,22 @@ async function parseSSE(reader, onEvent) {
         const parsed = JSON.parse(event.data);
         const delta = parsed.choices?.[0]?.delta;
         
-        if (delta?.content) {
+        if (delta) {
           const eventData = {
-            role: delta.role || 'assistant',
-            delta: delta.content
+            role: delta.role || 'assistant'
           };
           
-          fullResponse += delta.content;
+          // Handle content delta
+          if (delta.content !== undefined) {
+            eventData.delta = delta.content;
+            fullResponse += delta.content;
+          }
+          
+          // Handle tool calls delta
+          if (delta.tool_calls) {
+            eventData.tool_calls = delta.tool_calls;
+          }
+          
           if (onEvent) onEvent(eventData);
         }
       } catch (error) {

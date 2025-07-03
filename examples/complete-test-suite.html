@@ -298,7 +298,8 @@
         async function testCompletion() {
             try {
                 log('Testing completion...');
-                const response = await wm.complete('The sky is');
+                const message = document.getElementById('chatInput').value;
+                const response = await wm.complete(message);
                 log(`Completion response: "${response}"`, 'success');
             } catch (error) {
                 log(`Completion failed: ${error.message}`, 'error');
@@ -308,11 +309,41 @@
         async function testStreaming() {
             try {
                 log('Testing streaming chat...');
+                const message = document.getElementById('chatInput').value;
                 let streamedText = '';
-                await wm.streamChat('Tell me a short joke', (chunk) => {
-                    streamedText += chunk;
+                let chunkCount = 0;
+                
+                // Create a temporary element to show streaming text as it arrives
+                const streamingElement = document.createElement('div');
+                streamingElement.style.cssText = 'background: #e3f2fd; padding: 10px; margin: 5px 0; border-radius: 4px; border-left: 4px solid #2196f3;';
+                streamingElement.innerHTML = '<strong>🌊 Streaming Response:</strong><br><span id="streamContent" style="white-space: pre-wrap;"></span>';
+                output.appendChild(streamingElement);
+                
+                const streamContent = document.getElementById('streamContent');
+                
+                await wm.streamChat(message, (chunk) => {
+                    chunkCount++;
+                    
+                    // Handle both old format (string) and new format (object with content)
+                    let content = '';
+                    if (typeof chunk === 'string') {
+                        content = chunk;
+                    } else if (chunk && chunk.content) {
+                        content = chunk.content;
+                    }
+                    
+                    // Add the chunk content to our accumulated text
+                    if (content !== null && content !== undefined) {
+                        streamedText += content;
+                        // Update the DOM immediately with the new content
+                        streamContent.textContent = streamedText;
+                        
+                        // Auto-scroll to bottom to follow the streaming text
+                        output.scrollTop = output.scrollHeight;
+                    }
                 });
-                log(`Streamed response: "${streamedText}"`, 'success');
+                
+                log(`✅ Streaming completed! Received ${chunkCount} chunks with ${streamedText.length} total characters.`, 'success');
             } catch (error) {
                 log(`Streaming failed: ${error.message}`, 'error');
             }
@@ -699,7 +730,7 @@
             
             if (wm._tools && wm._tools.length > 0) {
                 toolsDiv.style.display = 'block';
-                listDiv.innerHTML = wm._tools.map(tool => `• ${tool.name}`).join('<br>');
+                listDiv.innerHTML = wm._tools.map(tool => `• ${tool.schema.function.name}`).join('<br>');
             } else {
                 toolsDiv.style.display = 'none';
             }
