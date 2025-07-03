@@ -24,7 +24,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "openai": "^4.28.0"
+    "openai": "^4.28.0",
+    "eventsource-parser": "^1.1.2"
   },
   "devDependencies": {
     "webpack": "^5.89.0",

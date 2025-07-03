@@ -17,10 +17,10 @@
 - [x] Ensure promises reject with `TimeoutError` on timeout
 
 ### SSE Parser for Streaming
-- [ ] Add dependency: `eventsource-parser` (~0.7 kB)
-- [ ] Implement internal `parseSSE()` function
-- [ ] Make `parseSSE()` yield `{ role, delta }` events
-- [ ] Integrate SSE parser with streaming methods
+- [x] Add dependency: `eventsource-parser` (~0.7 kB)
+- [x] Implement internal `parseSSE()` function
+- [x] Make `parseSSE()` yield `{ role, delta }` events
+- [x] Integrate SSE parser with streaming methods
 
 ## 2. Streaming & Vision Polish
 

@@ -3,6 +3,16 @@
  * Designed to work with school proxy servers using custom authentication keys
  */
 
+// Import eventsource-parser for robust SSE parsing (compatible with browser and Node.js)
+let createParser;
+if (typeof module !== 'undefined' && module.exports) {
+  // Node.js environment
+  createParser = require('eventsource-parser').createParser;
+} else {
+  // Browser environment - will be bundled by webpack
+  createParser = window.EventSourceParser?.createParser;
+}
+
 /**
  * Custom error class for timeout errors
  */
@@ -260,6 +270,7 @@ class Warpmind {
    * @param {string|Array} messages - Single message string or array of message objects
    * @param {Function} onChunk - Callback function for each chunk
    * @param {Object} options - Optional parameters
+   * @param {number} options.timeoutMs - Request timeout in milliseconds
    * @returns {Promise<string>} - The complete generated response
    */
   async streamChat(messages, onChunk, options = {}) {
@@ -279,29 +290,110 @@ class Warpmind {
     delete filteredOptions.model;
     delete filteredOptions.temperature;
     delete filteredOptions.stream;
+    delete filteredOptions.timeoutMs;
     
     Object.assign(requestData, filteredOptions);
 
-    const url = `${this.baseURL}/chat/completions`;
+    const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
+    const { controller, timeoutId } = this._createTimeoutController(timeoutMs);
     
     try {
-      const response = await fetch(url, {
+      const response = await fetch(`${this.baseURL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'api-key': this.apiKey
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(requestData),
+        signal: controller.signal
       });
 
+      // Don't clear timeout yet - we need it for the streaming phase too
+
       if (!response.ok) {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        clearTimeout(timeoutId);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
       }
 
       const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullResponse = '';
+      
+      // Use the new SSE parser with event callback
+      const fullResponse = await this.parseSSE(reader, (event) => {
+        // Emit chunk in the format expected by onChunk callback
+        if (onChunk) {
+          onChunk(event.delta);
+        }
+      });
 
+      // Clear timeout only after streaming completes
+      clearTimeout(timeoutId);
+      return fullResponse;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      
+      if (error.name === 'AbortError') {
+        throw new TimeoutError(`Request timed out after ${timeoutMs}ms`);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Parse Server-Sent Events (SSE) stream and yield structured events
+   * @param {ReadableStreamDefaultReader} reader - Stream reader
+   * @param {function} onEvent - Callback for each parsed event
+   * @returns {Promise<string>} - Complete accumulated response
+   */
+  async parseSSE(reader, onEvent) {
+    const decoder = new TextDecoder();
+    let fullResponse = '';
+    
+    // Use eventsource-parser if available, otherwise fall back to manual parsing
+    if (createParser) {
+      // Create the SSE parser
+      const parser = createParser((event) => {
+        if (event.type === 'event') {
+          if (event.data === '[DONE]') {
+            return;
+          }
+          
+          try {
+            const parsed = JSON.parse(event.data);
+            const delta = parsed.choices?.[0]?.delta;
+            
+            if (delta?.content) {
+              const eventData = {
+                role: delta.role || 'assistant',
+                delta: delta.content
+              };
+              
+              fullResponse += delta.content;
+              if (onEvent) onEvent(eventData);
+            }
+          } catch (error) {
+            console.warn('Failed to parse SSE event:', error.message);
+          }
+        }
+      });
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          // Feed the chunk to the parser
+          const chunk = decoder.decode(value, { stream: true });
+          parser.feed(chunk);
+        }
+      } catch (error) {
+        throw new Error(`SSE parsing failed: ${error.message}`);
+      }
+    } else {
+      // Fallback to manual parsing (legacy method)
+      console.warn('eventsource-parser not available, using fallback manual parsing');
+      
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -318,8 +410,13 @@ class Warpmind {
               const parsed = JSON.parse(data);
               const content = parsed.choices?.[0]?.delta?.content;
               if (content) {
+                const eventData = {
+                  role: 'assistant',
+                  delta: content
+                };
+                
                 fullResponse += content;
-                if (onChunk) onChunk(content);
+                if (onEvent) onEvent(eventData);
               }
             } catch (e) {
               // Skip invalid JSON lines
@@ -327,11 +424,9 @@ class Warpmind {
           }
         }
       }
-
-      return fullResponse;
-    } catch (error) {
-      throw error;
     }
+
+    return fullResponse;
   }
 
   /**
