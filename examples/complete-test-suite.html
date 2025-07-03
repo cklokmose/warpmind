@@ -282,7 +282,7 @@
         async function testCompletion() {
             try {
                 log('Testing completion...');
-                const response = await wm.complete('The sky is', { maxTokens: 20 });
+                const response = await wm.complete('The sky is');
                 log(`Completion response: "${response}"`, 'success');
             } catch (error) {
                 log(`Completion failed: ${error.message}`, 'error');
@@ -506,7 +506,7 @@
                 const [chatResult, ttsResult, completionResult] = await Promise.all([
                     wm.chat('Quick test'),
                     wm.textToSpeech('Concurrent test'),
-                    wm.complete('The weather is', { maxTokens: 10 })
+                    wm.complete('The weather is')
                 ]);
                 
                 log('Concurrent operations completed successfully', 'success');
@@ -741,7 +741,7 @@
             log('Testing connectivity...');
             
             try {
-                const response = await wm.chat('Hello, are you working?', { maxTokens: 20 });
+                const response = await wm.chat('Hello, are you working?');
                 log('✅ Connectivity test passed!', 'success');
                 log(`Response: "${response}"`, 'success');
                 log('🎯 Ready to run full test suite!', 'success');
