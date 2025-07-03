@@ -65,12 +65,14 @@ function createDataProcessingModule(client) {
             }
             
             return result; // Validation successful
-          } catch (error) {
+          } catch (parseError) {
             // This will catch both JSON parsing errors and our schema validation errors.
             // We re-throw the error so the retry logic can catch it.
-            throw new Error(`Response validation failed: ${error.message}. Raw response: ${response}`);
+            throw new Error(`Response validation failed: ${parseError.message}. Raw response: ${response}`);
           }
         } catch (error) {
+          // If the error came from client.chat (network/API error), re-throw it directly
+          // If it came from parsing/validation, it will have the expected message format
           console.warn(`Process attempt ${attempt + 1} failed: ${error.message}`);
           if (attempt === retries) {
               console.error('All process attempts failed.');

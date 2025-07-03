@@ -61,7 +61,13 @@ function createVisionModule(client) {
             }
           };
         }
-      } else if (image instanceof File || image instanceof Blob) {
+      } else if (image && (
+        (typeof File !== 'undefined' && image instanceof File) || 
+        (typeof Blob !== 'undefined' && image instanceof Blob) ||
+        (image.constructor && image.constructor.name === 'File') ||
+        (image.constructor && image.constructor.name === 'Blob') ||
+        (image.type && image.arrayBuffer) // Duck typing for File/Blob-like objects
+      )) {
         // Convert File/Blob to base64
         const base64 = await fileToBase64(image);
         imageContent = {

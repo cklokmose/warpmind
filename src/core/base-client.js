@@ -28,7 +28,7 @@ class BaseClient {
   constructor(config = {}) {
     this.baseURL = config.baseURL || 'https://api.openai.com/v1';
     this.apiKey = config.apiKey || '';
-    this.model = config.model || 'gpt-3.5-turbo';
+    this.model = config.model || 'gpt-4o';
     this.temperature = config.temperature || 0.7;
     this.defaultTimeoutMs = config.defaultTimeoutMs || 30000;
   }
@@ -61,10 +61,15 @@ class BaseClient {
    * Configure generation parameters
    * @param {Object} params - Parameters object
    * @param {number} params.temperature - Temperature for randomness (0-2)
+   * @param {string} params.model - Model name
+   * @param {string} params.apiKey - API key
+   * @param {string} params.baseURL - Base URL
    */
   configure(params = {}) {
     if (params.temperature !== undefined) this.temperature = params.temperature;
     if (params.model !== undefined) this.model = params.model;
+    if (params.apiKey !== undefined) this.apiKey = params.apiKey;
+    if (params.baseURL !== undefined) this.baseURL = params.baseURL;
   }
 
   /**
@@ -96,7 +101,7 @@ class BaseClient {
             'api-key': this.apiKey // Custom header for proxy authentication
           },
           body: JSON.stringify(data),
-          signal: controller.signal
+          signal: controller ? controller.signal : undefined
         });
 
         clearTimeout(timeoutId);

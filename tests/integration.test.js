@@ -48,9 +48,10 @@ describe('Exponential Back-off Integration Test', () => {
     expect(delay2).toBeGreaterThanOrEqual(2000);
     expect(delay2).toBeLessThanOrEqual(2250);
 
-    // Test Retry-After header
+    // Test Retry-After header (now includes jitter)
     const delayWithRetryAfter = utils.calculateRetryDelay(0, '5');
-    expect(delayWithRetryAfter).toBe(5000);
+    expect(delayWithRetryAfter).toBeGreaterThanOrEqual(5000);
+    expect(delayWithRetryAfter).toBeLessThan(5250); // 5000 + max jitter of 250
   });
 
   test('Timeout controller creates AbortController', () => {

@@ -23,7 +23,8 @@ function addJitter(baseDelay) {
  */
 function calculateRetryDelay(attempt, retryAfter) {
   if (retryAfter) {
-    return parseInt(retryAfter) * 1000; // Convert seconds to milliseconds
+    const retryDelayMs = parseInt(retryAfter) * 1000; // Convert seconds to milliseconds
+    return addJitter(retryDelayMs);
   }
   
   const baseDelay = 500 * Math.pow(2, attempt); // 500ms × 2^attempt
@@ -47,6 +48,14 @@ function shouldRetry(status) {
  * @returns {Object} - Object with controller and timeout ID {controller, timeoutId}
  */
 function createTimeoutController(timeoutMs) {
+  if (typeof AbortController === 'undefined') {
+    // Return a fallback when AbortController is not available
+    return {
+      controller: null,
+      timeoutId: setTimeout(() => {}, timeoutMs)
+    };
+  }
+  
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
@@ -82,10 +91,32 @@ function delayForRetry(attempt, retryAfter) {
  */
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
+    if (!file) {
+      reject(new Error('File is required'));
+      return;
+    }
+    
+    // Check if FileReader is available (browser environment)
+    if (typeof FileReader !== 'undefined') {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    } else {
+      // Node.js environment - use fs module
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        
+        const data = fs.readFileSync(file.path || file);
+        const mimeType = file.type || 'application/octet-stream';
+        const base64 = data.toString('base64');
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+        resolve(dataUrl);
+      } catch (error) {
+        reject(new Error(`Failed to read file: ${error.message}`));
+      }
+    }
   });
 }
 
