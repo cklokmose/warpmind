@@ -75,6 +75,20 @@ function delayForRetry(attempt, retryAfter) {
   return sleep(delay);
 }
 
+/**
+ * Converts a File or Blob to base64 data URL
+ * @param {File|Blob} file - File or Blob to convert
+ * @returns {Promise<string>} - Base64 data URL
+ */
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
 // Export for both CommonJS and ES modules
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -83,7 +97,8 @@ if (typeof module !== 'undefined' && module.exports) {
     shouldRetry,
     createTimeoutController,
     sleep,
-    delayForRetry
+    delayForRetry,
+    fileToBase64
   };
 } else if (typeof window !== 'undefined') {
   // Browser environment - attach to window for global access
@@ -93,6 +108,7 @@ if (typeof module !== 'undefined' && module.exports) {
     shouldRetry,
     createTimeoutController,
     sleep,
-    delayForRetry
+    delayForRetry,
+    fileToBase64
   };
 }
