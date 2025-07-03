@@ -486,8 +486,14 @@ class Warpmind {
    * Generate audio from text using text-to-speech
    * @param {string} text - Text to convert to speech
    * @param {Object} options - Optional parameters
+   * @param {string} options.model - TTS model (default: 'tts-1')
+   * @param {string} options.voice - Voice to use (default: 'alloy')
+   * @param {string} options.format - Audio format (default: 'mp3')
+   * @param {number} options.speed - Speech speed (default: 1.0)
+   * @param {boolean} options.stream - Enable streaming for real-time audio (default: false)
+   * @param {Function} options.onChunk - Callback for streaming chunks (chunk) => {}
    * @param {number} options.timeoutMs - Request timeout in milliseconds
-   * @returns {Promise<Blob>} - Audio data as Blob
+   * @returns {Promise<Blob>} - Audio data as Blob, or Promise<void> if streaming
    */
   async textToSpeech(text, options = {}) {
     if (!this.apiKey) {
@@ -501,6 +507,15 @@ class Warpmind {
       response_format: options.format || 'mp3',
       speed: options.speed || 1.0
     };
+
+    // Add streaming parameter if requested
+    if (options.stream) {
+      requestData.stream = true;
+      // For streaming, use opus format which is better for real-time
+      if (!options.format) {
+        requestData.response_format = 'opus';
+      }
+    }
 
     const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
     const { controller, timeoutId } = this._createTimeoutController(timeoutMs);
@@ -517,14 +532,40 @@ class Warpmind {
         signal: controller.signal
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
+        clearTimeout(timeoutId);
         const errorData = await response.json().catch(() => ({}));
         throw new Error(`TTS request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
       }
 
-      return await response.blob();
+      // Handle streaming response
+      if (options.stream && options.onChunk) {
+        const reader = response.body.getReader();
+        const chunks = [];
+        
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) break;
+            
+            // Store chunk for final blob and call callback
+            chunks.push(value);
+            options.onChunk(value);
+          }
+          
+          clearTimeout(timeoutId);
+          
+          // Return combined blob for compatibility
+          return new Blob(chunks, { type: response.headers.get('content-type') || 'audio/opus' });
+        } finally {
+          reader.releaseLock();
+        }
+      } else {
+        // Standard non-streaming response
+        clearTimeout(timeoutId);
+        return await response.blob();
+      }
     } catch (error) {
       clearTimeout(timeoutId);
       
@@ -543,6 +584,12 @@ class Warpmind {
    * Transcribe audio to text using speech-to-text
    * @param {File|Blob} audioFile - Audio file to transcribe
    * @param {Object} options - Optional parameters
+   * @param {string} options.model - STT model (default: 'whisper-1')
+   * @param {string} options.language - Language code (optional)
+   * @param {string} options.prompt - Prompt to guide transcription (optional)
+   * @param {number} options.temperature - Sampling temperature (optional)
+   * @param {boolean} options.stream - Enable streaming for partial transcripts (default: false)
+   * @param {Function} options.onPartial - Callback for partial transcripts (text) => {}
    * @param {number} options.timeoutMs - Request timeout in milliseconds
    * @returns {Promise<string>} - Transcribed text
    */
@@ -556,9 +603,13 @@ class Warpmind {
     }
 
     const formData = new FormData();
-    formData.append('file', audioFile, audioFile.name || 'audio.wav');
+    
+    // Ensure the file has a proper name and extension
+    const fileName = audioFile.name || 'audio.wav';
+    formData.append('file', audioFile, fileName);
     formData.append('model', options.model || 'whisper-1');
     
+    // Optional parameters - only add if they exist
     if (options.language) {
       formData.append('language', options.language);
     }
@@ -569,8 +620,17 @@ class Warpmind {
       formData.append('temperature', options.temperature.toString());
     }
 
+    // For streaming, we'll use verbose_json response format - but don't add timestamp_granularities for basic proxy compatibility
+    if (options.stream) {
+      formData.append('response_format', 'verbose_json');
+      // Commented out as this might not be supported by all proxy servers
+      // formData.append('timestamp_granularities[]', 'word');
+    }
+
     const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
     const { controller, timeoutId } = this._createTimeoutController(timeoutMs);
+    
+    // Always use the standard transcriptions endpoint
     const url = `${this.baseURL}/audio/transcriptions`;
     
     try {
@@ -578,20 +638,56 @@ class Warpmind {
         method: 'POST',
         headers: {
           'api-key': this.apiKey
+          // Don't set Content-Type for FormData - let browser set it with boundary
         },
         body: formData,
         signal: controller.signal
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`STT request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+        clearTimeout(timeoutId);
+        let errorDetails = '';
+        try {
+          const errorData = await response.json();
+          errorDetails = errorData.error?.message || JSON.stringify(errorData);
+        } catch (e) {
+          // If we can't parse JSON, try to get text
+          try {
+            errorDetails = await response.text();
+          } catch (e2) {
+            errorDetails = 'Unable to parse error response';
+          }
+        }
+        
+        // Enhanced error message with more details
+        throw new Error(`STT request failed: ${response.status} ${response.statusText}. Error details: ${errorDetails}`);
       }
 
+      clearTimeout(timeoutId);
       const result = await response.json();
-      return result.text || '';
+      
+      // If streaming was requested but API doesn't support it, simulate streaming
+      if (options.stream && options.onPartial && result.text) {
+        // Simulate streaming by breaking the text into chunks
+        const words = result.text.split(' ');
+        let currentText = '';
+        
+        // Emit partial results word by word with small delays
+        for (let i = 0; i < words.length; i++) {
+          currentText += (i > 0 ? ' ' : '') + words[i];
+          options.onPartial(currentText);
+          
+          // Small delay to simulate streaming (only if more words remain)
+          if (i < words.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+        }
+        
+        return result.text;
+      } else {
+        // Standard non-streaming response
+        return result.text || '';
+      }
     } catch (error) {
       clearTimeout(timeoutId);
       

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STT Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .container { background: white; padding: 20px; border: 1px solid #ddd; margin: 10px 0; }
+        .output { background: #f5f5f5; padding: 10px; margin: 10px 0; white-space: pre-wrap; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        button { padding: 10px 15px; margin: 5px; }
+        input[type="file"] { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speech-to-Text Debug Test</h1>
+        
+        <div>
+            <input type="password" id="api-key" placeholder="Enter your proxy API key" style="width: 300px;">
+            <button onclick="initWarpmind()">Initialize</button>
+        </div>
+        
+        <div>
+            <input type="file" id="audio-file" accept="audio/*">
+            <button onclick="testSTT('whisper-1')">Test with whisper-1</button>
+            <button onclick="testSTT('whisper')">Test with whisper</button>
+            <button onclick="testSTT()">Test with default</button>
+        </div>
+        
+        <div id="output" class="output">Results will appear here...</div>
+    </div>
+
+    <script src="../dist/warpmind.js"></script>
+    <script>
+        let warpmind = null;
+
+        function initWarpmind() {
+            const apiKey = document.getElementById('api-key').value;
+            const output = document.getElementById('output');
+            
+            if (!apiKey) {
+                output.textContent = 'Please enter API key';
+                output.className = 'output error';
+                return;
+            }
+            
+            warpmind = new Warpmind({
+                apiKey: apiKey,
+                baseURL: 'https://warp.cs.au.dk/mind/v1'
+            });
+            
+            output.textContent = 'WarpMind initialized successfully!';
+            output.className = 'output success';
+        }
+
+        async function testSTT(model = null) {
+            if (!warpmind) {
+                alert('Please initialize WarpMind first');
+                return;
+            }
+            
+            const fileInput = document.getElementById('audio-file');
+            const output = document.getElementById('output');
+            
+            if (!fileInput.files[0]) {
+                output.textContent = 'Please select an audio file';
+                output.className = 'output error';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const options = {};
+            if (model) {
+                options.model = model;
+            }
+            
+            output.textContent = `Testing STT with model: ${model || 'default'}...\nFile: ${file.name} (${file.size} bytes, ${file.type})`;
+            output.className = 'output';
+            
+            try {
+                const result = await warpmind.speechToText(file, options);
+                output.textContent = `SUCCESS!\nModel: ${model || 'default'}\nResult: ${result}`;
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `ERROR with model ${model || 'default'}:\n${error.message}`;
+                output.className = 'output error';
+                console.error('Full error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

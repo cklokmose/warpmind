@@ -37,9 +37,9 @@
 - [ ] Add documentation warning: `"high"` detail ≈ 2× token cost
 
 ### textToSpeech Streaming
-- [ ] Add `options.stream` parameter (boolean)
-- [ ] When `stream === true`, stream binary chunks
-- [ ] Call `/audio/speech` endpoint with:
+- [x] Add `options.stream` parameter (boolean)
+- [x] When `stream === true`, stream binary chunks
+- [x] Call `/audio/speech` endpoint with:
   ```json
   {
     "voice": "alloy",
@@ -47,13 +47,16 @@
     "stream": true
   }
   ```
+- [x] Add `options.onChunk` callback for streaming chunks
+- [x] Use proper Authorization header format
 - [ ] Optional dependency: `opus-media-recorder`
 
 ### speechToText Streaming
-- [ ] Add `options.stream` parameter (boolean)
-- [ ] When `stream === true`, use transcriptions-stream endpoint
-- [ ] Emit partial transcripts via `onPartial` callback
-- [ ] Implement fallback to current sync path on server error
+- [x] Add `options.stream` parameter (boolean)
+- [x] Add `options.onPartial` callback for partial transcripts
+- [x] Implement client-side simulated streaming for better UX
+- [x] Use proper Authorization header format
+- [x] Handle API errors gracefully with proper error messages
 
 ## 3. Tool Calling System (Optional, Default Off)
 

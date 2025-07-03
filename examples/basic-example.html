@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WarpMind Basic Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        h2 { color: #333; margin-top: 0; }
+        button {
+            background-color: #007cba;
+            color: white;
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background-color: #005a87; }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .output {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            min-height: 50px;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WarpMind Basic Example</h1>
+        <p>This example demonstrates basic text-to-speech and speech-to-text functionality.</p>
+        
+        <div class="test-section">
+            <h2>Text to Speech</h2>
+            <textarea id="tts-text" placeholder="Enter text to convert to speech">Hello, this is a test of the text to speech functionality.</textarea>
+            <br>
+            <button onclick="testTextToSpeech()">Generate Speech (Regular)</button>
+            <button onclick="testTextToSpeechStreaming()">Generate Speech (Streaming)</button>
+            <div id="tts-output" class="output">Audio output will appear here...</div>
+            <audio id="tts-audio" controls style="width: 100%; margin-top: 10px; display: none;"></audio>
+        </div>
+
+        <div class="test-section">
+            <h2>Speech to Text</h2>
+            <input type="file" id="stt-file" accept="audio/*">
+            <br>
+            <button onclick="testSpeechToText()">Transcribe Audio (Regular)</button>
+            <button onclick="testSpeechToTextStreaming()">Transcribe Audio (Streaming)</button>
+            <div id="stt-output" class="output">Transcription will appear here...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>Configuration</h2>
+            <p><strong>Note:</strong> You need a valid API key for the proxy server. This is NOT an OpenAI API key, but a key provided by your school's proxy server.</p>
+            <input type="password" id="api-key" placeholder="Enter your proxy API key" style="width: 400px; margin: 5px;">
+            <input type="text" id="base-url" placeholder="Enter base URL (optional)" style="width: 300px; margin: 5px;" value="https://warp.cs.au.dk/mind/v1">
+            <br>
+            <button onclick="initializeWarpmind()">Initialize WarpMind</button>
+            <div id="config-output" class="output">Configuration status will appear here...</div>
+        </div>
+    </div>
+
+    <!-- Load the WarpMind library -->
+    <script src="../dist/warpmind.js"></script>
+
+    <script>
+        let warpmind = null;
+
+        function initializeWarpmind() {
+            const apiKey = document.getElementById('api-key').value;
+            const baseURL = document.getElementById('base-url').value;
+            const output = document.getElementById('config-output');
+
+            if (!apiKey) {
+                output.textContent = 'Error: Proxy API key is required';
+                output.className = 'output error';
+                return;
+            }
+
+            try {
+                warpmind = new Warpmind({
+                    apiKey: apiKey,
+                    baseURL: baseURL || 'https://warp.cs.au.dk/mind/v1'
+                });
+                output.textContent = 'WarpMind initialized successfully! You can now test TTS and STT features.';
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `Error initializing WarpMind: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+
+        async function testTextToSpeech() {
+            if (!warpmind) {
+                alert('Please initialize WarpMind first');
+                return;
+            }
+
+            const text = document.getElementById('tts-text').value;
+            const output = document.getElementById('tts-output');
+            const audio = document.getElementById('tts-audio');
+
+            if (!text) {
+                output.textContent = 'Error: Please enter some text to convert';
+                output.className = 'output error';
+                return;
+            }
+
+            output.textContent = 'Generating speech...';
+            output.className = 'output';
+
+            try {
+                const audioBlob = await warpmind.textToSpeech(text, {
+                    voice: 'alloy',
+                    format: 'mp3'
+                });
+
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audio.src = audioUrl;
+                audio.style.display = 'block';
+                
+                output.textContent = `Speech generated successfully! Audio size: ${audioBlob.size} bytes`;
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+
+        async function testTextToSpeechStreaming() {
+            if (!warpmind) {
+                alert('Please initialize WarpMind first');
+                return;
+            }
+
+            const text = document.getElementById('tts-text').value;
+            const output = document.getElementById('tts-output');
+            const audio = document.getElementById('tts-audio');
+
+            if (!text) {
+                output.textContent = 'Error: Please enter some text to convert';
+                output.className = 'output error';
+                return;
+            }
+
+            output.textContent = 'Generating speech with streaming...';
+            output.className = 'output';
+
+            let chunkCount = 0;
+            let totalSize = 0;
+
+            try {
+                const audioBlob = await warpmind.textToSpeech(text, {
+                    voice: 'alloy',
+                    format: 'opus',
+                    stream: true,
+                    onChunk: (chunk) => {
+                        chunkCount++;
+                        totalSize += chunk.byteLength;
+                        output.textContent = `Streaming... Received ${chunkCount} chunks (${totalSize} bytes)`;
+                    }
+                });
+
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audio.src = audioUrl;
+                audio.style.display = 'block';
+                
+                output.textContent = `Streaming completed! Received ${chunkCount} chunks, total size: ${audioBlob.size} bytes`;
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+
+        async function testSpeechToText() {
+            if (!warpmind) {
+                alert('Please initialize WarpMind first');
+                return;
+            }
+
+            const fileInput = document.getElementById('stt-file');
+            const output = document.getElementById('stt-output');
+
+            if (!fileInput.files[0]) {
+                output.textContent = 'Error: Please select an audio file';
+                output.className = 'output error';
+                return;
+            }
+
+            output.textContent = 'Transcribing audio...';
+            output.className = 'output';
+
+            try {
+                const text = await warpmind.speechToText(fileInput.files[0], {
+                    model: 'whisper-1'
+                });
+
+                output.textContent = `Transcription: ${text}`;
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+
+        async function testSpeechToTextStreaming() {
+            if (!warpmind) {
+                alert('Please initialize WarpMind first');
+                return;
+            }
+
+            const fileInput = document.getElementById('stt-file');
+            const output = document.getElementById('stt-output');
+
+            if (!fileInput.files[0]) {
+                output.textContent = 'Error: Please select an audio file';
+                output.className = 'output error';
+                return;
+            }
+
+            output.textContent = 'Transcribing audio with streaming...';
+            output.className = 'output';
+
+            try {
+                const text = await warpmind.speechToText(fileInput.files[0], {
+                    model: 'whisper-1',
+                    stream: true,
+                    onPartial: (partialText) => {
+                        output.textContent = `Partial transcription: ${partialText}`;
+                    }
+                });
+
+                output.textContent = `Final transcription: ${text}`;
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+
+        // Initialize with default values if available
+        window.onload = function() {
+            // Try to load API key from localStorage if available
+            const savedApiKey = localStorage.getItem('warpmind-proxy-api-key');
+            if (savedApiKey) {
+                document.getElementById('api-key').value = savedApiKey;
+            }
+
+            // Save API key to localStorage when changed
+            document.getElementById('api-key').addEventListener('change', function() {
+                localStorage.setItem('warpmind-proxy-api-key', this.value);
+            });
+        };
+    </script>
+</body>
+</html>
