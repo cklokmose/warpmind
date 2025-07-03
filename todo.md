@@ -3,18 +3,18 @@
 ## 1. Core Transport Upgrades
 
 ### Exponential Back-off Implementation
-- [ ] Add retry logic for HTTP status codes: 429, 502, 503, 524
-- [ ] Implement exponential back-off algorithm:
-  - [ ] Up to 5 retry attempts
-  - [ ] Delay formula: `500ms × 2^attempt + jitter(0–250ms)`
-  - [ ] Check for `Retry-After` header and use it instead of formula when present
-- [ ] Apply retry logic to all API calls
+- [x] Add retry logic for HTTP status codes: 429, 502, 503, 524
+- [x] Implement exponential back-off algorithm:
+  - [x] Up to 5 retry attempts
+  - [x] Delay formula: `500ms × 2^attempt + jitter(0–250ms)`
+  - [x] Check for `Retry-After` header and use it instead of formula when present
+- [x] Apply retry logic to all API calls
 
 ### Timeout Handling
-- [ ] Add `timeoutMs` parameter to all public methods (default: 30,000ms)
-- [ ] Implement `AbortController` for request cancellation
-- [ ] Create custom `TimeoutError` class
-- [ ] Ensure promises reject with `TimeoutError` on timeout
+- [x] Add `timeoutMs` parameter to all public methods (default: 30,000ms)
+- [x] Implement `AbortController` for request cancellation
+- [x] Create custom `TimeoutError` class
+- [x] Ensure promises reject with `TimeoutError` on timeout
 
 ### SSE Parser for Streaming
 - [ ] Add dependency: `eventsource-parser` (~0.7 kB)

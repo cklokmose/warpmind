@@ -10,7 +10,10 @@
   "scripts": {
     "build": "webpack --mode=production",
     "dev": "webpack --mode=development --watch",
-    "serve": "webpack serve --mode=development --open"
+    "serve": "webpack serve --mode=development --open",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:backoff": "jest tests/exponential-backoff.test.js"
   },
   "keywords": [
     "openai",
@@ -26,6 +29,15 @@
   "devDependencies": {
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1"
+    "webpack-dev-server": "^4.15.1",
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverage": true,
+    "coverageDirectory": "coverage",
+    "coverageReporters": ["text", "lcov", "html"],
+    "testMatch": ["**/tests/**/*.test.js"],
+    "verbose": true
   }
 }

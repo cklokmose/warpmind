@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exponential Back-off Test</title>
+</head>
+<body>
+    <h1>WarpMind Exponential Back-off Test</h1>
+    
+    <div>
+        <h3>Test Controls</h3>
+        <button onclick="testRetryLogic()">Test Retry Logic (with mock 429)</button>
+        <button onclick="testTimeout()">Test Timeout (with short timeout)</button>
+        <button onclick="testSuccessfulRequest()">Test Successful Request</button>
+    </div>
+    
+    <div>
+        <h3>Results:</h3>
+        <pre id="output"></pre>
+    </div>
+
+    <script src="../dist/warpmind.js"></script>
+    <script>
+        const log = (message) => {
+            const output = document.getElementById('output');
+            output.textContent += new Date().toISOString() + ': ' + message + '\n';
+            console.log(message);
+        };
+
+        // Create a warpmind instance
+        const mind = new Warpmind({
+            apiKey: 'test-key',
+            baseURL: 'https://httpbin.org' // Using httpbin for testing
+        });
+
+        async function testRetryLogic() {
+            log('Testing retry logic...');
+            
+            // Mock the original fetch to simulate retry behavior
+            const originalFetch = window.fetch;
+            let attemptCount = 0;
+            
+            window.fetch = async (url, options) => {
+                attemptCount++;
+                log(`Attempt ${attemptCount} to ${url}`);
+                
+                if (attemptCount < 3) {
+                    // Simulate rate limiting for first 2 attempts
+                    return {
+                        ok: false,
+                        status: 429,
+                        statusText: 'Too Many Requests',
+                        headers: { get: () => null },
+                        json: async () => ({ error: { message: 'Rate limited' } })
+                    };
+                } else {
+                    // Success on 3rd attempt
+                    return {
+                        ok: true,
+                        json: async () => ({ choices: [{ message: { content: 'Success after retries!' } }] })
+                    };
+                }
+            };
+
+            try {
+                const result = await mind.chat('Test message');
+                log(`Success: ${result}`);
+                log(`Total attempts: ${attemptCount}`);
+            } catch (error) {
+                log(`Error: ${error.message}`);
+            } finally {
+                window.fetch = originalFetch;
+                attemptCount = 0;
+            }
+        }
+
+        async function testTimeout() {
+            log('Testing timeout functionality...');
+            
+            // Mock fetch to hang indefinitely
+            const originalFetch = window.fetch;
+            window.fetch = () => new Promise(() => {}); // Never resolves
+
+            try {
+                await mind.chat('Test message', { timeoutMs: 2000 });
+                log('ERROR: Should have timed out!');
+            } catch (error) {
+                if (error instanceof TimeoutError) {
+                    log(`SUCCESS: Request timed out as expected - ${error.message}`);
+                } else {
+                    log(`ERROR: Wrong error type - ${error.message}`);
+                }
+            } finally {
+                window.fetch = originalFetch;
+            }
+        }
+
+        async function testSuccessfulRequest() {
+            log('Testing successful request (using httpbin.org)...');
+            
+            try {
+                // Use httpbin's status endpoint which returns 200
+                const response = await mind.makeRequest('/status/200', {});
+                log('SUCCESS: Request completed successfully');
+                log(`Response: ${JSON.stringify(response)}`);
+            } catch (error) {
+                log(`Request failed (expected for demo): ${error.message}`);
+            }
+        }
+
+        // Test helper methods on page load
+        window.addEventListener('load', () => {
+            log('WarpMind exponential back-off functionality loaded');
+            log('Testing helper methods...');
+            
+            // Test retry status check
+            log(`Should retry 429: ${mind._shouldRetry(429)}`);
+            log(`Should retry 400: ${mind._shouldRetry(400)}`);
+            
+            // Test delay calculation
+            const delay = mind._calculateRetryDelay(0);
+            log(`Calculated delay for attempt 0: ${delay}ms`);
+            
+            // Test TimeoutError
+            const timeoutError = new TimeoutError('Test timeout');
+            log(`TimeoutError created: ${timeoutError.name} - ${timeoutError.message}`);
+            
+            log('Helper methods working correctly!');
+            log('Click buttons above to test retry and timeout functionality.');
+        });
+    </script>
+</body>
+</html>

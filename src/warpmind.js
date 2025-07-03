@@ -3,12 +3,23 @@
  * Designed to work with school proxy servers using custom authentication keys
  */
 
+/**
+ * Custom error class for timeout errors
+ */
+class TimeoutError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'TimeoutError';
+  }
+}
+
 class Warpmind {
   constructor(config = {}) {
     this.baseURL = config.baseURL || 'https://api.openai.com/v1';
     this.apiKey = config.apiKey || '';
     this.model = config.model || 'gpt-3.5-turbo';
     this.temperature = config.temperature || 0.7;
+    this.defaultTimeoutMs = config.defaultTimeoutMs || 30000;
   }
 
   /**
@@ -46,39 +57,125 @@ class Warpmind {
   }
 
   /**
-   * Make a request to the OpenAI-compatible API with proper headers
+   * Adds jitter to delay calculation for exponential back-off
+   * @param {number} baseDelay - Base delay in milliseconds
+   * @returns {number} - Delay with added jitter
+   */
+  _addJitter(baseDelay) {
+    const jitter = Math.random() * 250; // 0-250ms jitter
+    return baseDelay + jitter;
+  }
+
+  /**
+   * Calculates delay for exponential back-off
+   * @param {number} attempt - Current attempt number (0-based)
+   * @param {string} retryAfter - Retry-After header value in seconds
+   * @returns {number} - Delay in milliseconds
+   */
+  _calculateRetryDelay(attempt, retryAfter) {
+    if (retryAfter) {
+      return parseInt(retryAfter) * 1000; // Convert seconds to milliseconds
+    }
+    
+    const baseDelay = 500 * Math.pow(2, attempt); // 500ms × 2^attempt
+    return this._addJitter(baseDelay);
+  }
+
+  /**
+   * Checks if an HTTP status code should trigger a retry
+   * @param {number} status - HTTP status code
+   * @returns {boolean} - Whether to retry the request
+   */
+  _shouldRetry(status) {
+    return [429, 502, 503, 524].includes(status);
+  }
+
+  /**
+   * Creates an AbortController with timeout
+   * @param {number} timeoutMs - Timeout in milliseconds
+   * @returns {Object} - Object with controller and timeout ID
+   */
+  _createTimeoutController(timeoutMs) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+    
+    return { controller, timeoutId };
+  }
+
+  /**
+   * Make a request to the OpenAI-compatible API with proper headers, retry logic, and timeout
    * @param {string} endpoint - API endpoint
    * @param {Object} data - Request data
+   * @param {Object} options - Request options
+   * @param {number} options.timeoutMs - Request timeout in milliseconds
+   * @param {number} options.maxRetries - Maximum number of retry attempts (default: 5)
    * @returns {Promise} - API response
    */
-  async makeRequest(endpoint, data) {
+  async makeRequest(endpoint, data, options = {}) {
     if (!this.apiKey) {
       throw new Error('API key is required. Use setApiKey() to set your proxy authentication key.');
     }
 
+    const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
+    const maxRetries = options.maxRetries !== undefined ? options.maxRetries : 5;
     const url = `${this.baseURL}${endpoint}`;
     
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api-key': this.apiKey // Custom header for proxy authentication
-        },
-        body: JSON.stringify(data)
-      });
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const { controller, timeoutId } = this._createTimeoutController(timeoutMs);
+      
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': this.apiKey // Custom header for proxy authentication
+          },
+          body: JSON.stringify(data),
+          signal: controller.signal
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
-      }
+        clearTimeout(timeoutId);
 
-      return await response.json();
-    } catch (error) {
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        throw new Error('Network error: Unable to connect to the API. Please check your internet connection.');
+        if (!response.ok) {
+          // Check if we should retry this status code
+          if (this._shouldRetry(response.status) && attempt < maxRetries) {
+            const retryAfter = response.headers.get ? response.headers.get('Retry-After') : null;
+            const delay = this._calculateRetryDelay(attempt, retryAfter);
+            
+            console.warn(`Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+        }
+
+        return await response.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        
+        // Handle timeout errors
+        if (error.name === 'AbortError') {
+          throw new TimeoutError(`Request timed out after ${timeoutMs}ms`);
+        }
+        
+        // Handle network errors - retry if not last attempt
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          if (attempt < maxRetries) {
+            const delay = this._calculateRetryDelay(attempt);
+            console.warn(`Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+          throw new Error('Network error: Unable to connect to the API. Please check your internet connection.');
+        }
+        
+        // For other errors, don't retry
+        throw error;
       }
-      throw error;
     }
   }
 
@@ -86,6 +183,7 @@ class Warpmind {
    * Generate a chat completion
    * @param {string|Array} messages - Single message string or array of message objects
    * @param {Object} options - Optional parameters
+   * @param {number} options.timeoutMs - Request timeout in milliseconds
    * @returns {Promise<string>} - The generated response
    */
   async chat(messages, options = {}) {
@@ -104,10 +202,15 @@ class Warpmind {
     const filteredOptions = { ...options };
     delete filteredOptions.model;
     delete filteredOptions.temperature;
+    delete filteredOptions.timeoutMs;
     
     Object.assign(requestData, filteredOptions);
 
-    const response = await this.makeRequest('/chat/completions', requestData);
+    const requestOptions = {
+      timeoutMs: options.timeoutMs
+    };
+
+    const response = await this.makeRequest('/chat/completions', requestData, requestOptions);
     return response.choices[0]?.message?.content || '';
   }
 
@@ -115,6 +218,7 @@ class Warpmind {
    * Generate a simple completion (legacy)
    * @param {string} prompt - The prompt text
    * @param {Object} options - Optional parameters
+   * @param {number} options.timeoutMs - Request timeout in milliseconds
    * @returns {Promise<string>} - The generated response
    */
   async complete(prompt, options = {}) {
@@ -128,10 +232,15 @@ class Warpmind {
     const filteredOptions = { ...options };
     delete filteredOptions.model;
     delete filteredOptions.temperature;
+    delete filteredOptions.timeoutMs;
     
     Object.assign(requestData, filteredOptions);
 
-    const response = await this.makeRequest('/completions', requestData);
+    const requestOptions = {
+      timeoutMs: options.timeoutMs
+    };
+
+    const response = await this.makeRequest('/completions', requestData, requestOptions);
     return response.choices[0]?.text || '';
   }
 
@@ -139,6 +248,7 @@ class Warpmind {
    * Ask a simple question and get a response
    * @param {string} question - The question to ask
    * @param {Object} options - Optional parameters
+   * @param {number} options.timeoutMs - Request timeout in milliseconds
    * @returns {Promise<string>} - The AI response
    */
   async ask(question, options = {}) {
@@ -594,4 +704,13 @@ class Warpmind {
       }
     }
   }
+}
+
+// Export for both CommonJS and ES modules
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Warpmind;
+  module.exports.TimeoutError = TimeoutError;
+} else if (typeof window !== 'undefined') {
+  window.Warpmind = Warpmind;
+  window.TimeoutError = TimeoutError;
 }
