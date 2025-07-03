@@ -1,11 +1,28 @@
 /**
- * Test suite for exponential back-off functionality in Warpmind
+ * Test sui  beforeEach(() => {
+    warpmind = new Warpmind({
+      apiKey: 'test-key',
+      baseURL: 'https://api.test.com/v1'
+    });
+    
+    // Reset all mocks first
+    jest.clearAllMocks();
+    
+    // Then mock the utility delay calculation to use smaller delays for testing
+    jest.spyOn(utils, 'calculateRetryDelay').mockImplementation((attempt, retryAfter) => {
+      if (retryAfter) {
+        return parseInt(retryAfter) * 10; // Convert to 10ms instead of 1000ms
+      }
+      // Return much smaller delays for testing: 5ms, 10ms, 20ms, etc.
+      return Math.max(5, 5 * Math.pow(2, attempt));
+    });
+  }); back-off functionality in Warpmind
  * Tests retry logic, timeout handling, and TimeoutError
  */
 
 // Import the Warpmind class for Node.js testing
 const Warpmind = require('../src/warpmind.js');
-const { TimeoutError } = require('../src/warpmind.js');
+const { TimeoutError, utils } = require('../src/warpmind.js');
 
 // Mock fetch for testing
 global.fetch = jest.fn();
@@ -22,8 +39,8 @@ describe('Warpmind Exponential Back-off Tests', () => {
     // Reset all mocks first
     jest.clearAllMocks();
     
-    // Then mock the internal delay calculation to use smaller delays for testing
-    jest.spyOn(warpmind, '_calculateRetryDelay').mockImplementation((attempt, retryAfter) => {
+    // Then mock the utility delay calculation to use smaller delays for testing
+    jest.spyOn(utils, 'calculateRetryDelay').mockImplementation((attempt, retryAfter) => {
       if (retryAfter) {
         return parseInt(retryAfter) * 10; // Convert to 10ms instead of 1000ms
       }
@@ -188,13 +205,10 @@ describe('Warpmind Exponential Back-off Tests', () => {
       // Temporarily restore the original method for this test
       jest.restoreAllMocks();
       
-      // Create a fresh instance to test the real calculation
-      const testWarpmind = new Warpmind({ apiKey: 'test' });
-      
-      // Test the internal delay calculation method
-      const delay0 = testWarpmind._calculateRetryDelay(0);
-      const delay1 = testWarpmind._calculateRetryDelay(1);
-      const delay2 = testWarpmind._calculateRetryDelay(2);
+      // Test the utility delay calculation method directly
+      const delay0 = utils.calculateRetryDelay(0);
+      const delay1 = utils.calculateRetryDelay(1);
+      const delay2 = utils.calculateRetryDelay(2);
 
       // Base delays should be 500, 1000, 2000 + jitter (0-250)
       expect(delay0).toBeGreaterThanOrEqual(500);
@@ -207,7 +221,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
       expect(delay2).toBeLessThanOrEqual(2250);
       
       // Re-mock for other tests
-      jest.spyOn(warpmind, '_calculateRetryDelay').mockImplementation((attempt, retryAfter) => {
+      jest.spyOn(utils, 'calculateRetryDelay').mockImplementation((attempt, retryAfter) => {
         if (retryAfter) {
           return parseInt(retryAfter) * 10;
         }
@@ -326,24 +340,24 @@ describe('Warpmind Exponential Back-off Tests', () => {
   });
 
   describe('Helper Methods', () => {
-    test('_shouldRetry should return true for retryable status codes', () => {
-      expect(warpmind._shouldRetry(429)).toBe(true);
-      expect(warpmind._shouldRetry(502)).toBe(true);
-      expect(warpmind._shouldRetry(503)).toBe(true);
-      expect(warpmind._shouldRetry(524)).toBe(true);
+    test('shouldRetry should return true for retryable status codes', () => {
+      expect(utils.shouldRetry(429)).toBe(true);
+      expect(utils.shouldRetry(502)).toBe(true);
+      expect(utils.shouldRetry(503)).toBe(true);
+      expect(utils.shouldRetry(524)).toBe(true);
     });
 
-    test('_shouldRetry should return false for non-retryable status codes', () => {
-      expect(warpmind._shouldRetry(200)).toBe(false);
-      expect(warpmind._shouldRetry(400)).toBe(false);
-      expect(warpmind._shouldRetry(401)).toBe(false);
-      expect(warpmind._shouldRetry(404)).toBe(false);
-      expect(warpmind._shouldRetry(500)).toBe(false);
+    test('shouldRetry should return false for non-retryable status codes', () => {
+      expect(utils.shouldRetry(200)).toBe(false);
+      expect(utils.shouldRetry(400)).toBe(false);
+      expect(utils.shouldRetry(401)).toBe(false);
+      expect(utils.shouldRetry(404)).toBe(false);
+      expect(utils.shouldRetry(500)).toBe(false);
     });
 
-    test('_addJitter should add random jitter to delay', () => {
+    test('addJitter should add random jitter to delay', () => {
       const baseDelay = 1000;
-      const delayWithJitter = warpmind._addJitter(baseDelay);
+      const delayWithJitter = utils.addJitter(baseDelay);
       
       expect(delayWithJitter).toBeGreaterThanOrEqual(baseDelay);
       expect(delayWithJitter).toBeLessThanOrEqual(baseDelay + 250);

@@ -3,6 +3,40 @@
  * Designed to work with school proxy servers using custom authentication keys
  */
 
+// Import utility functions for better modularity
+let addJitter, calculateRetryDelay, shouldRetry, createTimeoutController, sleep, delayForRetry;
+
+// Import base client and TimeoutError
+const { BaseClient, TimeoutError } = require('./core/base-client.js');
+
+if (typeof module !== 'undefined' && module.exports) {
+  // Node.js environment
+  const utils = require('./util.js');
+  ({ 
+    addJitter, 
+    calculateRetryDelay, 
+    shouldRetry, 
+    createTimeoutController, 
+    sleep, 
+    delayForRetry 
+  } = utils);
+} else {
+  // Browser environment - webpack should bundle util.js
+  try {
+    const utils = require('./util.js');
+    ({ 
+      addJitter, 
+      calculateRetryDelay, 
+      shouldRetry, 
+      createTimeoutController, 
+      sleep, 
+      delayForRetry 
+    } = utils);
+  } catch (error) {
+    throw new Error('Utility functions are required. Please ensure util.js is bundled with your application.');
+  }
+}
+
 // Import eventsource-parser for robust SSE parsing (compatible with browser and Node.js)
 let createParser;
 
@@ -24,180 +58,9 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 }
 
-/**
- * Custom error class for timeout errors
- */
-class TimeoutError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'TimeoutError';
-  }
-}
-
-class Warpmind {
+class Warpmind extends BaseClient {
   constructor(config = {}) {
-    this.baseURL = config.baseURL || 'https://api.openai.com/v1';
-    this.apiKey = config.apiKey || '';
-    this.model = config.model || 'gpt-3.5-turbo';
-    this.temperature = config.temperature || 0.7;
-    this.defaultTimeoutMs = config.defaultTimeoutMs || 30000;
-  }
-
-  /**
-   * Set the API key for authentication with the proxy server
-   * @param {string} apiKey - The custom proxy authentication key (not an OpenAI key)
-   */
-  setApiKey(apiKey) {
-    this.apiKey = apiKey;
-  }
-
-  /**
-   * Set the base URL for the proxy server
-   * @param {string} baseURL - The base URL for the school proxy server or OpenAI-compatible API
-   */
-  setBaseURL(baseURL) {
-    this.baseURL = baseURL;
-  }
-
-  /**
-   * Set the model to use for completions
-   * @param {string} model - The model name (e.g., 'gpt-3.5-turbo', 'gpt-4')
-   */
-  setModel(model) {
-    this.model = model;
-  }
-
-  /**
-   * Configure generation parameters
-   * @param {Object} params - Parameters object
-   * @param {number} params.temperature - Temperature for randomness (0-2)
-   */
-  configure(params = {}) {
-    if (params.temperature !== undefined) this.temperature = params.temperature;
-    if (params.model !== undefined) this.model = params.model;
-  }
-
-  /**
-   * Adds jitter to delay calculation for exponential back-off
-   * @param {number} baseDelay - Base delay in milliseconds
-   * @returns {number} - Delay with added jitter
-   */
-  _addJitter(baseDelay) {
-    const jitter = Math.random() * 250; // 0-250ms jitter
-    return baseDelay + jitter;
-  }
-
-  /**
-   * Calculates delay for exponential back-off
-   * @param {number} attempt - Current attempt number (0-based)
-   * @param {string} retryAfter - Retry-After header value in seconds
-   * @returns {number} - Delay in milliseconds
-   */
-  _calculateRetryDelay(attempt, retryAfter) {
-    if (retryAfter) {
-      return parseInt(retryAfter) * 1000; // Convert seconds to milliseconds
-    }
-    
-    const baseDelay = 500 * Math.pow(2, attempt); // 500ms × 2^attempt
-    return this._addJitter(baseDelay);
-  }
-
-  /**
-   * Checks if an HTTP status code should trigger a retry
-   * @param {number} status - HTTP status code
-   * @returns {boolean} - Whether to retry the request
-   */
-  _shouldRetry(status) {
-    return [429, 502, 503, 524].includes(status);
-  }
-
-  /**
-   * Creates an AbortController with timeout
-   * @param {number} timeoutMs - Timeout in milliseconds
-   * @returns {Object} - Object with controller and timeout ID
-   */
-  _createTimeoutController(timeoutMs) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, timeoutMs);
-    
-    return { controller, timeoutId };
-  }
-
-  /**
-   * Make a request to the OpenAI-compatible API with proper headers, retry logic, and timeout
-   * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request data
-   * @param {Object} options - Request options
-   * @param {number} options.timeoutMs - Request timeout in milliseconds
-   * @param {number} options.maxRetries - Maximum number of retry attempts (default: 5)
-   * @returns {Promise} - API response
-   */
-  async makeRequest(endpoint, data, options = {}) {
-    if (!this.apiKey) {
-      throw new Error('API key is required. Use setApiKey() to set your proxy authentication key.');
-    }
-
-    const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
-    const maxRetries = options.maxRetries !== undefined ? options.maxRetries : 5;
-    const url = `${this.baseURL}${endpoint}`;
-    
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      const { controller, timeoutId } = this._createTimeoutController(timeoutMs);
-      
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'api-key': this.apiKey // Custom header for proxy authentication
-          },
-          body: JSON.stringify(data),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          // Check if we should retry this status code
-          if (this._shouldRetry(response.status) && attempt < maxRetries) {
-            const retryAfter = response.headers.get ? response.headers.get('Retry-After') : null;
-            const delay = this._calculateRetryDelay(attempt, retryAfter);
-            
-            console.warn(`Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue;
-          }
-
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
-        }
-
-        return await response.json();
-      } catch (error) {
-        clearTimeout(timeoutId);
-        
-        // Handle timeout errors
-        if (error.name === 'AbortError') {
-          throw new TimeoutError(`Request timed out after ${timeoutMs}ms`);
-        }
-        
-        // Handle network errors - retry if not last attempt
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-          if (attempt < maxRetries) {
-            const delay = this._calculateRetryDelay(attempt);
-            console.warn(`Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue;
-          }
-          throw new Error('Network error: Unable to connect to the API. Please check your internet connection.');
-        }
-        
-        // For other errors, don't retry
-        throw error;
-      }
-    }
+    super(config); // Call BaseClient constructor
   }
 
   /**
@@ -306,7 +169,7 @@ class Warpmind {
     Object.assign(requestData, filteredOptions);
 
     const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
-    const { controller, timeoutId } = this._createTimeoutController(timeoutMs);
+    const { controller, timeoutId } = createTimeoutController(timeoutMs);
     
     // Internal accumulator for full response
     let fullResponse = '';
@@ -518,7 +381,7 @@ class Warpmind {
     }
 
     const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
-    const { controller, timeoutId } = this._createTimeoutController(timeoutMs);
+    const { controller, timeoutId } = createTimeoutController(timeoutMs);
     const url = `${this.baseURL}/audio/speech`;
     
     try {
@@ -628,7 +491,7 @@ class Warpmind {
     }
 
     const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
-    const { controller, timeoutId } = this._createTimeoutController(timeoutMs);
+    const { controller, timeoutId } = createTimeoutController(timeoutMs);
     
     // Always use the standard transcriptions endpoint
     const url = `${this.baseURL}/audio/transcriptions`;
@@ -929,9 +792,27 @@ class Warpmind {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = Warpmind;
   module.exports.TimeoutError = TimeoutError;
+  // Also export utility functions for testing purposes
+  module.exports.utils = {
+    addJitter,
+    calculateRetryDelay,
+    shouldRetry,
+    createTimeoutController,
+    sleep,
+    delayForRetry
+  };
 } else if (typeof window !== 'undefined') {
   window.Warpmind = Warpmind;
   window.TimeoutError = TimeoutError;
+  // Also expose utilities for testing in browser
+  window.WarpmindUtils = {
+    addJitter,
+    calculateRetryDelay,
+    shouldRetry,
+    createTimeoutController,
+    sleep,
+    delayForRetry
+  };
 }
 
 // Also attach TimeoutError to Warpmind class for webpack UMD compatibility

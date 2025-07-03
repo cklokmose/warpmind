@@ -1,5 +1,137 @@
 # WarpMind Library - Development TODO
 
+## ✅ COMPLETED: Phase 1 - Base Infrastructure Refactoring
+
+**Date Completed**: Current
+**Summary**: Successfully extracted core HTTP client functionality from the monolithic `warpmind.js` file into a reusable `BaseClient` class.
+
+### What was accomplished:
+- ✅ Created `src/core/base-client.js` containing:
+  - `BaseClient` class with constructor, configuration methods
+  - `makeRequest()` method with full retry logic and timeout handling
+  - `TimeoutError` class
+  - All HTTP client configuration and error handling
+- ✅ Refactored `src/warpmind.js` to extend `BaseClient`
+- ✅ Removed duplicate code and cleaned up inheritance
+- ✅ All 71 tests pass successfully
+- ✅ Build system works correctly (webpack bundle is now 12.7 KiB)
+- ✅ Student-facing API remains completely unchanged
+
+**Impact**: Reduced `warpmind.js` from ~900 lines to ~820 lines. Created foundation for further modularization.
+
+---
+
+## PRIORITY: Code Refactoring & Modularity
+
+### File Structure Reorganization (warpmind.js is ~900 lines - too large!)
+
+**Goal**: Split the monolithic `src/warpmind.js` file into focused, maintainable modules while preserving the exact same student-facing API.
+
+#### Phase 1: Create Base Infrastructure ✅ COMPLETED
+- [x] Create `src/core/base-client.js` - HTTP client with retry logic and error handling
+  - [x] Move `makeRequest()` method
+  - [x] Move constructor and configuration methods (`setApiKey`, `setBaseURL`, `setModel`, `configure`)
+  - [x] Move timeout and retry coordination logic
+  - [x] Export `BaseClient` class and `TimeoutError`
+- [x] Update `src/warpmind.js` to extend `BaseClient`
+- [x] Remove duplicate code and ensure all tests pass
+- [x] Verify build succeeds
+
+#### Phase 2: Extract Streaming Functionality  
+- [ ] Create `src/streaming/sse-parser.js` - Server-Sent Events handling
+  - [ ] Move `parseSSE()` method
+  - [ ] Move SSE-related utilities and createParser import
+  - [ ] Export streaming functions
+
+#### Phase 3: Extract Audio Module
+- [ ] Create `src/modules/audio.js` - All audio-related operations (~300 lines)
+  - [ ] Move `textToSpeech()` method
+  - [ ] Move `speechToText()` method  
+  - [ ] Move `playAudio()` utility method
+  - [ ] Export as module function that accepts client instance
+
+#### Phase 4: Extract Vision Module
+- [ ] Create `src/modules/vision.js` - Image analysis operations (~100 lines)
+  - [ ] Move `analyzeImage()` method
+  - [ ] Move `_fileToBase64()` helper method
+  - [ ] Export as module function that accepts client instance
+
+#### Phase 5: Extract Voice Chat Controller
+- [ ] Create `src/modules/voice-chat.js` - Interactive voice conversation (~150 lines)
+  - [ ] Move `createVoiceChat()` method and its returned object
+  - [ ] Move MediaRecorder integration logic
+  - [ ] Move conversation management logic
+  - [ ] Export as module function that accepts client instance
+
+#### Phase 6: Extract Data Processing Module
+- [ ] Create `src/modules/data-processing.js` - Structured JSON processing (~100 lines)
+  - [ ] Move `process()` method
+  - [ ] Move schema validation logic
+  - [ ] Move retry logic specific to JSON processing
+  - [ ] Export as module function that accepts client instance
+
+#### Phase 7: Update Main Warpmind Class
+- [ ] Refactor `src/warpmind.js` to be the main coordinator (~200 lines)
+  - [ ] Extend `BaseClient` instead of implementing HTTP logic
+  - [ ] Import and mix in all module functions
+  - [ ] Keep core chat methods (`chat`, `complete`, `ask`, `streamChat`)
+  - [ ] Maintain exact same public API
+  - [ ] Ensure all tests still pass
+
+#### Phase 8: Module Integration Pattern
+```javascript
+// Each module exports a function that receives the client instance
+// and returns an object with methods to be mixed into the main class
+
+// Example: src/modules/audio.js
+module.exports = function(client) {
+  return {
+    async textToSpeech(text, options = {}) {
+      // Implementation using client.makeRequest()
+    },
+    async speechToText(audioFile, options = {}) {
+      // Implementation using client.makeRequest()
+    },
+    async playAudio(audioBlob) {
+      // Utility method
+    }
+  };
+};
+
+// Main warpmind.js
+const AudioModule = require('./modules/audio');
+const VisionModule = require('./modules/vision');
+// ... other modules
+
+class Warpmind extends BaseClient {
+  constructor(config = {}) {
+    super(config);
+    
+    // Mix in module methods
+    Object.assign(this, AudioModule(this));
+    Object.assign(this, VisionModule(this));
+    // ... other modules
+  }
+}
+```
+
+#### Benefits Expected:
+- **Maintainability**: Each file ~100-200 lines instead of 900
+- **Testability**: Modules can be tested independently
+- **Development**: Multiple developers can work on different modules
+- **Bundle optimization**: Tree-shaking friendly for smaller bundles
+- **Code organization**: Single responsibility per module
+- **Student API**: No changes to the learning experience
+
+#### Validation Requirements:
+- [ ] All 71 existing tests must continue to pass
+- [ ] No changes to student-facing API
+- [ ] Webpack build must succeed
+- [ ] All HTML examples must continue to work
+- [ ] Bundle size should not increase significantly
+
+---
+
 ## 1. Core Transport Upgrades
 
 ### Exponential Back-off Implementation

@@ -3,7 +3,7 @@
  */
 
 const Warpmind = require('../src/warpmind.js');
-const { TimeoutError } = require('../src/warpmind.js');
+const { TimeoutError, utils } = require('../src/warpmind.js');
 
 describe('Exponential Back-off Integration Test', () => {
   let warpmind;
@@ -23,23 +23,23 @@ describe('Exponential Back-off Integration Test', () => {
 
   test('Helper methods work correctly', () => {
     // Test retry status check
-    expect(warpmind._shouldRetry(429)).toBe(true);
-    expect(warpmind._shouldRetry(502)).toBe(true);
-    expect(warpmind._shouldRetry(503)).toBe(true);
-    expect(warpmind._shouldRetry(524)).toBe(true);
-    expect(warpmind._shouldRetry(400)).toBe(false);
-    expect(warpmind._shouldRetry(500)).toBe(false);
+    expect(utils.shouldRetry(429)).toBe(true);
+    expect(utils.shouldRetry(502)).toBe(true);
+    expect(utils.shouldRetry(503)).toBe(true);
+    expect(utils.shouldRetry(524)).toBe(true);
+    expect(utils.shouldRetry(400)).toBe(false);
+    expect(utils.shouldRetry(500)).toBe(false);
 
     // Test jitter addition
     const baseDelay = 1000;
-    const delayWithJitter = warpmind._addJitter(baseDelay);
+    const delayWithJitter = utils.addJitter(baseDelay);
     expect(delayWithJitter).toBeGreaterThanOrEqual(baseDelay);
     expect(delayWithJitter).toBeLessThanOrEqual(baseDelay + 250);
 
     // Test delay calculation
-    const delay0 = warpmind._calculateRetryDelay(0);
-    const delay1 = warpmind._calculateRetryDelay(1);
-    const delay2 = warpmind._calculateRetryDelay(2);
+    const delay0 = utils.calculateRetryDelay(0);
+    const delay1 = utils.calculateRetryDelay(1);
+    const delay2 = utils.calculateRetryDelay(2);
 
     expect(delay0).toBeGreaterThanOrEqual(500);
     expect(delay0).toBeLessThanOrEqual(750);
@@ -49,12 +49,12 @@ describe('Exponential Back-off Integration Test', () => {
     expect(delay2).toBeLessThanOrEqual(2250);
 
     // Test Retry-After header
-    const delayWithRetryAfter = warpmind._calculateRetryDelay(0, '5');
+    const delayWithRetryAfter = utils.calculateRetryDelay(0, '5');
     expect(delayWithRetryAfter).toBe(5000);
   });
 
   test('Timeout controller creates AbortController', () => {
-    const { controller, timeoutId } = warpmind._createTimeoutController(1000);
+    const { controller, timeoutId } = utils.createTimeoutController(1000);
     
     expect(controller).toBeInstanceOf(AbortController);
     expect(timeoutId).toBeDefined();
