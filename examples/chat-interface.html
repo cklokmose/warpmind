@@ -190,7 +190,7 @@
         }
         
         // Send message to AI
-        function sendMessage() {
+        async function sendMessage() {
             let input = document.getElementById('userInput');
             let userMessage = input.value.trim();
             
@@ -232,8 +232,10 @@
                 chatMessages.push(messages[i]);
             }
             
-            // Send to AI and handle response
-            warpmind.chat(chatMessages).then(function(response) {
+            try {
+                // Send to AI and handle response
+                const response = await warpmind.chat(chatMessages);
+                
                 // Remove thinking message (it's always the last one)
                 let messagesDiv = document.getElementById('messagesDiv');
                 let lastMessage = messagesDiv.lastElementChild;
@@ -248,7 +250,7 @@
                 sendBtn.textContent = 'Send';
                 input.focus();
                 
-            }, function(error) {
+            } catch (error) {
                 // Remove thinking message (it's always the last one)
                 let messagesDiv = document.getElementById('messagesDiv');
                 let lastMessage = messagesDiv.lastElementChild;
@@ -259,7 +261,7 @@
                 sendBtn.disabled = false;
                 sendBtn.textContent = 'Send';
                 input.focus();
-            });
+            }
         }
         
         // Handle Enter key

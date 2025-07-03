@@ -63,10 +63,24 @@ ai.setModel('gpt-4');
 ### Basic Text Operations
 
 #### `chat(message, options)`
-Send a message and get a response.
+Send a message and get a response. Accepts either a string or an array of message objects.
 
 ```javascript
+// Simple string message
 const response = await ai.chat("Explain quantum physics");
+
+// Array of message objects (conventional format)
+const response = await ai.chat([
+    { role: 'system', content: 'You are a helpful tutor' },
+    { role: 'user', content: 'Explain quantum physics' },
+    { role: 'assistant', content: 'Quantum physics is...' },
+    { role: 'user', content: 'Can you give an example?' }
+]);
+
+// Message roles:
+// - 'system': Instructions for the AI's behavior
+// - 'user': Messages from the human user
+// - 'assistant': Previous AI responses (for conversation history)
 ```
 
 #### `complete(prompt, options)`
