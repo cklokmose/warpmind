@@ -9,6 +9,9 @@ let addJitter, calculateRetryDelay, shouldRetry, createTimeoutController, sleep,
 // Import base client and TimeoutError
 const { BaseClient, TimeoutError } = require('./core/base-client.js');
 
+// Import SSE parser for streaming functionality
+const { parseSSE, createParser } = require('./streaming/sse-parser.js');
+
 if (typeof module !== 'undefined' && module.exports) {
   // Node.js environment
   const utils = require('./util.js');
@@ -37,30 +40,12 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 }
 
-// Import eventsource-parser for robust SSE parsing (compatible with browser and Node.js)
-let createParser;
-
-if (typeof module !== 'undefined' && module.exports) {
-  // Node.js environment
-  try {
-    createParser = require('eventsource-parser').createParser;
-  } catch (error) {
-    throw new Error('eventsource-parser is required for SSE streaming support. Please install it with: npm install eventsource-parser');
-  }
-} else {
-  // Browser environment - webpack should bundle eventsource-parser
-  try {
-    // Use dynamic import that webpack can resolve
-    const EventSourceParser = require('eventsource-parser');
-    createParser = EventSourceParser.createParser;
-  } catch (error) {
-    throw new Error('eventsource-parser is required for SSE streaming support. Please ensure it is bundled with your application.');
-  }
-}
-
 class Warpmind extends BaseClient {
   constructor(config = {}) {
     super(config); // Call BaseClient constructor
+    
+    // Bind the parseSSE function to this instance for backward compatibility
+    this.parseSSE = parseSSE.bind(this);
   }
 
   /**
@@ -223,58 +208,6 @@ class Warpmind extends BaseClient {
       
       throw error;
     }
-  }
-
-  /**
-   * Parse Server-Sent Events (SSE) stream and yield structured events
-   * @param {ReadableStreamDefaultReader} reader - Stream reader
-   * @param {function} onEvent - Callback for each parsed event
-   * @returns {Promise<string>} - Complete accumulated response
-   */
-  async parseSSE(reader, onEvent) {
-    const decoder = new TextDecoder();
-    let fullResponse = '';
-    
-    // Create the SSE parser
-    const parser = createParser((event) => {
-      if (event.type === 'event') {
-        if (event.data === '[DONE]') {
-          return;
-        }
-        
-        try {
-          const parsed = JSON.parse(event.data);
-          const delta = parsed.choices?.[0]?.delta;
-          
-          if (delta?.content) {
-            const eventData = {
-              role: delta.role || 'assistant',
-              delta: delta.content
-            };
-            
-            fullResponse += delta.content;
-            if (onEvent) onEvent(eventData);
-          }
-        } catch (error) {
-          console.warn('Failed to parse SSE event:', error.message);
-        }
-      }
-    });
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        // Feed the chunk to the parser
-        const chunk = decoder.decode(value, { stream: true });
-        parser.feed(chunk);
-      }
-    } catch (error) {
-      throw new Error(`SSE parsing failed: ${error.message}`);
-    }
-
-    return fullResponse;
   }
 
   /**
