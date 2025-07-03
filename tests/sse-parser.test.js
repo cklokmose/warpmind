@@ -179,8 +179,12 @@ describe('Warpmind SSE Parser Tests', () => {
 
       fetch.mockResolvedValue(mockResponse);
 
-      // Mock parseSSE to return a known result
-      const parseSSESpy = jest.spyOn(warpmind, 'parseSSE').mockResolvedValue('Test response');
+      // Mock parseSSE to simulate the internal accumulation behavior
+      const parseSSESpy = jest.spyOn(warpmind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
+        // Simulate the parseSSE calling onEvent and building fullResponse internally
+        onEvent({ role: 'assistant', delta: 'Test response' });
+        return 'Test response'; // parseSSE returns the accumulated response
+      });
 
       const onChunk = jest.fn();
       const result = await warpmind.streamChat('Hello', onChunk);
@@ -218,9 +222,9 @@ describe('Warpmind SSE Parser Tests', () => {
       const chunks = [];
       const onChunk = jest.fn((chunk) => chunks.push(chunk));
 
-      // Mock parseSSE to call the event callback
+      // Mock parseSSE to call the event callback which streamChat converts to enhanced format
       const parseSSESpy = jest.spyOn(warpmind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
-        // Simulate events
+        // Simulate events - parseSSE calls onEvent with { role, delta }
         onEvent({ role: 'assistant', delta: 'Hello' });
         onEvent({ role: 'assistant', delta: ' world' });
         return 'Hello world';
@@ -229,7 +233,11 @@ describe('Warpmind SSE Parser Tests', () => {
       const result = await warpmind.streamChat('Test', onChunk);
 
       expect(onChunk).toHaveBeenCalledTimes(2);
-      expect(chunks).toEqual(['Hello', ' world']);
+      // streamChat converts the parseSSE events to enhanced format: { type: "chunk", content }
+      expect(chunks).toEqual([
+        { type: "chunk", content: "Hello" },
+        { type: "chunk", content: " world" }
+      ]);
       expect(result).toBe('Hello world');
       
       parseSSESpy.mockRestore();

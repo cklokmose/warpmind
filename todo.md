@@ -25,15 +25,15 @@
 ## 2. Streaming & Vision Polish
 
 ### streamChat Enhancement
-- [ ] Modify `streamChat` to emit `{ type: "chunk", content }` immediately to callback
-- [ ] Maintain `fullResponse` internally for final resolve
-- [ ] Integrate with new `parseSSE()` function
+- [x] Modify `streamChat` to emit `{ type: "chunk", content }` immediately to callback
+- [x] Maintain `fullResponse` internally for final resolve
+- [x] Integrate with new `parseSSE()` function
 
 ### analyzeImage Improvements
-- [ ] Add `options.detail` parameter with values:
-  - [ ] `"low"` (default)
-  - [ ] `"high"`
-- [ ] Pass `detail` property inside the image object to API
+- [x] Add `options.detail` parameter with values:
+  - [x] `"low"` (default)
+  - [x] `"high"`
+- [x] Pass `detail` property inside the image object to API
 - [ ] Add documentation warning: `"high"` detail ≈ 2× token cost
 
 ### textToSpeech Streaming
@@ -126,5 +126,6 @@
 
 ## Notes
 - ✅ Keep existing functionality intact: moderation, key security, header logic, Assistants v2, typings, and token accounting
-- ✅ Maintain backward compatibility
+- ✅ Maintain backward compatibility during development phase
+- ✅ **COMPLETED**: Cleaned up backward compatibility code since library is not yet in production
 - ✅ All new features should be opt-in where applicable

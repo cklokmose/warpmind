@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warpmind Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        #console { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px; 
+                   height: 200px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Warpmind Debug Test</h1>
+    
+    <div id="status-container">
+        <div id="loading-status" class="status info">Loading Warpmind library...</div>
+    </div>
+    
+    <div id="console">Starting debug tests...\n</div>
+    
+    <script src="../dist/warpmind.js"></script>
+    <script>
+        const console_div = document.getElementById('console');
+        const status_container = document.getElementById('status-container');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            console_div.textContent += `[${timestamp}] ${message}\n`;
+            console_div.scrollTop = console_div.scrollHeight;
+            console.log(message);
+        }
+        
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            status_container.appendChild(statusDiv);
+        }
+        
+        function runTests() {
+            try {
+                log('Step 1: Checking if Warpmind is available...');
+                
+                // Check if Warpmind is defined
+                if (typeof Warpmind === 'undefined') {
+                    log('ERROR: Warpmind is not defined!', 'error');
+                    showStatus('❌ Warpmind library failed to load', 'error');
+                    return;
+                }
+                
+                log('✓ Warpmind is defined');
+                showStatus('✅ Warpmind library loaded successfully', 'success');
+                
+                log('Step 2: Checking Warpmind type and constructor...');
+                log(`Warpmind type: ${typeof Warpmind}`);
+                log(`Warpmind constructor: ${Warpmind.toString().substring(0, 100)}...`);
+                
+                log('Step 3: Attempting to create Warpmind instance...');
+                const wm = new Warpmind({
+                    apiKey: 'test-key',
+                    baseURL: 'http://localhost:8080/v1'
+                });
+                
+                log('✓ Warpmind instance created successfully');
+                showStatus('✅ Warpmind instance created', 'success');
+                
+                log('Step 4: Checking available methods...');
+                const methods = ['chat', 'complete', 'streamChat', 'ask', 'analyzeImage', 'textToSpeech', 'speechToText'];
+                methods.forEach(method => {
+                    if (typeof wm[method] === 'function') {
+                        log(`✓ Method ${method} is available`);
+                    } else {
+                        log(`✗ Method ${method} is missing`);
+                    }
+                });
+                
+                log('Step 5: Checking TimeoutError...');
+                if (typeof TimeoutError !== 'undefined') {
+                    log('✓ TimeoutError is available');
+                } else {
+                    log('✗ TimeoutError is not available');
+                }
+                
+                log('Step 6: Testing basic configuration...');
+                log(`API Key: ${wm.apiKey}`);
+                log(`Base URL: ${wm.baseURL}`);
+                log(`Model: ${wm.model}`);
+                log(`Temperature: ${wm.temperature}`);
+                
+                showStatus('✅ All basic tests passed!', 'success');
+                log('All tests completed successfully!');
+                
+            } catch (error) {
+                log(`ERROR: ${error.message}`, 'error');
+                log(`Stack: ${error.stack}`, 'error');
+                showStatus(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Wait a moment for the script to fully load, then run tests
+        setTimeout(runTests, 100);
+    </script>
+</body>
+</html>

@@ -5,12 +5,23 @@
 
 // Import eventsource-parser for robust SSE parsing (compatible with browser and Node.js)
 let createParser;
+
 if (typeof module !== 'undefined' && module.exports) {
   // Node.js environment
-  createParser = require('eventsource-parser').createParser;
+  try {
+    createParser = require('eventsource-parser').createParser;
+  } catch (error) {
+    throw new Error('eventsource-parser is required for SSE streaming support. Please install it with: npm install eventsource-parser');
+  }
 } else {
-  // Browser environment - will be bundled by webpack
-  createParser = window.EventSourceParser?.createParser;
+  // Browser environment - webpack should bundle eventsource-parser
+  try {
+    // Use dynamic import that webpack can resolve
+    const EventSourceParser = require('eventsource-parser');
+    createParser = EventSourceParser.createParser;
+  } catch (error) {
+    throw new Error('eventsource-parser is required for SSE streaming support. Please ensure it is bundled with your application.');
+  }
 }
 
 /**
@@ -225,7 +236,7 @@ class Warpmind {
   }
 
   /**
-   * Generate a simple completion (legacy)
+   * Generate a simple completion
    * @param {string} prompt - The prompt text
    * @param {Object} options - Optional parameters
    * @param {number} options.timeoutMs - Request timeout in milliseconds
@@ -268,7 +279,7 @@ class Warpmind {
   /**
    * Stream chat completion (for real-time responses)
    * @param {string|Array} messages - Single message string or array of message objects
-   * @param {Function} onChunk - Callback function for each chunk
+   * @param {Function} onChunk - Callback function for each chunk - receives { type: "chunk", content: string }
    * @param {Object} options - Optional parameters
    * @param {number} options.timeoutMs - Request timeout in milliseconds
    * @returns {Promise<string>} - The complete generated response
@@ -297,6 +308,9 @@ class Warpmind {
     const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
     const { controller, timeoutId } = this._createTimeoutController(timeoutMs);
     
+    // Internal accumulator for full response
+    let fullResponse = '';
+    
     try {
       const response = await fetch(`${this.baseURL}/chat/completions`, {
         method: 'POST',
@@ -318,16 +332,24 @@ class Warpmind {
 
       const reader = response.body.getReader();
       
-      // Use the new SSE parser with event callback
-      const fullResponse = await this.parseSSE(reader, (event) => {
-        // Emit chunk in the format expected by onChunk callback
+      // Use the new SSE parser with enhanced event callback
+      const finalResponse = await this.parseSSE(reader, (event) => {
+        // Accumulate content internally
+        fullResponse += event.delta;
+        
+        // Emit chunk in the new enhanced format immediately to callback
         if (onChunk) {
-          onChunk(event.delta);
+          onChunk({
+            type: "chunk",
+            content: event.delta
+          });
         }
       });
 
       // Clear timeout only after streaming completes
       clearTimeout(timeoutId);
+      
+      // Return the accumulated full response
       return fullResponse;
     } catch (error) {
       clearTimeout(timeoutId);
@@ -350,80 +372,43 @@ class Warpmind {
     const decoder = new TextDecoder();
     let fullResponse = '';
     
-    // Use eventsource-parser if available, otherwise fall back to manual parsing
-    if (createParser) {
-      // Create the SSE parser
-      const parser = createParser((event) => {
-        if (event.type === 'event') {
-          if (event.data === '[DONE]') {
-            return;
-          }
+    // Create the SSE parser
+    const parser = createParser((event) => {
+      if (event.type === 'event') {
+        if (event.data === '[DONE]') {
+          return;
+        }
+        
+        try {
+          const parsed = JSON.parse(event.data);
+          const delta = parsed.choices?.[0]?.delta;
           
-          try {
-            const parsed = JSON.parse(event.data);
-            const delta = parsed.choices?.[0]?.delta;
+          if (delta?.content) {
+            const eventData = {
+              role: delta.role || 'assistant',
+              delta: delta.content
+            };
             
-            if (delta?.content) {
-              const eventData = {
-                role: delta.role || 'assistant',
-                delta: delta.content
-              };
-              
-              fullResponse += delta.content;
-              if (onEvent) onEvent(eventData);
-            }
-          } catch (error) {
-            console.warn('Failed to parse SSE event:', error.message);
+            fullResponse += delta.content;
+            if (onEvent) onEvent(eventData);
           }
+        } catch (error) {
+          console.warn('Failed to parse SSE event:', error.message);
         }
-      });
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          // Feed the chunk to the parser
-          const chunk = decoder.decode(value, { stream: true });
-          parser.feed(chunk);
-        }
-      } catch (error) {
-        throw new Error(`SSE parsing failed: ${error.message}`);
       }
-    } else {
-      // Fallback to manual parsing (legacy method)
-      console.warn('eventsource-parser not available, using fallback manual parsing');
-      
+    });
+
+    try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                const eventData = {
-                  role: 'assistant',
-                  delta: content
-                };
-                
-                fullResponse += content;
-                if (onEvent) onEvent(eventData);
-              }
-            } catch (e) {
-              // Skip invalid JSON lines
-            }
-          }
-        }
+        // Feed the chunk to the parser
+        const chunk = decoder.decode(value, { stream: true });
+        parser.feed(chunk);
       }
+    } catch (error) {
+      throw new Error(`SSE parsing failed: ${error.message}`);
     }
 
     return fullResponse;
@@ -434,10 +419,18 @@ class Warpmind {
    * @param {string|File|Blob} image - Image URL, File object, or Blob
    * @param {string} prompt - Question or instruction about the image
    * @param {Object} options - Optional parameters
+   * @param {string} options.detail - Image detail level: "low" (default) or "high". Warning: "high" detail costs ~2x tokens
+   * @param {number} options.timeoutMs - Request timeout in milliseconds
    * @returns {Promise<string>} - AI analysis of the image
    */
   async analyzeImage(image, prompt = "What do you see in this image?", options = {}) {
     let imageContent;
+    const detail = options.detail || "low";
+    
+    // Validate detail parameter
+    if (detail !== "low" && detail !== "high") {
+      throw new Error('options.detail must be "low" or "high"');
+    }
 
     // Handle different image input types
     if (typeof image === 'string') {
@@ -446,14 +439,16 @@ class Warpmind {
         imageContent = {
           type: "image_url",
           image_url: {
-            url: image
+            url: image,
+            detail: detail
           }
         };
       } else {
         imageContent = {
           type: "image_url",
           image_url: {
-            url: image
+            url: image,
+            detail: detail
           }
         };
       }
@@ -463,7 +458,8 @@ class Warpmind {
       imageContent = {
         type: "image_url",
         image_url: {
-          url: base64
+          url: base64,
+          detail: detail
         }
       };
     } else {
@@ -490,9 +486,14 @@ class Warpmind {
    * Generate audio from text using text-to-speech
    * @param {string} text - Text to convert to speech
    * @param {Object} options - Optional parameters
+   * @param {number} options.timeoutMs - Request timeout in milliseconds
    * @returns {Promise<Blob>} - Audio data as Blob
    */
   async textToSpeech(text, options = {}) {
+    if (!this.apiKey) {
+      throw new Error('API key is required. Use setApiKey() to set your proxy authentication key.');
+    }
+
     const requestData = {
       model: options.model || 'tts-1',
       input: text,
@@ -501,6 +502,8 @@ class Warpmind {
       speed: options.speed || 1.0
     };
 
+    const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
+    const { controller, timeoutId } = this._createTimeoutController(timeoutMs);
     const url = `${this.baseURL}/audio/speech`;
     
     try {
@@ -510,8 +513,11 @@ class Warpmind {
           'Content-Type': 'application/json',
           'api-key': this.apiKey
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(requestData),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -520,6 +526,12 @@ class Warpmind {
 
       return await response.blob();
     } catch (error) {
+      clearTimeout(timeoutId);
+      
+      if (error.name === 'AbortError') {
+        throw new TimeoutError(`Request timed out after ${timeoutMs}ms`);
+      }
+      
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         throw new Error('Network error: Unable to connect to the TTS API.');
       }
@@ -531,9 +543,14 @@ class Warpmind {
    * Transcribe audio to text using speech-to-text
    * @param {File|Blob} audioFile - Audio file to transcribe
    * @param {Object} options - Optional parameters
+   * @param {number} options.timeoutMs - Request timeout in milliseconds
    * @returns {Promise<string>} - Transcribed text
    */
   async speechToText(audioFile, options = {}) {
+    if (!this.apiKey) {
+      throw new Error('API key is required. Use setApiKey() to set your proxy authentication key.');
+    }
+
     if (!audioFile || !(audioFile instanceof File || audioFile instanceof Blob)) {
       throw new Error('Audio file must be a File or Blob object');
     }
@@ -552,6 +569,8 @@ class Warpmind {
       formData.append('temperature', options.temperature.toString());
     }
 
+    const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
+    const { controller, timeoutId } = this._createTimeoutController(timeoutMs);
     const url = `${this.baseURL}/audio/transcriptions`;
     
     try {
@@ -560,8 +579,11 @@ class Warpmind {
         headers: {
           'api-key': this.apiKey
         },
-        body: formData
+        body: formData,
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -571,6 +593,12 @@ class Warpmind {
       const result = await response.json();
       return result.text || '';
     } catch (error) {
+      clearTimeout(timeoutId);
+      
+      if (error.name === 'AbortError') {
+        throw new TimeoutError(`Request timed out after ${timeoutMs}ms`);
+      }
+      
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         throw new Error('Network error: Unable to connect to the STT API.');
       }
@@ -809,3 +837,6 @@ if (typeof module !== 'undefined' && module.exports) {
   window.Warpmind = Warpmind;
   window.TimeoutError = TimeoutError;
 }
+
+// Also attach TimeoutError to Warpmind class for webpack UMD compatibility
+Warpmind.TimeoutError = TimeoutError;
