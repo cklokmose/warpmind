@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warpmind Tool Calling Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .tool-demo {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .tool-result {
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #conversation {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        input[type="text"] {
+            width: 70%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛠️ Warpmind Tool Calling Demo</h1>
+    
+    <div class="container">
+        <h2>About Tool Calling</h2>
+        <p>This demo shows how to register custom tools that the AI can call during conversations. The AI can automatically decide when and how to use these tools to provide better responses.</p>
+    </div>
+
+    <div class="tool-demo">
+        <h3>📚 Registered Tools</h3>
+        <div id="registered-tools">
+            <p><strong>getWeather</strong> - Get current weather for a city</p>
+            <p><strong>calculateTip</strong> - Calculate tip amount for a bill</p>
+            <p><strong>searchLibrary</strong> - Search school library catalog</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h3>💬 Try These Example Conversations:</h3>
+        <button onclick="askWeather()">Ask about weather in Paris</button>
+        <button onclick="askTip()">Calculate tip for $47.50</button>
+        <button onclick="askLibrary()">Search for JavaScript books</button>
+        <button onclick="askMultiple()">Ask for weather and tip calculation</button>
+    </div>
+
+    <div class="container">
+        <h3>🗣️ Chat with AI</h3>
+        <input type="text" id="user-input" placeholder="Ask me anything... I can use tools to help!" onkeypress="handleKeyPress(event)">
+        <button onclick="sendMessage()">Send</button>
+        <div id="conversation"></div>
+    </div>
+
+    <script src="../src/warpmind.js"></script>
+    <script>
+        // Initialize Warpmind
+        const mind = new Warpmind({
+            // Note: In a real app, you'd set your API key here
+            // apiKey: 'your-api-key-here'
+        });
+
+        // Register weather tool
+        mind.registerTool({
+            name: 'getWeather',
+            description: 'Get current weather information for a specific city',
+            parameters: {
+                type: 'object',
+                properties: {
+                    city: {
+                        type: 'string',
+                        description: 'The city name to get weather for'
+                    }
+                },
+                required: ['city']
+            },
+            handler: async (args) => {
+                // Simulate weather API call
+                const weather = {
+                    'Paris': { temperature: '22°C', condition: 'Sunny', humidity: '65%' },
+                    'London': { temperature: '18°C', condition: 'Cloudy', humidity: '80%' },
+                    'New York': { temperature: '25°C', condition: 'Partly cloudy', humidity: '70%' },
+                    'Tokyo': { temperature: '28°C', condition: 'Humid', humidity: '85%' }
+                };
+                
+                const cityWeather = weather[args.city] || {
+                    temperature: '20°C',
+                    condition: 'Variable',
+                    humidity: '60%'
+                };
+                
+                return {
+                    city: args.city,
+                    ...cityWeather,
+                    timestamp: new Date().toISOString()
+                };
+            }
+        });
+
+        // Register tip calculator tool
+        mind.registerTool({
+            name: 'calculateTip',
+            description: 'Calculate tip amount for a restaurant bill',
+            parameters: {
+                type: 'object',
+                properties: {
+                    billAmount: {
+                        type: 'number',
+                        description: 'The total bill amount'
+                    },
+                    tipPercentage: {
+                        type: 'number',
+                        description: 'The tip percentage (default: 18)'
+                    }
+                },
+                required: ['billAmount']
+            },
+            handler: async (args) => {
+                const percentage = args.tipPercentage || 18;
+                const tipAmount = (args.billAmount * percentage) / 100;
+                const total = args.billAmount + tipAmount;
+                
+                return {
+                    billAmount: args.billAmount,
+                    tipPercentage: percentage,
+                    tipAmount: Math.round(tipAmount * 100) / 100,
+                    totalAmount: Math.round(total * 100) / 100
+                };
+            }
+        });
+
+        // Register library search tool
+        mind.registerTool({
+            name: 'searchLibrary',
+            description: 'Search the school library catalog for books',
+            parameters: {
+                type: 'object',
+                properties: {
+                    query: {
+                        type: 'string',
+                        description: 'Search term for books'
+                    },
+                    subject: {
+                        type: 'string',
+                        description: 'Subject category (optional)'
+                    }
+                },
+                required: ['query']
+            },
+            handler: async (args) => {
+                // Simulate library search
+                const books = {
+                    'JavaScript': [
+                        'JavaScript: The Good Parts',
+                        'Eloquent JavaScript',
+                        'You Don\'t Know JS'
+                    ],
+                    'Python': [
+                        'Automate the Boring Stuff',
+                        'Python Crash Course',
+                        'Fluent Python'
+                    ],
+                    'history': [
+                        'A People\'s History of the World',
+                        'Sapiens',
+                        'The Guns of August'
+                    ]
+                };
+                
+                const searchTerm = args.query.toLowerCase();
+                let results = [];
+                
+                for (const [category, bookList] of Object.entries(books)) {
+                    if (category.toLowerCase().includes(searchTerm) || 
+                        bookList.some(book => book.toLowerCase().includes(searchTerm))) {
+                        results = results.concat(bookList);
+                    }
+                }
+                
+                return {
+                    query: args.query,
+                    subject: args.subject,
+                    results: results.length > 0 ? results : ['No books found for this search term'],
+                    resultCount: results.length
+                };
+            }
+        });
+
+        function addToConversation(message, isUser = false) {
+            const conversation = document.getElementById('conversation');
+            const messageDiv = document.createElement('div');
+            messageDiv.style.margin = '10px 0';
+            messageDiv.style.padding = '10px';
+            messageDiv.style.borderRadius = '5px';
+            
+            if (isUser) {
+                messageDiv.style.background = '#e3f2fd';
+                messageDiv.innerHTML = `<strong>You:</strong> ${message}`;
+            } else {
+                messageDiv.style.background = '#f3e5f5';
+                messageDiv.innerHTML = `<strong>AI:</strong> ${message}`;
+            }
+            
+            conversation.appendChild(messageDiv);
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+
+        async function sendMessage(message = null) {
+            const input = document.getElementById('user-input');
+            const userMessage = message || input.value.trim();
+            
+            if (!userMessage) return;
+            
+            if (!message) {
+                input.value = '';
+            }
+            
+            addToConversation(userMessage, true);
+            
+            try {
+                // Simulate AI response since we don't have a real API key
+                const responses = {
+                    'weather': `I'd be happy to check the weather for you! Based on the current conditions in ${userMessage.includes('Paris') ? 'Paris' : 'your city'}, it's ${userMessage.includes('Paris') ? '22°C and sunny' : 'quite pleasant today'}.`,
+                    'tip': `Let me calculate that tip for you! For a bill of $47.50 with an 18% tip, you should add $8.55, making your total $56.05.`,
+                    'library': `I found several great JavaScript books in our library catalog: "JavaScript: The Good Parts", "Eloquent JavaScript", and "You Don't Know JS" series.`,
+                    'multiple': `I can help with both! For Paris, it's currently 22°C and sunny. And for that $47.50 bill with 18% tip, you'd pay a total of $56.05.`
+                };
+                
+                let response = "I understand you'd like me to help you with that. In a real implementation with an API key, I would use my tools to provide you with accurate, real-time information!";
+                
+                for (const [key, value] of Object.entries(responses)) {
+                    if (userMessage.toLowerCase().includes(key) || 
+                        (key === 'weather' && (userMessage.toLowerCase().includes('paris') || userMessage.toLowerCase().includes('temperature'))) ||
+                        (key === 'tip' && (userMessage.toLowerCase().includes('$') || userMessage.toLowerCase().includes('bill'))) ||
+                        (key === 'library' && (userMessage.toLowerCase().includes('book') || userMessage.toLowerCase().includes('javascript')))) {
+                        response = value;
+                        break;
+                    }
+                }
+                
+                // In a real implementation, you would use:
+                // const response = await mind.chat(userMessage);
+                
+                addToConversation(response);
+                
+            } catch (error) {
+                addToConversation(`Error: ${error.message}`, false);
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Example functions
+        function askWeather() {
+            sendMessage("What's the weather like in Paris today?");
+        }
+
+        function askTip() {
+            sendMessage("Can you calculate an 18% tip for a $47.50 bill?");
+        }
+
+        function askLibrary() {
+            sendMessage("Can you search for JavaScript programming books in the library?");
+        }
+
+        function askMultiple() {
+            sendMessage("What's the weather in Paris and can you also calculate a tip for $47.50?");
+        }
+
+        // Show initial message
+        window.onload = function() {
+            addToConversation("Hello! I'm an AI assistant with access to several tools. I can check weather, calculate tips, and search the library. Try asking me something!", false);
+        };
+    </script>
+</body>
+</html>

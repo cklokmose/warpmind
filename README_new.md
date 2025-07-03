@@ -45,7 +45,7 @@ Download `warpmind.js` from the `dist/` folder and include it in your HTML:
     <script>
         // Initialize with warp.cs.au.dk/mind
         const mind = new Warpmind({
-            baseURL: 'https://warp.cs.au.dk/mind/v1',
+            baseURL: 'https://warp.cs.au.dk/mind/',
             apiKey: 'your-auth-key'
         });
 
@@ -68,7 +68,7 @@ The library is now ready to use with https://warp.cs.au.dk/mind. You can start b
 
 ```javascript
 const mind = new Warpmind({
-    baseURL: 'https://warp.cs.au.dk/mind/v1',  // Warp CS API endpoint
+    baseURL: 'https://warp.cs.au.dk/mind/',  // Warp CS API endpoint
     apiKey: 'your-auth-key',                   // Your API key
     model: 'gpt-3.5-turbo',                    // AI model to use
     temperature: 0.7,                          // Creativity (0 = precise, 2 = creative)
@@ -80,7 +80,7 @@ const mind = new Warpmind({
 
 ```javascript
 mind.setApiKey('new-auth-key');
-mind.setBaseURL('https://warp.cs.au.dk/mind/v1');
+mind.setBaseURL('https://warp.cs.au.dk/mind/');
 mind.setModel('gpt-4');
 ```
 
@@ -625,5 +625,3 @@ const mind = new Warpmind({
 ```
 
 ---
-
-**Happy coding! Build something amazing with AI!**

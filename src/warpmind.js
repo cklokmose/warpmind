@@ -73,6 +73,9 @@ class Warpmind extends BaseClient {
   constructor(config = {}) {
     super(config); // Call BaseClient constructor
     
+    // Initialize tool registry
+    this._tools = [];
+    
     // Bind the parseSSE function to this instance for backward compatibility
     this.parseSSE = parseSSE.bind(this);
     
@@ -102,11 +105,32 @@ class Warpmind extends BaseClient {
       messages = [{ role: 'user', content: messages }];
     }
 
+    // Support tool calling with depth limit
+    return await this._chatWithTools(messages, options, 0);
+  }
+
+  /**
+   * Internal chat method that handles tool calling with depth limit
+   * @private
+   * @param {Array} messages - Array of message objects
+   * @param {Object} options - Chat options
+   * @param {number} depth - Current recursion depth
+   * @returns {Promise<string>} - The final response
+   */
+  async _chatWithTools(messages, options = {}, depth = 0) {
+    const MAX_TOOL_CALL_DEPTH = 2;
+    
     const requestData = {
       model: options.model || this.model,
       messages: messages,
       temperature: options.temperature !== undefined ? options.temperature : this.temperature
     };
+
+    // Include tools if registered and not at max depth
+    if (this._tools.length > 0 && depth < MAX_TOOL_CALL_DEPTH) {
+      requestData.tools = this._tools.map(t => t.schema);
+      requestData.tool_choice = 'auto'; // Let the model decide when to use tools
+    }
 
     // Add other options, but filter out our custom ones to avoid conflicts
     const filteredOptions = { ...options };
@@ -121,7 +145,48 @@ class Warpmind extends BaseClient {
     };
 
     const response = await this.makeRequest('/chat/completions', requestData, requestOptions);
-    return response.choices[0]?.message?.content || '';
+    const message = response.choices[0]?.message;
+    
+    if (!message) {
+      throw new Error('No message in response');
+    }
+
+    // Check if the assistant wants to call tools
+    if (message.tool_calls && message.tool_calls.length > 0 && depth < MAX_TOOL_CALL_DEPTH) {
+      // Add the assistant's message to the conversation
+      const newMessages = [...messages, {
+        role: 'assistant',
+        content: message.content,
+        tool_calls: message.tool_calls
+      }];
+
+      // Execute each tool call
+      for (const toolCall of message.tool_calls) {
+        try {
+          const result = await this._executeTool(toolCall);
+          
+          // Add tool result to messages
+          newMessages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(result)
+          });
+        } catch (error) {
+          // Add error result to messages
+          newMessages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify({ error: error.message })
+          });
+        }
+      }
+
+      // Recursively call chat to let the model respond to tool results
+      return await this._chatWithTools(newMessages, options, depth + 1);
+    }
+
+    // No tool calls or max depth reached, return the content
+    return message.content || '';
   }
 
   /**
@@ -248,6 +313,76 @@ class Warpmind extends BaseClient {
       }
       
       throw error;
+    }
+  }
+
+  /**
+   * Register a tool that the AI can call during conversations
+   * @param {Object} tool - Tool definition
+   * @param {string} tool.name - Tool name (must be unique)
+   * @param {string} tool.description - Description of what the tool does
+   * @param {Object} tool.parameters - JSON schema for tool parameters
+   * @param {Function} tool.handler - Async function to execute when tool is called
+   */
+  registerTool(tool) {
+    if (!tool.name || typeof tool.name !== 'string') {
+      throw new Error('Tool name must be a non-empty string');
+    }
+    
+    if (!tool.description || typeof tool.description !== 'string') {
+      throw new Error('Tool description must be a non-empty string');
+    }
+    
+    if (!tool.parameters || typeof tool.parameters !== 'object') {
+      throw new Error('Tool parameters must be an object (JSON schema)');
+    }
+    
+    if (!tool.handler || typeof tool.handler !== 'function') {
+      throw new Error('Tool handler must be a function');
+    }
+    
+    // Check for duplicate tool names
+    if (this._tools.find(t => t.schema.function.name === tool.name)) {
+      throw new Error(`Tool with name '${tool.name}' is already registered`);
+    }
+    
+    // Create the tool schema for OpenAI API
+    const schema = {
+      type: 'function',
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      }
+    };
+    
+    // Store both schema and handler
+    this._tools.push({ schema, handler: tool.handler });
+  }
+
+  /**
+   * Execute a tool call
+   * @private
+   * @param {Object} toolCall - Tool call from OpenAI response
+   * @returns {Promise<any>} - Result from tool execution
+   */
+  async _executeTool(toolCall) {
+    const tool = this._tools.find(t => t.schema.function.name === toolCall.function.name);
+    
+    if (!tool) {
+      throw new Error(`Tool '${toolCall.function.name}' not found`);
+    }
+    
+    try {
+      // Parse the arguments from JSON
+      const args = JSON.parse(toolCall.function.arguments);
+      
+      // Execute the tool handler
+      const result = await tool.handler(args);
+      
+      return result;
+    } catch (error) {
+      throw new Error(`Tool execution failed: ${error.message}`);
     }
   }
 }

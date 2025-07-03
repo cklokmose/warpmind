@@ -267,10 +267,10 @@ class Warpmind extends BaseClient {
 - [x] Use proper Authorization header format
 - [x] Handle API errors gracefully with proper error messages
 
-## 3. Tool Calling System (Optional, Default Off)
+## 3. Tool Calling System (Optional, Default Off) ✅ COMPLETED
 
 ### API Design
-- [ ] Implement `mind.registerTool()` method with schema:
+- [x] Implement `mind.registerTool()` method with schema:
   ```javascript
   mind.registerTool({
     name: 'searchLibrary',
@@ -285,16 +285,55 @@ class Warpmind extends BaseClient {
   ```
 
 ### Internal Implementation
-- [ ] Add `this._tools = []` array to store `{ schema, handler }`
-- [ ] Modify `chat()` method:
-  - [ ] Include `tools: this._tools.map(t => t.schema)` when tools exist
-- [ ] After each chat response:
-  - [ ] Inspect `tool_calls` in response
-  - [ ] For each tool call:
-    - [ ] Locate matching handler and execute it
-    - [ ] Push result into message list as `{ role: "tool", content: JSON.stringify(result) }`
-    - [ ] Re-invoke `chat()` to let model finish
-- [ ] Implement depth limit of 2 callback rounds to prevent loops
+- [x] Add `this._tools = []` array to store `{ schema, handler }`
+- [x] Modify `chat()` method:
+  - [x] Include `tools: this._tools.map(t => t.schema)` when tools exist
+- [x] After each chat response:
+  - [x] Inspect `tool_calls` in response
+  - [x] For each tool call:
+    - [x] Locate matching handler and execute it
+    - [x] Push result into message list as `{ role: "tool", content: JSON.stringify(result) }`
+    - [x] Re-invoke `chat()` to let model finish
+- [x] Implement depth limit of 2 callback rounds to prevent loops
+
+### What was accomplished:
+- ✅ **Tool Registration**: `registerTool()` method with comprehensive validation
+  - Schema validation for name, description, parameters, and handler
+  - Duplicate tool name detection
+  - Proper OpenAI tool schema generation
+- ✅ **Tool Execution**: `_executeTool()` private method for handler execution
+  - JSON argument parsing and validation
+  - Error handling with proper error messages
+  - Tool result formatting for API consumption
+- ✅ **Chat Integration**: Enhanced `chat()` method with tool calling support
+  - Automatic tool inclusion when tools are registered
+  - Tool call detection and execution in responses
+  - Tool result injection back into conversation
+  - Recursive conversation continuation with depth limiting
+- ✅ **Depth Limiting**: Maximum 2 levels of tool call recursion to prevent infinite loops
+- ✅ **Comprehensive Testing**: 15 test cases covering all functionality
+  - Tool registration validation (valid/invalid inputs, duplicates)
+  - Chat flow with tools (execution, error handling, depth limits)
+  - Multiple tool calls in single response
+  - Edge cases and error conditions
+- ✅ **Working Demo**: Browser example (`examples/tool-calling-demo.html`) with multiple tools
+  - Weather lookup tool
+  - Tip calculator tool  
+  - Library search tool
+  - Interactive chat interface
+
+**Files Created/Modified:**
+- ✅ `src/warpmind.js` - Added tool calling system to main class
+- ✅ `tests/tool-calling.test.js` - Comprehensive test suite (15 tests)
+- ✅ `examples/tool-calling-demo.html` - Working browser demo
+
+**STATUS: ✅ TOOL CALLING SYSTEM FULLY IMPLEMENTED AND TESTED**
+
+### Integration and Distribution:
+- ✅ **Built Distribution**: Tool calling functionality included in `dist/warpmind.js` (16.1 KiB)
+- ✅ **Complete Test Suite**: Tool calling demo integrated into `examples/complete-test-suite.html`
+- ✅ **Working Examples**: Both standalone demo and integrated test suite functioning correctly
+- ✅ **Browser Compatibility**: All tool calling features work in browser environments
 
 ## 4. Quality-of-Life Improvements
 

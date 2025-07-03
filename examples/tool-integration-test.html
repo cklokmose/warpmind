@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Calling Integration Test</title>
+</head>
+<body>
+    <h1>Tool Calling Integration Test</h1>
+    <div id="results"></div>
+    
+    <script src="../dist/warpmind.js"></script>
+    <script>
+        function log(message, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.style.padding = '5px';
+            div.style.margin = '5px 0';
+            div.style.background = isError ? '#f8d7da' : '#d4edda';
+            div.textContent = message;
+            results.appendChild(div);
+        }
+
+        try {
+            log('Creating Warpmind instance...');
+            const wm = new Warpmind();
+            
+            log('Testing registerTool method...');
+            wm.registerTool({
+                name: 'testTool',
+                description: 'A simple test tool',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        input: { type: 'string', description: 'Test input' }
+                    },
+                    required: ['input']
+                },
+                handler: async (args) => {
+                    return { output: `Processed: ${args.input}` };
+                }
+            });
+            
+            log('✅ Tool registered successfully!');
+            log(`Tools array length: ${wm._tools.length}`);
+            log(`Tool name: ${wm._tools[0].schema.function.name}`);
+            
+            log('Testing tool execution...');
+            wm._executeTool({
+                id: 'test_call',
+                function: {
+                    name: 'testTool',
+                    arguments: JSON.stringify({ input: 'hello world' })
+                }
+            }).then(result => {
+                log(`✅ Tool execution result: ${JSON.stringify(result)}`);
+            }).catch(error => {
+                log(`❌ Tool execution failed: ${error.message}`, true);
+            });
+            
+        } catch (error) {
+            log(`❌ Test failed: ${error.message}`, true);
+        }
+    </script>
+</body>
+</html>

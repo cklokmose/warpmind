@@ -112,6 +112,22 @@
             </div>
         </div>
 
+        <!-- Tool Calling System -->
+        <div class="test-section">
+            <h2>🛠️ Tool Calling System</h2>
+            <button onclick="registerTestTools()">Register Test Tools</button>
+            <button onclick="testWeatherTool()">Test Weather Tool</button>
+            <button onclick="testCalculatorTool()">Test Calculator Tool</button>
+            <button onclick="testMultipleTools()">Test Multiple Tools</button>
+            <button onclick="testToolErrors()">Test Error Handling</button>
+            <button onclick="clearTools()">Clear All Tools</button>
+            <div id="registeredTools" style="background: #e7f3ff; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; font-size: 12px; display: none;">
+                <strong>Registered Tools:</strong>
+                <div id="toolsList"></div>
+            </div>
+            <textarea id="toolPrompt" placeholder="Ask something that requires tools...">What's the weather in Paris and what's 15% tip on a $47.50 bill?</textarea>
+        </div>
+
         <!-- Stress Tests -->
         <div class="test-section">
             <h2>⚡ Performance Tests</h2>
@@ -478,6 +494,218 @@
             if (voiceChat) {
                 voiceChat.clearConversation();
                 log('Voice chat history cleared', 'success');
+            }
+        }
+
+        // Tool Calling Tests
+        function registerTestTools() {
+            log('🛠️ Registering test tools...');
+            
+            // Weather tool
+            wm.registerTool({
+                name: 'getWeather',
+                description: 'Get current weather information for a city',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        city: { type: 'string', description: 'The city name' },
+                        units: { type: 'string', enum: ['celsius', 'fahrenheit'], description: 'Temperature units' }
+                    },
+                    required: ['city']
+                },
+                handler: async (args) => {
+                    // Simulate weather API call
+                    const temps = { celsius: Math.floor(Math.random() * 35), fahrenheit: Math.floor(Math.random() * 95) };
+                    const conditions = ['sunny', 'cloudy', 'rainy', 'snowy', 'windy'];
+                    const condition = conditions[Math.floor(Math.random() * conditions.length)];
+                    
+                    const unit = args.units || 'celsius';
+                    return {
+                        city: args.city,
+                        temperature: temps[unit],
+                        unit: unit,
+                        condition: condition,
+                        humidity: Math.floor(Math.random() * 100),
+                        timestamp: new Date().toISOString()
+                    };
+                }
+            });
+
+            // Calculator tool
+            wm.registerTool({
+                name: 'calculator',
+                description: 'Perform basic mathematical calculations',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        operation: { type: 'string', enum: ['add', 'subtract', 'multiply', 'divide', 'percentage'] },
+                        a: { type: 'number', description: 'First number' },
+                        b: { type: 'number', description: 'Second number' },
+                        percentage: { type: 'number', description: 'Percentage value (for percentage calculations)' }
+                    },
+                    required: ['operation']
+                },
+                handler: async (args) => {
+                    const { operation, a, b, percentage } = args;
+                    let result;
+                    
+                    switch (operation) {
+                        case 'add':
+                            result = a + b;
+                            break;
+                        case 'subtract':
+                            result = a - b;
+                            break;
+                        case 'multiply':
+                            result = a * b;
+                            break;
+                        case 'divide':
+                            if (b === 0) throw new Error('Division by zero');
+                            result = a / b;
+                            break;
+                        case 'percentage':
+                            result = (percentage / 100) * a;
+                            break;
+                        default:
+                            throw new Error(`Unknown operation: ${operation}`);
+                    }
+                    
+                    return {
+                        operation,
+                        input: args,
+                        result: Math.round(result * 100) / 100, // Round to 2 decimal places
+                        timestamp: new Date().toISOString()
+                    };
+                }
+            });
+
+            // Library search tool
+            wm.registerTool({
+                name: 'searchLibrary',
+                description: 'Search a school library catalog for books',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        title: { type: 'string', description: 'Book title to search for' },
+                        author: { type: 'string', description: 'Author name to search for' },
+                        genre: { type: 'string', description: 'Book genre/category' }
+                    },
+                    required: ['title']
+                },
+                handler: async (args) => {
+                    // Simulate library search
+                    const mockBooks = [
+                        { title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', genre: 'Fiction', available: true },
+                        { title: 'To Kill a Mockingbird', author: 'Harper Lee', genre: 'Fiction', available: false },
+                        { title: '1984', author: 'George Orwell', genre: 'Dystopian Fiction', available: true },
+                        { title: 'Pride and Prejudice', author: 'Jane Austen', genre: 'Romance', available: true },
+                        { title: 'The Catcher in the Rye', author: 'J.D. Salinger', genre: 'Fiction', available: false }
+                    ];
+                    
+                    // Simple search simulation
+                    const searchTerm = args.title.toLowerCase();
+                    const matches = mockBooks.filter(book => 
+                        book.title.toLowerCase().includes(searchTerm) ||
+                        book.author.toLowerCase().includes(searchTerm) ||
+                        (args.genre && book.genre.toLowerCase().includes(args.genre.toLowerCase()))
+                    );
+                    
+                    return {
+                        searchQuery: args,
+                        totalResults: matches.length,
+                        books: matches,
+                        timestamp: new Date().toISOString()
+                    };
+                }
+            });
+
+            updateToolsList();
+            log('✅ Test tools registered successfully!', 'success');
+            log('Registered: getWeather, calculator, searchLibrary', 'success');
+        }
+
+        async function testWeatherTool() {
+            try {
+                log('Testing weather tool via chat...');
+                const response = await wm.chat("What's the weather like in Tokyo?");
+                log(`Weather tool response: "${response}"`, 'success');
+            } catch (error) {
+                log(`Weather tool test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCalculatorTool() {
+            try {
+                log('Testing calculator tool via chat...');
+                const response = await wm.chat("What's 15% tip on a $47.50 restaurant bill?");
+                log(`Calculator tool response: "${response}"`, 'success');
+            } catch (error) {
+                log(`Calculator tool test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testMultipleTools() {
+            try {
+                log('Testing multiple tools in one conversation...');
+                const prompt = document.getElementById('toolPrompt').value || 
+                    "What's the weather in London and calculate 20% of 150, and find books about JavaScript";
+                
+                const response = await wm.chat(prompt);
+                log(`Multiple tools response: "${response}"`, 'success');
+            } catch (error) {
+                log(`Multiple tools test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testToolErrors() {
+            try {
+                log('Testing tool error handling...');
+                
+                // Register a tool that will fail
+                wm.registerTool({
+                    name: 'failingTool',
+                    description: 'A tool that always fails for testing error handling',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            input: { type: 'string' }
+                        },
+                        required: ['input']
+                    },
+                    handler: async (args) => {
+                        throw new Error('This tool intentionally fails for testing');
+                    }
+                });
+
+                updateToolsList();
+                
+                const response = await wm.chat("Use the failing tool with some input");
+                log(`Error handling response: "${response}"`, 'success');
+            } catch (error) {
+                log(`Tool error test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function clearTools() {
+            // Reset warpmind instance to clear tools
+            wm = new Warpmind(currentConfig);
+            updateToolsList();
+            log('🗑️ All tools cleared', 'success');
+        }
+
+        function updateToolsList() {
+            const toolsDiv = document.getElementById('registeredTools');
+            const listDiv = document.getElementById('toolsList');
+            
+            if (wm._tools && wm._tools.length > 0) {
+                const toolNames = wm._tools.map(t => t.schema.function.name);
+                listDiv.innerHTML = `
+                    <div><strong>Count:</strong> ${wm._tools.length}</div>
+                    <div><strong>Tools:</strong> ${toolNames.join(', ')}</div>
+                `;
+                toolsDiv.style.display = 'block';
+            } else {
+                toolsDiv.style.display = 'none';
             }
         }
 
