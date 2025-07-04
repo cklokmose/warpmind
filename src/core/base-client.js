@@ -26,7 +26,7 @@ class TimeoutError extends Error {
  */
 class BaseClient {
   constructor(config = {}) {
-    this.baseURL = config.baseURL || 'https://api.openai.com/v1';
+    this.baseURL = config.baseURL || 'https://api.openai.com';
     this.apiKey = config.apiKey || '';
     this.model = config.model || 'gpt-4o';
     this.temperature = config.temperature || 0.7;
@@ -73,6 +73,33 @@ class BaseClient {
   }
 
   /**
+   * Construct a proper API URL by combining baseURL and endpoint
+   * Handles both cases: baseURL with and without /v1 suffix
+   * @param {string} endpoint - API endpoint (e.g., '/chat/completions')
+   * @returns {string} - Complete API URL
+   */
+  _buildApiUrl(endpoint) {
+    let baseUrl = this.baseURL;
+    
+    // Remove trailing slash from baseURL if present
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    
+    // If baseURL doesn't end with /v1, add it
+    if (!baseUrl.endsWith('/v1')) {
+      baseUrl += '/v1';
+    }
+    
+    // Ensure endpoint starts with /
+    if (!endpoint.startsWith('/')) {
+      endpoint = '/' + endpoint;
+    }
+    
+    return baseUrl + endpoint;
+  }
+
+  /**
    * Make a request to the OpenAI-compatible API with proper headers, retry logic, and timeout
    * @param {string} endpoint - API endpoint
    * @param {Object} data - Request data
@@ -88,7 +115,7 @@ class BaseClient {
 
     const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
     const maxRetries = options.maxRetries !== undefined ? options.maxRetries : 5;
-    const url = `${this.baseURL}${endpoint}`;
+    const url = this._buildApiUrl(endpoint);
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       const { controller, timeoutId } = createTimeoutController(timeoutMs);

@@ -47,8 +47,10 @@ describe('Audio Module Direct Tests', () => {
   beforeEach(() => {
     mockClient = {
       apiKey: 'test-api-key',
+      baseURL: 'https://api.openai.com',
       makeRequest: jest.fn(),
-      chat: jest.fn().mockResolvedValue('AI response text')
+      chat: jest.fn().mockResolvedValue('AI response text'),
+      _buildApiUrl: jest.fn((endpoint) => `https://api.openai.com/v1${endpoint}`)
     };
     audioModule = createAudioModule(mockClient);
     fetch.mockClear();

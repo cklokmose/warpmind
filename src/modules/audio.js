@@ -62,7 +62,7 @@ function createAudioModule(client) {
 
       const timeoutMs = options.timeoutMs || client.defaultTimeoutMs;
       const { controller, timeoutId } = createTimeoutController(timeoutMs);
-      const url = `${client.baseURL}/audio/speech`;
+      const url = client._buildApiUrl('/audio/speech');
       
       try {
         const response = await fetch(url, {
@@ -174,7 +174,7 @@ function createAudioModule(client) {
       const { controller, timeoutId } = createTimeoutController(timeoutMs);
       
       // Always use the standard transcriptions endpoint
-      const url = `${client.baseURL}/audio/transcriptions`;
+      const url = client._buildApiUrl('/audio/transcriptions');
       
       try {
         const response = await fetch(url, {

@@ -47,7 +47,7 @@ describe('BaseClient Additional Coverage Tests', () => {
       const clientEmpty = new BaseClient({});
       
       expect(clientEmpty.apiKey).toBe('');
-      expect(clientEmpty.baseURL).toBe('https://api.openai.com/v1');
+      expect(clientEmpty.baseURL).toBe('https://api.openai.com');
       expect(clientEmpty.model).toBe('gpt-4o');
       expect(clientEmpty.temperature).toBe(0.7);
     });
@@ -56,7 +56,7 @@ describe('BaseClient Additional Coverage Tests', () => {
       const clientUndefined = new BaseClient();
       
       expect(clientUndefined.apiKey).toBe('');
-      expect(clientUndefined.baseURL).toBe('https://api.openai.com/v1');
+      expect(clientUndefined.baseURL).toBe('https://api.openai.com');
     });
 
     it('should apply custom configuration values', () => {

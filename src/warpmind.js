@@ -266,7 +266,7 @@ class Warpmind extends BaseClient {
     let fullResponse = '';
     
     try {
-      const response = await fetch(`${this.baseURL}/chat/completions`, {
+      const response = await fetch(this._buildApiUrl('/chat/completions'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
