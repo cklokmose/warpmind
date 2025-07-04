@@ -33,7 +33,7 @@ Time:        0.52 s (full suite)
 
 ### 🔧 Key Changes Made
 
-#### 1. warpmind.js (Core Library)
+#### 1. warpMind.js (Core Library)
 - Removed all manual/fallback SSE parsing code
 - Updated eventsource-parser import to throw clear errors if missing
 - Added consistent timeout support across all methods

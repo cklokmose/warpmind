@@ -3,16 +3,16 @@
  * Ensures all methods use proper Authorization header format
  */
 
-const Warpmind = require('../src/warpmind.js');
+const WarpMind = require('../src/warpmind.js');
 
 // Mock fetch for testing
 global.fetch = jest.fn();
 
 describe('API Authentication Tests', () => {
-  let warpmind;
+  let warpMind;
 
   beforeEach(() => {
-    warpmind = new Warpmind({
+    warpMind = new WarpMind({
       apiKey: 'sk-test-key-123',
       baseURL: 'https://api.test.com/v1'
     });
@@ -28,7 +28,7 @@ describe('API Authentication Tests', () => {
       headers: { get: () => 'audio/mp3' }
     });
 
-    await warpmind.textToSpeech('Hello');
+    await warpMind.textToSpeech('Hello');
 
     expect(fetch).toHaveBeenCalledWith(
       'https://api.test.com/v1/audio/speech',
@@ -47,7 +47,7 @@ describe('API Authentication Tests', () => {
       json: () => Promise.resolve({ text: 'Hello world' })
     });
 
-    await warpmind.speechToText(mockFile);
+    await warpMind.speechToText(mockFile);
 
     expect(fetch).toHaveBeenCalledWith(
       'https://api.test.com/v1/audio/transcriptions',
@@ -67,7 +67,7 @@ describe('API Authentication Tests', () => {
       })
     });
 
-    await warpmind.chat('Hello');
+    await warpMind.chat('Hello');
 
     expect(fetch).toHaveBeenCalledWith(
       'https://api.test.com/v1/chat/completions',
@@ -92,7 +92,7 @@ describe('API Authentication Tests', () => {
       body: mockStream
     });
 
-    await warpmind.streamChat('Hello', () => {});
+    await warpMind.streamChat('Hello', () => {});
 
     expect(fetch).toHaveBeenCalledWith(
       'https://api.test.com/v1/chat/completions',
@@ -113,7 +113,7 @@ describe('API Authentication Tests', () => {
       json: () => Promise.resolve({ text: 'Hello world from streaming' })
     });
 
-    const result = await warpmind.speechToText(mockFile, {
+    const result = await warpMind.speechToText(mockFile, {
       stream: true,
       onPartial: (text) => partialResults.push(text)
     });

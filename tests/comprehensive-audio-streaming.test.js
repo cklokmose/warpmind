@@ -3,17 +3,17 @@
  * This test verifies both textToSpeech and speechToText streaming capabilities
  */
 
-const Warpmind = require('../src/warpmind.js');
+const WarpMind = require('../src/warpmind.js');
 const { TimeoutError } = require('../src/warpmind.js');
 
 // Mock fetch for testing
 global.fetch = jest.fn();
 
 describe('Comprehensive Audio Streaming Tests', () => {
-  let warpmind;
+  let warpMind;
 
   beforeEach(() => {
-    warpmind = new Warpmind({
+    warpMind = new WarpMind({
       apiKey: 'test-key',
       baseURL: 'https://api.test.com/v1'
     });
@@ -44,7 +44,7 @@ describe('Comprehensive Audio Streaming Tests', () => {
         chunks.push(chunk);
       });
 
-      await warpmind.textToSpeech('Hello world', {
+      await warpMind.textToSpeech('Hello world', {
         stream: true,
         onChunk: onChunkCallback,
         voice: 'alloy',
@@ -79,7 +79,7 @@ describe('Comprehensive Audio Streaming Tests', () => {
 
       fetch.mockResolvedValue(mockResponse);
 
-      await warpmind.textToSpeech('Hello', {
+      await warpMind.textToSpeech('Hello', {
         stream: true,
         onChunk: jest.fn()
       });
@@ -103,7 +103,7 @@ describe('Comprehensive Audio Streaming Tests', () => {
       fetch.mockResolvedValue(mockResponse);
 
       await expect(
-        warpmind.textToSpeech('Hello', {
+        warpMind.textToSpeech('Hello', {
           stream: true,
           onChunk: jest.fn()
         })
@@ -130,7 +130,7 @@ describe('Comprehensive Audio Streaming Tests', () => {
       const audioFile = new Blob(['fake audio'], { type: 'audio/wav' });
       audioFile.name = 'test.wav';
 
-      const result = await warpmind.speechToText(audioFile, {
+      const result = await warpMind.speechToText(audioFile, {
         stream: true,
         onPartial: onPartialCallback,
         model: 'whisper-1'
@@ -163,7 +163,7 @@ describe('Comprehensive Audio Streaming Tests', () => {
       audioFile.name = 'test.wav';
 
       await expect(
-        warpmind.speechToText(audioFile, {
+        warpMind.speechToText(audioFile, {
           stream: true,
           onPartial: jest.fn()
         })
@@ -197,7 +197,7 @@ describe('Comprehensive Audio Streaming Tests', () => {
       const audioFile = new Blob(['fake audio'], { type: 'audio/wav' });
       audioFile.name = 'test.wav';
 
-      const result = await warpmind.speechToText(audioFile, {
+      const result = await warpMind.speechToText(audioFile, {
         stream: true,
         onPartial: onPartialCallback
       });
@@ -210,11 +210,11 @@ describe('Comprehensive Audio Streaming Tests', () => {
 
     test('should validate audio file input', async () => {
       await expect(
-        warpmind.speechToText(null, { stream: true })
+        warpMind.speechToText(null, { stream: true })
       ).rejects.toThrow('Audio file must be a File or Blob object');
 
       await expect(
-        warpmind.speechToText('not a file', { stream: true })
+        warpMind.speechToText('not a file', { stream: true })
       ).rejects.toThrow('Audio file must be a File or Blob object');
     });
   });
@@ -235,7 +235,7 @@ describe('Comprehensive Audio Streaming Tests', () => {
       });
 
       await expect(
-        warpmind.textToSpeech('Hello', {
+        warpMind.textToSpeech('Hello', {
           stream: true,
           onChunk: jest.fn(),
           timeoutMs: 50 // Very short timeout
@@ -250,16 +250,16 @@ describe('Comprehensive Audio Streaming Tests', () => {
       fetch.mockRejectedValue(new TypeError('fetch failed'));
 
       await expect(
-        warpmind.textToSpeech('Hello', { stream: true, onChunk: jest.fn() })
+        warpMind.textToSpeech('Hello', { stream: true, onChunk: jest.fn() })
       ).rejects.toThrow('Network error: Unable to connect to the TTS API.');
 
       await expect(
-        warpmind.speechToText(new Blob(['audio']), { stream: true, onPartial: jest.fn() })
+        warpMind.speechToText(new Blob(['audio']), { stream: true, onPartial: jest.fn() })
       ).rejects.toThrow('Network error: Unable to connect to the STT API.');
     });
 
     test('should require API key', async () => {
-      const mindWithoutKey = new Warpmind();
+      const mindWithoutKey = new WarpMind();
 
       await expect(
         mindWithoutKey.textToSpeech('Hello', { stream: true })
@@ -288,7 +288,7 @@ describe('Comprehensive Audio Streaming Tests', () => {
         addEventListener: jest.fn()
       }));
 
-      const voiceChat = warpmind.createVoiceChat('Test assistant', {
+      const voiceChat = warpMind.createVoiceChat('Test assistant', {
         stt: { stream: true, onPartial: jest.fn() },
         tts: { stream: true, voice: 'nova', onChunk: jest.fn() }
       });
@@ -317,7 +317,7 @@ describe('Comprehensive Audio Streaming Tests', () => {
 
         fetch.mockResolvedValue(mockResponse);
 
-        await warpmind.textToSpeech('Test', {
+        await warpMind.textToSpeech('Test', {
           stream: true,
           onChunk: jest.fn(),
           format: format
@@ -345,7 +345,7 @@ describe('Comprehensive Audio Streaming Tests', () => {
 
         fetch.mockResolvedValue(mockResponse);
 
-        await warpmind.textToSpeech('Test', {
+        await warpMind.textToSpeech('Test', {
           stream: true,
           onChunk: jest.fn(),
           voice: voice

@@ -35,7 +35,7 @@
 
     <script src="../dist/warpmind.js"></script>
     <script>
-        let warpmind = null;
+        let warpMind = null;
 
         function initWarpmind() {
             const apiKey = document.getElementById('api-key').value;
@@ -47,7 +47,7 @@
                 return;
             }
             
-            warpmind = new Warpmind({
+            warpMind = new WarpMind({
                 apiKey: apiKey,
                 baseURL: 'https://warp.cs.au.dk/mind'
             });
@@ -57,7 +57,7 @@
         }
 
         async function testSTT(model = null) {
-            if (!warpmind) {
+            if (!warpMind) {
                 alert('Please initialize WarpMind first');
                 return;
             }
@@ -81,7 +81,7 @@
             output.className = 'output';
             
             try {
-                const result = await warpmind.speechToText(file, options);
+                const result = await warpMind.speechToText(file, options);
                 output.textContent = `SUCCESS!\nModel: ${model || 'default'}\nResult: ${result}`;
                 output.className = 'output success';
             } catch (error) {

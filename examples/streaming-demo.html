@@ -256,7 +256,7 @@
     <script src="../dist/warpmind.js"></script>
 
     <script>
-        let warpmind = null;
+        let warpMind = null;
         let ttsStartTime = 0;
         let sttStartTime = 0;
 
@@ -272,7 +272,7 @@
             }
 
             try {
-                warpmind = new Warpmind({
+                warpMind = new WarpMind({
                     apiKey: apiKey,
                     baseURL: baseURL || 'https://warp.cs.au.dk/mind'
                 });
@@ -280,7 +280,7 @@
                 output.className = 'output success';
                 
                 // Save API key for convenience
-                localStorage.setItem('warpmind-api-key', apiKey);
+                localStorage.setItem('warpMind-api-key', apiKey);
             } catch (error) {
                 output.textContent = `Error initializing WarpMind: ${error.message}`;
                 output.className = 'output error';
@@ -288,7 +288,7 @@
         }
 
         async function testTTSRegular() {
-            if (!warpmind) {
+            if (!warpMind) {
                 alert('Please initialize WarpMind first');
                 return;
             }
@@ -311,7 +311,7 @@
             const startTime = Date.now();
 
             try {
-                const audioBlob = await warpmind.textToSpeech(text, {
+                const audioBlob = await warpMind.textToSpeech(text, {
                     voice: voice,
                     format: format
                 });
@@ -330,7 +330,7 @@
         }
 
         async function testTTSStreaming() {
-            if (!warpmind) {
+            if (!warpMind) {
                 alert('Please initialize WarpMind first');
                 return;
             }
@@ -363,7 +363,7 @@
             ttsStartTime = Date.now();
 
             try {
-                const audioBlob = await warpmind.textToSpeech(text, {
+                const audioBlob = await warpMind.textToSpeech(text, {
                     voice: voice,
                     format: format,
                     stream: true,
@@ -403,7 +403,7 @@
         }
 
         async function testSTTRegular() {
-            if (!warpmind) {
+            if (!warpMind) {
                 alert('Please initialize WarpMind first');
                 return;
             }
@@ -427,7 +427,7 @@
                 const options = { model: 'whisper-1' };
                 if (language) options.language = language;
                 
-                const text = await warpmind.speechToText(fileInput.files[0], options);
+                const text = await warpMind.speechToText(fileInput.files[0], options);
                 const duration = (Date.now() - startTime) / 1000;
 
                 output.textContent = `Transcription completed!\nDuration: ${duration.toFixed(1)}s\nLanguage: ${language || 'auto-detect'}\n\nResult:\n${text}`;
@@ -439,7 +439,7 @@
         }
 
         async function testSTTStreaming() {
-            if (!warpmind) {
+            if (!warpMind) {
                 alert('Please initialize WarpMind first');
                 return;
             }
@@ -486,7 +486,7 @@
                 
                 if (language) options.language = language;
                 
-                const finalText = await warpmind.speechToText(fileInput.files[0], options);
+                const finalText = await warpMind.speechToText(fileInput.files[0], options);
                 const duration = (Date.now() - sttStartTime) / 1000;
                 
                 // Final metrics
@@ -507,7 +507,7 @@
         // Initialize on page load
         window.onload = function() {
             // Try to load saved API key
-            const savedApiKey = localStorage.getItem('warpmind-api-key');
+            const savedApiKey = localStorage.getItem('warpMind-api-key');
             if (savedApiKey) {
                 document.getElementById('api-key').value = savedApiKey;
             }

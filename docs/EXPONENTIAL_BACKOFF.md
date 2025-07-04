@@ -34,7 +34,7 @@ All these methods now support the `timeoutMs` option:
 
 ### New Error Class
 ```javascript
-import { TimeoutError } from 'warpmind';
+import { TimeoutError } from 'warpMind';
 
 try {
   await mind.chat('Hello', { timeoutMs: 5000 });
@@ -47,7 +47,7 @@ try {
 
 ### Configuration Options
 ```javascript
-const mind = new Warpmind({
+const mind = new WarpMind({
   defaultTimeoutMs: 60000, // Custom default timeout
   // ... other options
 });
@@ -115,12 +115,12 @@ Created comprehensive test suite covering:
 - ✅ Default behavior enhanced but compatible
 
 ## Build Status
-- ✅ Successfully builds to `dist/warpmind.js`
+- ✅ Successfully builds to `dist/warpMind.js`
 - ✅ Webpack compilation passes
 - ✅ All existing functionality preserved
 
 ## Files Modified
-1. `src/warpmind.js` - Core implementation
+1. `src/warpMind.js` - Core implementation
 2. `package.json` - Added Jest and test scripts
 3. `todo.md` - Updated with completed tasks
 4. `tests/integration.test.js` - Integration tests

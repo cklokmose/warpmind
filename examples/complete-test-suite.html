@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complete Warpmind Test Suite</title>
+    <title>Complete WarpMind Test Suite</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
         .test-section { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 5px; }
@@ -22,7 +22,7 @@
     </style>
 </head>
 <body>
-    <h1>🚀 Complete Warpmind Test Suite</h1>
+    <h1>🚀 Complete WarpMind Test Suite</h1>
     <p>Testing all functionality with configurable proxy server settings</p>
     
     <!-- Configuration Section -->
@@ -147,7 +147,7 @@
 
         // Load configuration from localStorage or use defaults
         function loadConfiguration() {
-            const savedConfig = localStorage.getItem('warpmind-test-config');
+            const savedConfig = localStorage.getItem('warpMind-test-config');
             if (savedConfig) {
                 try {
                     return JSON.parse(savedConfig);
@@ -161,14 +161,14 @@
 
         // Save configuration to localStorage
         function saveConfiguration(config) {
-            localStorage.setItem('warpmind-test-config', JSON.stringify(config));
+            localStorage.setItem('warpMind-test-config', JSON.stringify(config));
         }
 
         // Initialize configuration
         let currentConfig = loadConfiguration();
         
-        // Initialize Warpmind with current configuration
-        let wm = new Warpmind(currentConfig);
+        // Initialize WarpMind with current configuration
+        let wm = new WarpMind(currentConfig);
 
         // Update configuration from form inputs
         function updateConfiguration() {
@@ -186,8 +186,8 @@
             currentConfig = { baseURL: formattedURL, apiKey: apiKey };
             saveConfiguration(currentConfig);
             
-            // Reinitialize Warpmind with new config
-            wm = new Warpmind(currentConfig);
+            // Reinitialize WarpMind with new config
+            wm = new WarpMind(currentConfig);
             
             showConfigStatus('Configuration updated successfully!', 'success');
             log('🔄 Configuration updated and saved to localStorage');
@@ -209,8 +209,8 @@
             document.getElementById('serverURL').value = displayURL;
             document.getElementById('apiKeyInput').value = currentConfig.apiKey;
             
-            // Reinitialize Warpmind
-            wm = new Warpmind(currentConfig);
+            // Reinitialize WarpMind
+            wm = new WarpMind(currentConfig);
             
             showConfigStatus('Configuration reset to defaults', 'info');
             log('🔄 Configuration reset to defaults');
@@ -687,8 +687,8 @@
         }
 
         function clearTools() {
-            // Reset warpmind instance to clear tools
-            wm = new Warpmind(currentConfig);
+            // Reset warpMind instance to clear tools
+            wm = new WarpMind(currentConfig);
             updateToolsList();
             log('🗑️ All tools cleared', 'success');
         }
@@ -968,7 +968,7 @@
 
         // Initialize and run basic connectivity test
         async function initTests() {
-            log('🚀 Initializing Warpmind test suite...');
+            log('🚀 Initializing WarpMind test suite...');
             log(`Current server: ${currentConfig.baseURL}`);
             log(`Using API key: ${currentConfig.apiKey.substring(0, 8)}...`);
             

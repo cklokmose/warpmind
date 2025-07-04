@@ -12,12 +12,12 @@ if (typeof module !== 'undefined' && module.exports) {
   fileToBase64 = fBase64;
 } else {
   // Browser environment - utilities should be available globally
-  fileToBase64 = window.WarpmindUtils.fileToBase64;
+  fileToBase64 = window.WarpMindUtils.fileToBase64;
 }
 
 /**
  * Vision module factory function that accepts a client instance
- * @param {Object} client - The client instance (BaseClient or Warpmind)
+ * @param {Object} client - The client instance (BaseClient or WarpMind)
  * @returns {Object} - Object with vision methods to be mixed into the main class
  */
 function createVisionModule(client) {

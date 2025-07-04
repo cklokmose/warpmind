@@ -6,12 +6,12 @@
 - **Problem**: Browser examples were failing with eventsource-parser dependency errors
 - **Solution**: 
   - Modified webpack configuration to properly bundle eventsource-parser
-  - Updated warpmind.js to correctly import eventsource-parser in both Node.js and browser environments
-  - All example files now use `../dist/warpmind.js` (bundled version) instead of `../src/warpmind.js`
+  - Updated warpMind.js to correctly import eventsource-parser in both Node.js and browser environments
+  - All example files now use `../dist/warpMind.js` (bundled version) instead of `../src/warpMind.js`
 
 ### 2. **TimeoutError Export Issue**
 - **Problem**: TimeoutError was not available in browser after webpack UMD bundling
-- **Solution**: Added `Warpmind.TimeoutError = TimeoutError;` to ensure TimeoutError is accessible as a property of the Warpmind class
+- **Solution**: Added `WarpMind.TimeoutError = TimeoutError;` to ensure TimeoutError is accessible as a property of the WarpMind class
 
 ### 3. **Corrupted HTML File**
 - **Problem**: basic-example.html had syntax errors and corrupted viewport meta tag
@@ -20,10 +20,10 @@
 ## 📋 Current Status
 
 ### ✅ **Working Features in Browser:**
-- ✅ Warpmind class instantiation
+- ✅ WarpMind class instantiation
 - ✅ All core methods (chat, complete, ask, streamChat, etc.)
 - ✅ Streaming support with eventsource-parser bundled
-- ✅ TimeoutError accessible via `Warpmind.TimeoutError`
+- ✅ TimeoutError accessible via `WarpMind.TimeoutError`
 - ✅ Exponential back-off and retry logic
 - ✅ Timeout handling
 - ✅ Error handling
@@ -34,7 +34,7 @@
 - **Webpack Build**: ✅ Successfully bundles eventsource-parser (11.1 KiB total)
 
 ### 📁 **Updated Files:**
-1. `src/warpmind.js` - Fixed eventsource-parser imports and TimeoutError export
+1. `src/warpMind.js` - Fixed eventsource-parser imports and TimeoutError export
 2. `examples/basic-example.html` - Completely rewritten, now functional
 3. `examples/complete-test-suite.html` - Updated to use bundled version
 4. `examples/multi-modal-example.html` - Updated to use bundled version  
@@ -43,8 +43,8 @@
 
 ## 🎯 **For Browser Usage:**
 
-1. **Always use the bundled version**: `<script src="../dist/warpmind.js"></script>`
-2. **TimeoutError access**: Use `Warpmind.TimeoutError` or global `TimeoutError`
+1. **Always use the bundled version**: `<script src="../dist/warpMind.js"></script>`
+2. **TimeoutError access**: Use `WarpMind.TimeoutError` or global `TimeoutError`
 3. **All functionality works**: Including streaming with eventsource-parser
 4. **No external dependencies needed**: Everything is bundled by webpack
 

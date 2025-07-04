@@ -1,8 +1,8 @@
-# 🎉 Warpmind Library - Testing Complete!
+# 🎉 WarpMind Library - Testing Complete!
 
 ## ✅ Successful API Integration
 
-The Warpmind JavaScript library has been successfully tested against your real API endpoint:
+The WarpMind JavaScript library has been successfully tested against your real API endpoint:
 
 - **Endpoint**: `https://warp.cs.au.dk/mind/v1`
 - **API Key**: `4e6faecf-a386-47de-98e5-149ec5c9a2b2`
@@ -28,8 +28,8 @@ The Warpmind JavaScript library has been successfully tested against your real A
 ## 🚀 Ready-to-Use Files
 
 ### For Developers
-- **`dist/warpmind.js`** - Production-ready library (3.04 KiB)
-- **`src/warpmind.js`** - Source code for customization
+- **`dist/warpMind.js`** - Production-ready library (3.04 KiB)
+- **`src/warpMind.js`** - Source code for customization
 - **`test-real-api.js`** - Real API test suite
 - **`demo-complete.js`** - Comprehensive feature demo
 
@@ -41,7 +41,7 @@ The Warpmind JavaScript library has been successfully tested against your real A
 
 ```javascript
 // Initialize with your endpoint
-const ai = new Warpmind({
+const ai = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/v1',
     apiKey: '4e6faecf-a386-47de-98e5-149ec5c9a2b2'
 });
@@ -67,13 +67,13 @@ const poem = await ai.ask('Write a haiku about coding', {
 ### ✅ Fixed Browser Issues
 - **Constructor Error**: Resolved module export problems
 - **UMD Loading**: Fixed webpack configuration for browser compatibility
-- **Global Variables**: Ensured `window.Warpmind` is properly available
+- **Global Variables**: Ensured `window.WarpMind` is properly available
 
 ### 🧪 Browser Test Results
 ```javascript
 // In browser console:
-console.log(typeof Warpmind); // "function" ✅
-const ai = new Warpmind(); // Works! ✅
+console.log(typeof WarpMind); // "function" ✅
+const ai = new WarpMind(); // Works! ✅
 ```
 
 ## 🎓 Educational Applications
@@ -89,9 +89,9 @@ The library is perfect for:
 ## 🌐 Web Integration
 
 Students can use the library by:
-1. **Download**: Get `dist/warpmind.js` from the project
-2. **Include**: Add `<script src="warpmind.js"></script>` to HTML
-3. **Use**: `const ai = new Warpmind();`
+1. **Download**: Get `dist/warpMind.js` from the project
+2. **Include**: Add `<script src="warpMind.js"></script>` to HTML
+3. **Use**: `const ai = new WarpMind();`
 4. **Demo**: Open `example.html` for a complete interface
 
 ## 🛡️ Security & Performance
@@ -133,21 +133,21 @@ Students can use the library by:
 
 ## 🚀 Next Steps
 
-1. **Distribute the library**: Share `dist/warpmind.js` with students
+1. **Distribute the library**: Share `dist/warpMind.js` with students
 2. **Use the example**: `example.html` provides a complete working demo
 3. **Educational integration**: Perfect for classroom coding exercises
 4. **Customization**: Source code is well-documented for modifications
 
-The Warpmind library is now **production-ready** and **browser-compatible** for educational use with your API endpoint! 🎉
+The WarpMind library is now **production-ready** and **browser-compatible** for educational use with your API endpoint! 🎉
 
 ## 🎯 Quick Start for Students
 
-1. **Download** `warpmind.js` file
+1. **Download** `warpMind.js` file
 2. **Create** an HTML file:
 ```html
-<script src="warpmind.js"></script>
+<script src="warpMind.js"></script>
 <script>
-const ai = new Warpmind({
+const ai = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/v1',
     apiKey: '4e6faecf-a386-47de-98e5-149ec5c9a2b2'
 });

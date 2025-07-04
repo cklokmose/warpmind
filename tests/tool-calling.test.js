@@ -2,13 +2,13 @@
  * Tool Calling System Tests
  */
 
-const Warpmind = require('../src/warpmind.js');
+const WarpMind = require('../src/warpmind.js');
 
-describe('Warpmind Tool Calling System', () => {
+describe('WarpMind Tool Calling System', () => {
   let mind;
 
   beforeEach(() => {
-    mind = new Warpmind({ apiKey: 'test-key' });
+    mind = new WarpMind({ apiKey: 'test-key' });
     
     // Mock the makeRequest method to simulate tool calling responses
     mind.makeRequest = jest.fn();

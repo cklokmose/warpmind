@@ -111,7 +111,7 @@
     <script src="../dist/warpmind.js"></script>
 
     <script>
-        let warpmind = null;
+        let warpMind = null;
 
         function initializeWarpmind() {
             const apiKey = document.getElementById('api-key').value;
@@ -125,7 +125,7 @@
             }
 
             try {
-                warpmind = new Warpmind({
+                warpMind = new WarpMind({
                     apiKey: apiKey,
                     baseURL: baseURL || 'https://warp.cs.au.dk/mind'
                 });
@@ -138,7 +138,7 @@
         }
 
         async function testTextToSpeech() {
-            if (!warpmind) {
+            if (!warpMind) {
                 alert('Please initialize WarpMind first');
                 return;
             }
@@ -157,7 +157,7 @@
             output.className = 'output';
 
             try {
-                const audioBlob = await warpmind.textToSpeech(text, {
+                const audioBlob = await warpMind.textToSpeech(text, {
                     voice: 'alloy',
                     format: 'mp3'
                 });
@@ -175,7 +175,7 @@
         }
 
         async function testTextToSpeechStreaming() {
-            if (!warpmind) {
+            if (!warpMind) {
                 alert('Please initialize WarpMind first');
                 return;
             }
@@ -197,7 +197,7 @@
             let totalSize = 0;
 
             try {
-                const audioBlob = await warpmind.textToSpeech(text, {
+                const audioBlob = await warpMind.textToSpeech(text, {
                     voice: 'alloy',
                     format: 'opus',
                     stream: true,
@@ -221,7 +221,7 @@
         }
 
         async function testSpeechToText() {
-            if (!warpmind) {
+            if (!warpMind) {
                 alert('Please initialize WarpMind first');
                 return;
             }
@@ -239,7 +239,7 @@
             output.className = 'output';
 
             try {
-                const text = await warpmind.speechToText(fileInput.files[0], {
+                const text = await warpMind.speechToText(fileInput.files[0], {
                     model: 'whisper-1'
                 });
 
@@ -252,7 +252,7 @@
         }
 
         async function testSpeechToTextStreaming() {
-            if (!warpmind) {
+            if (!warpMind) {
                 alert('Please initialize WarpMind first');
                 return;
             }
@@ -270,7 +270,7 @@
             output.className = 'output';
 
             try {
-                const text = await warpmind.speechToText(fileInput.files[0], {
+                const text = await warpMind.speechToText(fileInput.files[0], {
                     model: 'whisper-1',
                     stream: true,
                     onPartial: (partialText) => {
@@ -289,14 +289,14 @@
         // Initialize with default values if available
         window.onload = function() {
             // Try to load API key from localStorage if available
-            const savedApiKey = localStorage.getItem('warpmind-proxy-api-key');
+            const savedApiKey = localStorage.getItem('warpMind-proxy-api-key');
             if (savedApiKey) {
                 document.getElementById('api-key').value = savedApiKey;
             }
 
             // Save API key to localStorage when changed
             document.getElementById('api-key').addEventListener('change', function() {
-                localStorage.setItem('warpmind-proxy-api-key', this.value);
+                localStorage.setItem('warpMind-proxy-api-key', this.value);
             });
         };
     </script>
