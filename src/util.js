@@ -1,5 +1,5 @@
 /**
- * Utility functions for Warpmind library
+ * Utility functions for WarpMind library
  * These are helper functions that support retry logic, timeouts, and other common operations
  */
 
@@ -133,7 +133,7 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 } else if (typeof window !== 'undefined') {
   // Browser environment - attach to window for global access
-  window.WarpmindUtils = {
+  window.WarpMindUtils = {
     addJitter,
     calculateRetryDelay,
     shouldRetry,

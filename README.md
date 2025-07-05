@@ -1,4 +1,4 @@
-# Warpmind
+# WarpMind
 
 A JavaScript library for AI integration designed for browser environments. Works directly in browsers with no complex setup - just include one file and start building AI-powered applications with https://warp.cs.au.dk/mind.
 
@@ -26,7 +26,7 @@ A JavaScript library for AI integration designed for browser environments. Works
 
 ### Step 1: Get the Library
 
-Download `warpmind.js` from the `dist/` folder and include it in your HTML:
+Download `warpMind.js` from the `dist/` folder and include it in your HTML:
 
 ```html
 <!DOCTYPE html>
@@ -39,12 +39,12 @@ Download `warpmind.js` from the `dist/` folder and include it in your HTML:
     <button onclick="askAI()">Ask AI a Question</button>
     <div id="response"></div>
 
-    <!-- Include Warpmind (only line you need!) -->
-    <script src="warpmind.js"></script>
+    <!-- Include WarpMind (only line you need!) -->
+    <script src="warpMind.js"></script>
     
     <script>
         // Initialize with warp.cs.au.dk/mind
-        const mind = new Warpmind({
+        const mind = new WarpMind({
             baseURL: 'https://warp.cs.au.dk/mind/',
             apiKey: 'your-auth-key'
         });
@@ -67,7 +67,7 @@ The library is now ready to use with https://warp.cs.au.dk/mind. You can start b
 ### Simple Setup
 
 ```javascript
-const mind = new Warpmind({
+const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',  // Warp CS API endpoint
     apiKey: 'your-auth-key',                   // Your API key
     model: 'gpt-3.5-turbo',                    // AI model to use
@@ -471,7 +471,7 @@ console.log('Processing cost:', result.usage);
 
 ## Error Handling & Troubleshooting
 
-Warpmind includes automatic retry logic and helpful error messages:
+WarpMind includes automatic retry logic and helpful error messages:
 
 ```javascript
 try {
@@ -485,7 +485,7 @@ try {
     } else if (error.message.includes('Network')) {
         console.log('Check your internet connection or proxy server');
     } else if (error.message.includes('429')) {
-        console.log('Rate limited - Warpmind will automatically retry');
+        console.log('Rate limited - WarpMind will automatically retry');
     } else {
         console.log('Error:', error.message);
     }
@@ -494,7 +494,7 @@ try {
 
 ### Automatic Retries
 
-Warpmind automatically retries failed requests with exponential backoff:
+WarpMind automatically retries failed requests with exponential backoff:
 - **Retry conditions**: HTTP status codes 429, 502, 503, 524
 - **Max attempts**: 5 retries  
 - **Backoff formula**: `500ms × 2^attempt + random(0-250ms)`
@@ -516,8 +516,8 @@ Warpmind automatically retries failed requests with exponential backoff:
 ### For Users (Just Use It!)
 
 You don't need to build anything! Just:
-1. Download `warpmind.js` from the `dist/` folder
-2. Include it in your HTML with `<script src="warpmind.js"></script>`
+1. Download `warpMind.js` from the `dist/` folder
+2. Include it in your HTML with `<script src="warpMind.js"></script>`
 3. Start coding!
 
 ### For Advanced Users & Contributors
@@ -527,12 +527,12 @@ If you want to modify the library or contribute:
 ```bash
 # Clone or download the repository
 git clone <repository-url>
-cd warpmind
+cd warpMind
 
 # Install development dependencies
 npm install
 
-# Build the library (creates dist/warpmind.js)
+# Build the library (creates dist/warpMind.js)
 npm run build
 
 # Run tests to make sure everything works
@@ -542,9 +542,9 @@ npm test
 ### Project Structure
 
 ```
-warpmind/
+warpMind/
 ├── src/                    # Source code (modular)
-│   ├── warpmind.js        # Main library (284 lines)
+│   ├── warpMind.js        # Main library (284 lines)
 │   ├── util.js            # Utility functions
 │   ├── core/              
 │   │   └── base-client.js # HTTP client & retry logic
@@ -555,7 +555,7 @@ warpmind/
 │   └── streaming/
 │       └── sse-parser.js  # Real-time streaming
 ├── dist/
-│   └── warpmind.js        # Built library (single file, 16.1 KiB)
+│   └── warpMind.js        # Built library (single file, 16.1 KiB)
 ├── examples/              # Working demos (start here!)
 ├── tests/                 # Node.js tests (71 tests)
 ├── docs/                  # Documentation
@@ -615,7 +615,7 @@ mind.registerTool({ name: "myTool", description: "...", parameters: {...}, handl
 
 ### Configuration
 ```javascript
-const mind = new Warpmind({
+const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/v1',  // Warp CS API endpoint
     apiKey: 'your-key',                        // Your API key
     model: 'gpt-3.5-turbo',                    // AI model

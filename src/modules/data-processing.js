@@ -5,7 +5,7 @@
 
 /**
  * Data processing module factory function that accepts a client instance
- * @param {Object} client - The client instance (BaseClient or Warpmind)
+ * @param {Object} client - The client instance (BaseClient or WarpMind)
  * @returns {Object} - Object with data processing methods to be mixed into the main class
  */
 function createDataProcessingModule(client) {

@@ -154,11 +154,11 @@
         </div>
     </div>
 
-    <!-- Load the Warpmind library -->
+    <!-- Load the WarpMind library -->
     <script src="../dist/warpmind.js"></script>
     <script>
         // Simple variables to store our data
-        let warpmind = null;
+        let warpMind = null;
         let messages = [];
         
         // Set up AI connection
@@ -174,7 +174,7 @@
             
             if (!serverURL.endsWith('/v1')) serverURL += '/v1';
             
-            return new Warpmind({ baseURL: serverURL, apiKey: apiKey, model: model });
+            return new WarpMind({ baseURL: serverURL, apiKey: apiKey, model: model });
         }
         
         // Add message to chat
@@ -200,9 +200,9 @@
             }
             
             // Connect to AI if not already connected
-            if (!warpmind) {
-                warpmind = connectToWarpMind();
-                if (!warpmind) {
+            if (!warpMind) {
+                warpMind = connectToWarpMind();
+                if (!warpMind) {
                     return; // Stop here if connection failed
                 }
             }
@@ -234,7 +234,7 @@
             
             try {
                 // Send to AI and handle response
-                const response = await warpmind.chat(chatMessages);
+                const response = await warpMind.chat(chatMessages);
                 
                 // Remove thinking message (it's always the last one)
                 let messagesDiv = document.getElementById('messagesDiv');

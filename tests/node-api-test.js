@@ -1,15 +1,15 @@
-// Real API test for Warpmind against warp.cs.au.dk/mind endpoint
+// Real API test for WarpMind against warp.cs.au.dk/mind endpoint
 // This test uses the actual API key and endpoint provided
 
-const Warpmind = require('./dist/warpmind.js').default || require('./dist/warpmind.js');
+const WarpMind = require('./dist/warpmind.js').default || require('./dist/warpmind.js');
 
 async function runRealAPITests() {
-    console.log('🌐 Testing Warpmind Library against Real API...\n');
+    console.log('🌐 Testing WarpMind Library against Real API...\n');
     console.log('Endpoint: warp.cs.au.dk/mind/v1');
     console.log('API Key: 4e6faecf-a386-47de-98e5-149ec5c9a2b2\n');
 
     // Initialize with the real endpoint and API key
-    const ai = new Warpmind({
+    const ai = new WarpMind({
         baseURL: 'https://warp.cs.au.dk/mind/v1',
         apiKey: '4e6faecf-a386-47de-98e5-149ec5c9a2b2',
         model: 'gpt-3.5-turbo',
@@ -17,7 +17,7 @@ async function runRealAPITests() {
         temperature: 0.7
     });
 
-    console.log('✅ Warpmind instance created with real configuration\n');
+    console.log('✅ WarpMind instance created with real configuration\n');
 
     // Test 1: Simple question
     console.log('🧪 Test 1: Simple Question');
@@ -104,7 +104,7 @@ async function runRealAPITests() {
 async function testStreaming() {
     console.log('\n🌊 Testing Streaming Response...');
     
-    const ai = new Warpmind({
+    const ai = new WarpMind({
         baseURL: 'https://warp.cs.au.dk/mind/v1',
         apiKey: '4e6faecf-a386-47de-98e5-149ec5c9a2b2'
     });
@@ -127,7 +127,7 @@ async function testStreaming() {
 async function testTTS() {
     console.log('\n🔊 Testing Text-to-Speech...');
     
-    const ai = new Warpmind({
+    const ai = new WarpMind({
         baseURL: 'https://warp.cs.au.dk/mind/v1',
         apiKey: '4e6faecf-a386-47de-98e5-149ec5c9a2b2'
     });

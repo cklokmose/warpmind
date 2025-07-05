@@ -52,13 +52,13 @@ Since real-time STT streaming isn't widely available in OpenAI API:
 4. **Browser Support**: Works in all modern browsers with fetch support
 
 ## Files Modified
-- `src/warpmind.js` - Core implementation with auth fixes
+- `src/warpMind.js` - Core implementation with auth fixes
 - `tests/audio-streaming.test.js` - Updated for new auth format
 - `tests/api-auth.test.js` - New comprehensive auth tests
 - `examples/basic-example.html` - Enhanced with better guidance
 - `examples/streaming-demo.html` - New advanced demo
 - `todo.md` - Updated completion status
-- `dist/warpmind.js` - Rebuilt with all fixes
+- `dist/warpMind.js` - Rebuilt with all fixes
 
 ## Testing Results
 - ✅ All authentication tests pass (5/5 tests)

@@ -1,19 +1,19 @@
-# Getting Started with Warpmind
+# Getting Started with WarpMind
 
-## What is Warpmind?
+## What is WarpMind?
 
-Warpmind is a simple JavaScript library that makes it easy for students to use OpenAI's API in their web projects. It handles all the complex API setup and provides simple methods to interact with AI models.
+WarpMind is a simple JavaScript library that makes it easy for students to use OpenAI's API in their web projects. It handles all the complex API setup and provides simple methods to interact with AI models.
 
 ## Quick Setup (5 minutes)
 
 ### Step 1: Get the Library
 1. Download this project
 2. Run `npm install && npm run build` in the project folder
-3. Copy the `dist/warpmind.js` file to your project
+3. Copy the `dist/warpMind.js` file to your project
 
 ### Step 2: Include in Your HTML
 ```html
-<script src="warpmind.js"></script>
+<script src="warpMind.js"></script>
 ```
 
 ### Step 3: Get an API Key
@@ -25,7 +25,7 @@ Warpmind is a simple JavaScript library that makes it easy for students to use O
 ```html
 <script>
 // Create a new instance
-const ai = new Warpmind();
+const ai = new WarpMind();
 
 // Set your API key
 ai.setApiKey('your-api-key-here');
@@ -45,7 +45,7 @@ ai.ask('What is the capital of France?')
 
 ### 1. Homework Helper
 ```javascript
-const ai = new Warpmind();
+const ai = new WarpMind();
 ai.setApiKey('your-key');
 
 // Ask for help with homework

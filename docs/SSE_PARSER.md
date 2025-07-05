@@ -65,7 +65,7 @@ async parseSSE(reader, onEvent) {
 ## Files Modified
 
 ### Core Implementation
-1. **`src/warpmind.js`**
+1. **`src/warpMind.js`**
    - Added eventsource-parser import with fallback
    - Implemented `parseSSE()` function
    - Updated `streamChat()` to use SSE parser
@@ -99,7 +99,7 @@ async parseSSE(reader, onEvent) {
 - Timeout testing
 
 ## Build Status
-- ✅ Successfully builds to `dist/warpmind.js` (10.4 kB)
+- ✅ Successfully builds to `dist/warpMind.js` (10.4 kB)
 - ✅ Webpack compilation includes eventsource-parser
 - ✅ Browser and Node.js compatibility maintained
 - ✅ All existing functionality preserved

@@ -5,7 +5,7 @@ module.exports = {
   output: {
     filename: 'warpmind.js',
     path: path.resolve(__dirname, 'dist'),
-    library: 'Warpmind',
+    library: 'WarpMind',
     libraryTarget: 'umd',
     globalObject: 'this'
   },

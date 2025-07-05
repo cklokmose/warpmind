@@ -1,6 +1,6 @@
 /**
  * Audio module for WarpMind - Contains all audio-related operations
- * Handles text-to-speech, speech-to-text, and voice chat functionality
+ * Includes text-to-speech, speech-to-text, and voice chat functionality
  */
 
 // Import required utilities
@@ -20,7 +20,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 /**
  * Audio module factory function that accepts a client instance
- * @param {Object} client - The client instance (BaseClient or Warpmind)
+ * @param {Object} client - The client instance (BaseClient or WarpMind)
  * @returns {Object} - Object with audio methods to be mixed into the main class
  */
 function createAudioModule(client) {
@@ -62,7 +62,7 @@ function createAudioModule(client) {
 
       const timeoutMs = options.timeoutMs || client.defaultTimeoutMs;
       const { controller, timeoutId } = createTimeoutController(timeoutMs);
-      const url = `${client.baseURL}/audio/speech`;
+      const url = client._buildApiUrl('/audio/speech');
       
       try {
         const response = await fetch(url, {
@@ -174,7 +174,7 @@ function createAudioModule(client) {
       const { controller, timeoutId } = createTimeoutController(timeoutMs);
       
       // Always use the standard transcriptions endpoint
-      const url = `${client.baseURL}/audio/transcriptions`;
+      const url = client._buildApiUrl('/audio/transcriptions');
       
       try {
         const response = await fetch(url, {

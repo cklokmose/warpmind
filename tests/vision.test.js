@@ -2,7 +2,7 @@
  * Comprehensive tests for vision module to achieve full coverage
  */
 
-const Warpmind = require('../src/warpmind');
+const WarpMind = require('../src/warpMind');
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -18,11 +18,11 @@ global.FileReader = jest.fn(() => {
   return instance;
 });
 
-describe('Warpmind Vision Module Tests', () => {
+describe('WarpMind Vision Module Tests', () => {
   let mind;
 
   beforeEach(() => {
-    mind = new Warpmind({
+    mind = new WarpMind({
       apiKey: 'test-api-key',
       baseURL: 'https://api.openai.com/v1'
     });

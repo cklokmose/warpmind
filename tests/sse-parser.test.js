@@ -1,9 +1,9 @@
 /**
- * Test suite for SSE Parser functionality in Warpmind
+ * Test suite for SSE Parser functionality in WarpMind
  * Tests the parseSSE function and its integration with streaming methods
  */
 
-const Warpmind = require('../src/warpmind.js');
+const WarpMind = require('../src/warpmind.js');
 
 // Mock eventsource-parser
 jest.mock('eventsource-parser', () => ({
@@ -12,12 +12,12 @@ jest.mock('eventsource-parser', () => ({
 
 const { createParser } = require('eventsource-parser');
 
-describe('Warpmind SSE Parser Tests', () => {
-  let warpmind;
+describe('WarpMind SSE Parser Tests', () => {
+  let warpMind;
   let mockParser;
 
   beforeEach(() => {
-    warpmind = new Warpmind({
+    warpMind = new WarpMind({
       apiKey: 'test-key',
       baseURL: 'https://api.test.com/v1'
     });
@@ -75,7 +75,7 @@ describe('Warpmind SSE Parser Tests', () => {
         };
       });
 
-      const result = await warpmind.parseSSE(mockReader, onEvent);
+      const result = await warpMind.parseSSE(mockReader, onEvent);
 
       expect(result).toBe('Hello world');
       expect(onEvent).toHaveBeenCalledTimes(2);
@@ -106,7 +106,7 @@ describe('Warpmind SSE Parser Tests', () => {
         }
       }));
 
-      const result = await warpmind.parseSSE(mockReader, onEvent);
+      const result = await warpMind.parseSSE(mockReader, onEvent);
 
       expect(result).toBe('');
       expect(onEvent).not.toHaveBeenCalled();
@@ -136,7 +136,7 @@ describe('Warpmind SSE Parser Tests', () => {
         }
       }));
 
-      const result = await warpmind.parseSSE(mockReader, onEvent);
+      const result = await warpMind.parseSSE(mockReader, onEvent);
 
       expect(result).toBe('');
       expect(onEvent).not.toHaveBeenCalled();
@@ -155,7 +155,7 @@ describe('Warpmind SSE Parser Tests', () => {
         feed: jest.fn()
       }));
 
-      const result = await warpmind.parseSSE(mockReader);
+      const result = await warpMind.parseSSE(mockReader);
 
       expect(result).toBe('');
     });
@@ -180,14 +180,14 @@ describe('Warpmind SSE Parser Tests', () => {
       fetch.mockResolvedValue(mockResponse);
 
       // Mock parseSSE to simulate the internal accumulation behavior
-      const parseSSESpy = jest.spyOn(warpmind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
+      const parseSSESpy = jest.spyOn(warpMind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
         // Simulate the parseSSE calling onEvent and building fullResponse internally
         onEvent({ role: 'assistant', delta: 'Test response' });
         return 'Test response'; // parseSSE returns the accumulated response
       });
 
       const onChunk = jest.fn();
-      const result = await warpmind.streamChat('Hello', onChunk);
+      const result = await warpMind.streamChat('Hello', onChunk);
 
       expect(parseSSESpy).toHaveBeenCalled();
       expect(result).toBe('Test response');
@@ -203,7 +203,7 @@ describe('Warpmind SSE Parser Tests', () => {
       fetch.mockRejectedValue(abortError);
 
       await expect(
-        warpmind.streamChat('Hello', null, { timeoutMs: 1000 })
+        warpMind.streamChat('Hello', null, { timeoutMs: 1000 })
       ).rejects.toThrow('Request timed out after 1000ms');
     });
 
@@ -223,14 +223,14 @@ describe('Warpmind SSE Parser Tests', () => {
       const onChunk = jest.fn((chunk) => chunks.push(chunk));
 
       // Mock parseSSE to call the event callback which streamChat converts to enhanced format
-      const parseSSESpy = jest.spyOn(warpmind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
+      const parseSSESpy = jest.spyOn(warpMind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
         // Simulate events - parseSSE calls onEvent with { role, delta }
         onEvent({ role: 'assistant', delta: 'Hello' });
         onEvent({ role: 'assistant', delta: ' world' });
         return 'Hello world';
       });
 
-      const result = await warpmind.streamChat('Test', onChunk);
+      const result = await warpMind.streamChat('Test', onChunk);
 
       expect(onChunk).toHaveBeenCalledTimes(2);
       // streamChat converts the parseSSE events to enhanced format: { type: "chunk", content }
@@ -254,7 +254,7 @@ describe('Warpmind SSE Parser Tests', () => {
         feed: jest.fn()
       }));
 
-      await expect(warpmind.parseSSE(mockReader)).rejects.toThrow('SSE parsing failed: Reader failed');
+      await expect(warpMind.parseSSE(mockReader)).rejects.toThrow('SSE parsing failed: Reader failed');
     });
 
     test('should handle SSE parser creation errors', async () => {
@@ -266,7 +266,7 @@ describe('Warpmind SSE Parser Tests', () => {
         throw new Error('Parser creation failed');
       });
 
-      await expect(warpmind.parseSSE(mockReader)).rejects.toThrow('Parser creation failed');
+      await expect(warpMind.parseSSE(mockReader)).rejects.toThrow('Parser creation failed');
     });
   });
 });

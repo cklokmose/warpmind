@@ -1,6 +1,6 @@
 /**
  * Test sui  beforeEach(() => {
-    warpmind = new Warpmind({
+    warpMind = new WarpMind({
       apiKey: 'test-key',
       baseURL: 'https://api.test.com/v1'
     });
@@ -16,22 +16,22 @@
       // Return much smaller delays for testing: 5ms, 10ms, 20ms, etc.
       return Math.max(5, 5 * Math.pow(2, attempt));
     });
-  }); back-off functionality in Warpmind
+  }); back-off functionality in WarpMind
  * Tests retry logic, timeout handling, and TimeoutError
  */
 
-// Import the Warpmind class for Node.js testing
-const Warpmind = require('../src/warpmind.js');
+// Import the WarpMind class for Node.js testing
+const WarpMind = require('../src/warpmind.js');
 const { TimeoutError, utils } = require('../src/warpmind.js');
 
 // Mock fetch for testing
 global.fetch = jest.fn();
 
-describe('Warpmind Exponential Back-off Tests', () => {
-  let warpmind;
+describe('WarpMind Exponential Back-off Tests', () => {
+  let warpMind;
 
   beforeEach(() => {
-    warpmind = new Warpmind({
+    warpMind = new WarpMind({
       apiKey: 'test-key',
       baseURL: 'https://api.test.com/v1'
     });
@@ -79,7 +79,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
         .mockResolvedValueOnce(mockResponse)
         .mockResolvedValueOnce(successResponse);
 
-      const result = await warpmind.chat('Test message', { temperature: 0.5 });
+      const result = await warpMind.chat('Test message', { temperature: 0.5 });
       
       // Should have succeeded after retry
       expect(result).toBe('Success!');
@@ -113,7 +113,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
         .mockResolvedValueOnce(mockResponse)
         .mockResolvedValueOnce(successResponse);
 
-      const result = await warpmind.chat('Hello', { timeoutMs: 10000 });
+      const result = await warpMind.chat('Hello', { timeoutMs: 10000 });
       expect(result).toBe('Success!');
       expect(fetch).toHaveBeenCalledTimes(2);
     });
@@ -142,7 +142,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
           .mockResolvedValueOnce(mockResponse)
           .mockResolvedValueOnce(successResponse);
 
-        const result = await warpmind.chat('Hello', { timeoutMs: 10000 });
+        const result = await warpMind.chat('Hello', { timeoutMs: 10000 });
         expect(result).toBe('Success!');
         expect(fetch).toHaveBeenCalledTimes(2);
       }
@@ -159,7 +159,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
 
       fetch.mockResolvedValueOnce(mockResponse);
 
-      await expect(warpmind.chat('Hello')).rejects.toThrow('API request failed: 400 Bad Request');
+      await expect(warpMind.chat('Hello')).rejects.toThrow('API request failed: 400 Bad Request');
       expect(fetch).toHaveBeenCalledTimes(1);
     });
 
@@ -181,7 +181,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
         .mockResolvedValueOnce(mockResponse)
         .mockResolvedValueOnce(successResponse);
 
-      const result = await warpmind.chat('Hello');
+      const result = await warpMind.chat('Hello');
       expect(result).toBe('Success!');
       expect(fetch).toHaveBeenCalledTimes(2);
     });
@@ -197,7 +197,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
 
       fetch.mockResolvedValue(mockResponse);
 
-      await expect(warpmind.makeRequest('/test', {}, { maxRetries: 2 })).rejects.toThrow('API request failed: 429 Too Many Requests');
+      await expect(warpMind.makeRequest('/test', {}, { maxRetries: 2 })).rejects.toThrow('API request failed: 429 Too Many Requests');
       expect(fetch).toHaveBeenCalledTimes(3); // Initial + 2 retries
     });
 
@@ -238,7 +238,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
       
       fetch.mockRejectedValue(abortError);
 
-      const promise = warpmind.chat('Hello', { timeoutMs: 1000 });
+      const promise = warpMind.chat('Hello', { timeoutMs: 1000 });
       
       await expect(promise).rejects.toThrow(TimeoutError);
       await expect(promise).rejects.toThrow('Request timed out after 1000ms');
@@ -250,7 +250,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
       
       fetch.mockRejectedValue(abortError);
 
-      const promise = warpmind.chat('Hello'); // No timeout specified
+      const promise = warpMind.chat('Hello'); // No timeout specified
       
       await expect(promise).rejects.toThrow(TimeoutError);
     });
@@ -263,7 +263,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
 
       fetch.mockResolvedValueOnce(mockResponse);
 
-      const result = await warpmind.chat('Hello', { timeoutMs: 1000 });
+      const result = await warpMind.chat('Hello', { timeoutMs: 1000 });
       
       expect(result).toBe('Success!');
     });
@@ -282,13 +282,13 @@ describe('Warpmind Exponential Back-off Tests', () => {
       fetch.mockResolvedValue(mockResponse);
 
       // Test chat method
-      await warpmind.chat('Hello', { timeoutMs: 5000 });
+      await warpMind.chat('Hello', { timeoutMs: 5000 });
       
       // Test complete method
-      await warpmind.complete('Hello', { timeoutMs: 5000 });
+      await warpMind.complete('Hello', { timeoutMs: 5000 });
       
       // Test ask method
-      await warpmind.ask('Hello', { timeoutMs: 5000 });
+      await warpMind.ask('Hello', { timeoutMs: 5000 });
 
       expect(fetch).toHaveBeenCalledTimes(3);
     });
@@ -306,7 +306,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
         .mockRejectedValueOnce(networkError)
         .mockResolvedValueOnce(successResponse);
 
-      const result = await warpmind.chat('Hello');
+      const result = await warpMind.chat('Hello');
       expect(result).toBe('Success!');
       expect(fetch).toHaveBeenCalledTimes(2);
     });
@@ -315,7 +315,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
       const networkError = new TypeError('Failed to fetch');
       fetch.mockRejectedValue(networkError);
 
-      await expect(warpmind.makeRequest('/test', {}, { maxRetries: 1 })).rejects.toThrow('Network error: Unable to connect to the API');
+      await expect(warpMind.makeRequest('/test', {}, { maxRetries: 1 })).rejects.toThrow('Network error: Unable to connect to the API');
       expect(fetch).toHaveBeenCalledTimes(2); // Initial + 1 retry
     });
   });
@@ -335,7 +335,7 @@ describe('Warpmind Exponential Back-off Tests', () => {
         .mockResolvedValueOnce(successResponse);
 
       // Should timeout first, then succeed on retry
-      await expect(warpmind.chat('Hello', { timeoutMs: 100 })).rejects.toThrow(TimeoutError);
+      await expect(warpMind.chat('Hello', { timeoutMs: 100 })).rejects.toThrow(TimeoutError);
     });
   });
 

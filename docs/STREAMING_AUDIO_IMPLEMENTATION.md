@@ -16,7 +16,7 @@ The textToSpeech and speechToText streaming features have been successfully impl
 
 **Usage Example:**
 ```javascript
-const audioBlob = await warpmind.textToSpeech('Hello world', {
+const audioBlob = await warpMind.textToSpeech('Hello world', {
   stream: true,
   onChunk: (chunk) => {
     console.log(`Received chunk: ${chunk.byteLength} bytes`);
@@ -39,7 +39,7 @@ const audioBlob = await warpmind.textToSpeech('Hello world', {
 
 **Usage Example:**
 ```javascript
-const finalText = await warpmind.speechToText(audioFile, {
+const finalText = await warpMind.speechToText(audioFile, {
   stream: true,
   onPartial: (partialText) => {
     console.log(`Partial: ${partialText}`);
@@ -82,7 +82,7 @@ All tests are passing with comprehensive coverage:
 
 ### Browser Compatibility
 - Works in all modern browsers with fetch and ReadableStream support
-- Proper UMD export with `window.Warpmind` and `window.TimeoutError`
+- Proper UMD export with `window.WarpMind` and `window.TimeoutError`
 - Built-in fallback mechanisms for unsupported features
 
 ### API Endpoints
@@ -93,7 +93,7 @@ All tests are passing with comprehensive coverage:
 ## File Changes
 
 ### Source Code
-- `src/warpmind.js` - Core implementation with streaming support
+- `src/warpMind.js` - Core implementation with streaming support
 - All new features are opt-in and backward compatible
 
 ### Tests

@@ -2,14 +2,14 @@
  * Simple integration test for the exponential back-off functionality
  */
 
-const Warpmind = require('../src/warpmind.js');
+const WarpMind = require('../src/warpmind.js');
 const { TimeoutError, utils } = require('../src/warpmind.js');
 
 describe('Exponential Back-off Integration Test', () => {
-  let warpmind;
+  let warpMind;
 
   beforeEach(() => {
-    warpmind = new Warpmind({
+    warpMind = new WarpMind({
       apiKey: 'test-key',
       baseURL: 'https://api.test.com/v1'
     });
@@ -65,9 +65,9 @@ describe('Exponential Back-off Integration Test', () => {
   });
 
   test('Default configuration is applied correctly', () => {
-    expect(warpmind.defaultTimeoutMs).toBe(30000);
-    expect(warpmind.apiKey).toBe('test-key');
-    expect(warpmind.baseURL).toBe('https://api.test.com/v1');
+    expect(warpMind.defaultTimeoutMs).toBe(30000);
+    expect(warpMind.apiKey).toBe('test-key');
+    expect(warpMind.baseURL).toBe('https://api.test.com/v1');
   });
 
   test('makeRequest accepts timeout options', async () => {
@@ -77,7 +77,7 @@ describe('Exponential Back-off Integration Test', () => {
       json: () => Promise.resolve({ test: 'data' })
     });
 
-    const result = await warpmind.makeRequest('/test', {}, { timeoutMs: 5000 });
+    const result = await warpMind.makeRequest('/test', {}, { timeoutMs: 5000 });
     expect(result).toEqual({ test: 'data' });
     expect(fetch).toHaveBeenCalledWith(
       'https://api.test.com/v1/test',

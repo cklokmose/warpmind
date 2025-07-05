@@ -2,16 +2,16 @@
  * Comprehensive tests for data processing module to achieve full coverage
  */
 
-const Warpmind = require('../src/warpmind');
+const WarpMind = require('../src/warpmind');
 
 // Mock fetch globally
 global.fetch = jest.fn();
 
-describe('Warpmind Data Processing Module Tests', () => {
+describe('WarpMind Data Processing Module Tests', () => {
   let mind;
 
   beforeEach(() => {
-    mind = new Warpmind({
+    mind = new WarpMind({
       apiKey: 'test-api-key',
       baseURL: 'https://api.openai.com/v1'
     });

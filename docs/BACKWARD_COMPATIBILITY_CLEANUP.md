@@ -5,13 +5,13 @@ This document summarizes the cleanup of backward compatibility code performed on
 ## Changes Made
 
 ### 1. Removed Fallback SSE Parser
-- **Location**: `parseSSE()` method in `src/warpmind.js`
+- **Location**: `parseSSE()` method in `src/warpMind.js`
 - **What was removed**: Manual SSE parsing fallback code (~30 lines)
 - **Rationale**: The `eventsource-parser` library is now a required dependency, so the fallback manual parsing is no longer needed
 - **Impact**: Code is cleaner and more maintainable; SSE parsing is more robust
 
 ### 2. Enhanced Error Handling for Missing Dependencies
-- **Location**: Import section at top of `src/warpmind.js`
+- **Location**: Import section at top of `src/warpMind.js`
 - **What changed**: Now throws clear errors if `eventsource-parser` is not available
 - **Before**: Silent fallback with warning messages
 - **After**: Immediate error with installation instructions
@@ -33,7 +33,7 @@ This document summarizes the cleanup of backward compatibility code performed on
 
 ## Files Modified
 
-1. `/src/warpmind.js` - Main library file
+1. `/src/warpMind.js` - Main library file
 2. `/tests/sse-parser.test.js` - SSE parser test suite
 
 ## Lines of Code Reduced

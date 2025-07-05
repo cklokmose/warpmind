@@ -1,5 +1,5 @@
 /**
- * Warpmind - A simple library for easy use of OpenAI-compatible APIs for students
+ * WarpMind - A simple library for easy use of OpenAI-compatible APIs for students
  * Designed to work with school proxy servers using custom authentication keys
  */
 
@@ -69,7 +69,7 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 }
 
-class Warpmind extends BaseClient {
+class WarpMind extends BaseClient {
   constructor(config = {}) {
     super(config); // Call BaseClient constructor
     
@@ -290,7 +290,7 @@ class Warpmind extends BaseClient {
     let hasToolCalls = false;
     
     try {
-      const response = await fetch(`${this.baseURL}/chat/completions`, {
+      const response = await fetch(this._buildApiUrl('/chat/completions'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -456,7 +456,7 @@ class Warpmind extends BaseClient {
 
 // Export for both CommonJS and ES modules
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = Warpmind;
+  module.exports = WarpMind;
   module.exports.TimeoutError = TimeoutError;
   // Also export utility functions for testing purposes
   module.exports.utils = {
@@ -468,10 +468,10 @@ if (typeof module !== 'undefined' && module.exports) {
     delayForRetry
   };
 } else if (typeof window !== 'undefined') {
-  window.Warpmind = Warpmind;
+  window.WarpMind = WarpMind;
   window.TimeoutError = TimeoutError;
   // Also expose utilities for testing in browser
-  window.WarpmindUtils = {
+  window.WarpMindUtils = {
     addJitter,
     calculateRetryDelay,
     shouldRetry,
@@ -481,5 +481,5 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-// Also attach TimeoutError to Warpmind class for webpack UMD compatibility
-Warpmind.TimeoutError = TimeoutError;
+// Also attach TimeoutError to WarpMind class for webpack UMD compatibility
+WarpMind.TimeoutError = TimeoutError;
