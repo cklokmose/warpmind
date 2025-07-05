@@ -71,6 +71,25 @@ if (typeof module !== 'undefined' && module.exports) {
 
 class WarpMind extends BaseClient {
   constructor(config = {}) {
+    // Handle API key auto-prompting in browser environment
+    if (!config.apiKey && typeof window !== 'undefined') {
+      // Check localStorage first
+      const savedApiKey = localStorage.getItem('warpmind-api-key');
+      if (savedApiKey) {
+        config.apiKey = savedApiKey;
+      } else {
+        // Prompt user for API key
+        const apiKey = prompt('WarpMind API Key Required\n\nPlease enter your API key to continue:');
+        if (apiKey && apiKey.trim()) {
+          config.apiKey = apiKey.trim();
+          // Save to localStorage for future use
+          localStorage.setItem('warpmind-api-key', config.apiKey);
+        } else {
+          throw new Error('API key is required to use WarpMind');
+        }
+      }
+    }
+    
     super(config); // Call BaseClient constructor
     
     // Initialize tool registry
@@ -90,6 +109,56 @@ class WarpMind extends BaseClient {
     // Integrate data processing module methods
     const dataProcessingMethods = createDataProcessingModule(this);
     Object.assign(this, dataProcessingMethods);
+  }
+
+  /**
+   * Update the API key and save it to localStorage (browser only)
+   * @param {string} apiKey - The new API key
+   */
+  setApiKey(apiKey) {
+    super.setApiKey(apiKey); // Call parent method
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('warpmind-api-key', apiKey);
+    }
+  }
+
+  /**
+   * Clear the saved API key from localStorage (browser only)
+   * @static
+   */
+  static clearSavedApiKey() {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('warpmind-api-key');
+    }
+  }
+
+  /**
+   * Get the saved API key from localStorage (browser only)
+   * @static
+   * @returns {string|null} - The saved API key or null if not found
+   */
+  static getSavedApiKey() {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('warpmind-api-key');
+    }
+    return null;
+  }
+
+  /**
+   * Prompt user for a new API key and save it (browser only)
+   * @static
+   * @returns {string|null} - The new API key or null if cancelled
+   */
+  static promptForApiKey() {
+    if (typeof window !== 'undefined') {
+      const apiKey = prompt('WarpMind API Key Required\n\nPlease enter your API key:');
+      if (apiKey && apiKey.trim()) {
+        const trimmedKey = apiKey.trim();
+        localStorage.setItem('warpmind-api-key', trimmedKey);
+        return trimmedKey;
+      }
+    }
+    return null;
   }
 
   /**
