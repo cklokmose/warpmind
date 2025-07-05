@@ -2,7 +2,7 @@
  * Comprehensive tests for vision module to achieve full coverage
  */
 
-const WarpMind = require('../src/warpMind');
+const WarpMind = require('../src/warpmind');
 
 // Mock fetch globally
 global.fetch = jest.fn();
