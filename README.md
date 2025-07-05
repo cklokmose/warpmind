@@ -15,7 +15,6 @@ A JavaScript library for AI integration designed for browser environments. Works
 
 - **No Installation** - Works directly in browsers, no build tools required
 - **Lightweight** - 16.1 KiB minified
-- **Auto API Key Management** - Browser prompts for and stores API keys
 - **Multi-modal** - Text, images, voice, and custom tool support
 - **Tool Calling** - Let AI use functions you write
 - **Streaming** - Real-time response streaming
@@ -47,7 +46,7 @@ Download `warpMind.js` from the `dist/` folder and include it in your HTML:
         // Initialize with warp.cs.au.dk/mind
         const mind = new WarpMind({
             baseURL: 'https://warp.cs.au.dk/mind/',
-            apiKey: 'your-auth-key'  // Optional: leave out for automatic prompt
+            apiKey: 'your-auth-key'
         });
 
         async function askAI() {
@@ -65,57 +64,17 @@ The library is now ready to use with https://warp.cs.au.dk/mind. You can start b
 
 ## Configuration
 
-### Simple Setup
-
 ```javascript
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',  // Warp CS API endpoint
-    apiKey: 'your-auth-key',                   // Your API key
+    apiKey: 'your-auth-key',                   // Your API key (see API Key Management below)
     model: 'gpt-3.5-turbo',                    // AI model to use
     temperature: 0.7,                          // Creativity (0 = precise, 2 = creative)
     timeoutMs: 30000                           // Timeout in milliseconds (default: 30 seconds)
 });
 ```
 
-### Automatic API Key Management (Browser Only)
-
-WarpMind can automatically manage your API key in the browser, useful for students and quick prototypes:
-
-```javascript
-// No API key needed - WarpMind will prompt and remember it!
-const mind = new WarpMind({
-    baseURL: 'https://warp.cs.au.dk/mind/',
-    model: 'gpt-3.5-turbo'
-});
-
-// First time: User will be prompted to enter API key
-// Future visits: API key is automatically loaded from browser storage
-const response = await mind.chat("Hello, AI!");
-```
-
-When you create a WarpMind instance without an API key in a browser environment:
-1. **First time**: User gets a prompt to enter their API key
-2. **Automatic save**: The API key is securely stored in the browser's localStorage
-3. **Future visits**: The saved API key is automatically loaded - no more prompts!
-
-### API Key Helper Methods
-
-```javascript
-// Manually set and save API key
-WarpMind.setApiKey('your-new-api-key');
-
-// Check if an API key is already saved
-const saved = WarpMind.getSavedApiKey();
-console.log('Saved API key:', saved ? 'Yes' : 'No');
-
-// Clear saved API key (user will be prompted again next time)
-WarpMind.clearSavedApiKey();
-
-// Force prompt for new API key
-const newKey = await WarpMind.promptForApiKey();
-```
-
-### Changing Settings Later
+You can also change settings after initialization:
 
 ```javascript
 mind.setApiKey('new-auth-key');
@@ -549,6 +508,46 @@ WarpMind automatically retries failed requests with exponential backoff:
 | "Rate limited" | Wait a moment - automatic retries will handle this |
 | "Image too large" | Compress image or use `detail: 'low'` |
 | Voice not working | Check browser permissions for microphone |
+
+## API Key Management
+
+For browser applications, WarpMind can automatically handle API key prompting and storage:
+
+```javascript
+// Create without API key - will prompt user automatically
+const mind = new WarpMind({
+    baseURL: 'https://warp.cs.au.dk/mind/',
+    model: 'gpt-3.5-turbo'
+});
+
+// First time: User will be prompted to enter API key
+// Future visits: API key is automatically loaded from browser storage
+const response = await mind.chat("Hello, AI!");
+```
+
+When you create a WarpMind instance without an API key in a browser environment:
+1. **First time**: User gets a prompt to enter their API key
+2. **Automatic save**: The API key is securely stored in the browser's localStorage
+3. **Future visits**: The saved API key is automatically loaded
+
+### API Key Helper Methods
+
+```javascript
+// Manually set and save API key
+WarpMind.setApiKey('your-new-api-key');
+
+// Check if an API key is already saved
+const saved = WarpMind.getSavedApiKey();
+console.log('Saved API key:', saved ? 'Yes' : 'No');
+
+// Clear saved API key (user will be prompted again next time)
+WarpMind.clearSavedApiKey();
+
+// Force prompt for new API key
+const newKey = await WarpMind.promptForApiKey();
+```
+
+This feature is particularly useful for students and quick prototypes where you want to minimize setup friction.
 
 ## Development & Building
 
