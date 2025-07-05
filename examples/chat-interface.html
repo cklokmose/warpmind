@@ -12,6 +12,7 @@
             margin: 0 auto;
             padding: 20px;
             background-color: #f5f5f5;
+            margin-left: 320px; /* Leave space for config box */
         }
         
         .chat-box {
@@ -27,21 +28,60 @@
             margin-bottom: 20px;
         }
         
-        /* Configuration section */
+        /* Configuration section - fixed in top left */
         .config {
+            position: fixed;
+            top: 20px;
+            left: 20px;
             background: #e3f2fd;
             padding: 15px;
             border-radius: 5px;
-            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-width: 280px;
+            font-size: 14px;
         }
         
         .config input, .config textarea, .config select {
             width: 100%;
-            padding: 8px;
-            margin: 5px 0;
+            padding: 6px;
+            margin: 3px 0;
             border: 1px solid #ddd;
             border-radius: 4px;
             box-sizing: border-box;
+            font-size: 12px;
+        }
+        
+        .config label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .config button {
+            padding: 6px 12px;
+            margin: 3px 2px;
+            font-size: 11px;
+        }
+        
+        .config textarea {
+            resize: vertical;
+            min-height: 40px;
+        }
+        
+        /* Responsive design for smaller screens */
+        @media (max-width: 768px) {
+            .config {
+                position: relative;
+                top: auto;
+                left: auto;
+                max-width: 100%;
+                margin-bottom: 20px;
+            }
+            
+            body {
+                margin-left: auto;
+            }
         }
         
         /* Chat messages area */
@@ -120,10 +160,7 @@
         <!-- Configuration -->
         <div class="config">
             <label>Server URL:</label>
-            <input type="text" id="serverURL" value="http://localhost:8080" placeholder="http://localhost:8080">
-            
-            <label>API Key (auto-saved):</label>
-            <input type="password" id="apiKey" placeholder="Will be prompted automatically if empty">
+            <input type="text" id="serverURL" value="https://warp.cs.au.dk/mind" placeholder="https://warp.cs.au.dk/mind">
             
             <label>AI Model:</label>
             <select id="aiModel">
@@ -137,7 +174,6 @@
             <textarea id="systemPrompt" rows="2">You are a helpful assistant. Give short, clear answers.</textarea>
             
             <button onclick="clearChat()">Clear Chat</button>
-            <button onclick="changeApiKey()">Change API Key</button>
             <button onclick="clearSavedApiKey()">Clear Saved API Key</button>
         </div>
         
@@ -166,7 +202,6 @@
         // Set up AI connection
         function connectToWarpMind() {
             let serverURL = document.getElementById('serverURL').value;
-            let apiKey = document.getElementById('apiKey').value;
             let model = document.getElementById('aiModel').value;
             
             if (!serverURL) {
@@ -174,20 +209,8 @@
                 return null;
             }
             
-            if (!serverURL.endsWith('/v1')) serverURL += '/v1';
-            
             // Create WarpMind instance - API key will be auto-prompted if not provided
-            const config = { 
-                baseURL: serverURL, 
-                model: model
-            };
-            
-            // Only include API key if provided in the form
-            if (apiKey && apiKey.trim()) {
-                config.apiKey = apiKey.trim();
-            }
-            
-            return new WarpMind(config);
+            return new WarpMind({ baseURL: serverURL, model: model });
         }
         
         // Add message to chat
@@ -289,39 +312,16 @@
                 '<div class="message system-message">Chat cleared! Start a new conversation.</div>';
         }
         
-        // Change API key
-        function changeApiKey() {
-            const newApiKey = WarpMind.promptForApiKey();
-            if (newApiKey) {
-                // Update the input field to show it's been set
-                document.getElementById('apiKey').placeholder = 'API key saved (click to change)';
-                showMessage('system', 'API key updated successfully!');
-                // Reset warpMind so it uses the new key
-                warpMind = null;
-            }
-        }
-        
         // Clear saved API key
         function clearSavedApiKey() {
             WarpMind.clearSavedApiKey();
-            document.getElementById('apiKey').placeholder = 'Will be prompted automatically if empty';
-            document.getElementById('apiKey').value = '';
             showMessage('system', 'Saved API key cleared!');
             // Reset warpMind so it will prompt again
             warpMind = null;
         }
         
-        // Load saved API key indicator on page load
-        function updateApiKeyDisplay() {
-            const savedApiKey = WarpMind.getSavedApiKey();
-            if (savedApiKey) {
-                document.getElementById('apiKey').placeholder = 'API key saved (click Change API Key to modify)';
-            }
-        }
-        
         // Focus input when page loads
         window.onload = function() {
-            updateApiKeyDisplay();
             document.getElementById('userInput').focus();
         };
     </script>
