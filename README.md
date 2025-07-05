@@ -1,6 +1,6 @@
 # WarpMind
 
-A JavaScript library for AI integration designed for browser environments. Works directly in browsers with no complex setup - just include one file and start building AI-powered applications with https://warp.cs.au.dk/mind.
+A JavaScript library for AI integration designed for browser environments. Works directly in browsers with minimal setup - include one file and start building AI applications with https://warp.cs.au.dk/mind.
 
 ## What Can You Build?
 
@@ -13,11 +13,12 @@ A JavaScript library for AI integration designed for browser environments. Works
 
 ## Key Features
 
-- **No Installation** - Works directly in browsers, no npm or build tools required
-- **Lightweight** - Only 16.1 KiB (smaller than most images!)
+- **No Installation** - Works directly in browsers, no build tools required
+- **Lightweight** - 16.1 KiB minified
+- **Auto API Key Management** - Browser prompts for and stores API keys
 - **Multi-modal** - Text, images, voice, and custom tool support
 - **Tool Calling** - Let AI use functions you write
-- **Streaming** - Get responses in real-time as AI generates them
+- **Streaming** - Real-time response streaming
 - **Auto-retry** - Built-in error handling and automatic retries with exponential backoff
 - **Usage Tracking** - Monitor token costs and usage
 - **Performance** - Optimized for fast loading and responsive interfaces
@@ -39,14 +40,14 @@ Download `warpMind.js` from the `dist/` folder and include it in your HTML:
     <button onclick="askAI()">Ask AI a Question</button>
     <div id="response"></div>
 
-    <!-- Include WarpMind (only line you need!) -->
+    <!-- Include WarpMind -->
     <script src="warpMind.js"></script>
     
     <script>
         // Initialize with warp.cs.au.dk/mind
         const mind = new WarpMind({
             baseURL: 'https://warp.cs.au.dk/mind/',
-            apiKey: 'your-auth-key'
+            apiKey: 'your-auth-key'  // Optional: leave out for automatic prompt
         });
 
         async function askAI() {
@@ -74,6 +75,44 @@ const mind = new WarpMind({
     temperature: 0.7,                          // Creativity (0 = precise, 2 = creative)
     timeoutMs: 30000                           // Timeout in milliseconds (default: 30 seconds)
 });
+```
+
+### Automatic API Key Management (Browser Only)
+
+WarpMind can automatically manage your API key in the browser, useful for students and quick prototypes:
+
+```javascript
+// No API key needed - WarpMind will prompt and remember it!
+const mind = new WarpMind({
+    baseURL: 'https://warp.cs.au.dk/mind/',
+    model: 'gpt-3.5-turbo'
+});
+
+// First time: User will be prompted to enter API key
+// Future visits: API key is automatically loaded from browser storage
+const response = await mind.chat("Hello, AI!");
+```
+
+When you create a WarpMind instance without an API key in a browser environment:
+1. **First time**: User gets a prompt to enter their API key
+2. **Automatic save**: The API key is securely stored in the browser's localStorage
+3. **Future visits**: The saved API key is automatically loaded - no more prompts!
+
+### API Key Helper Methods
+
+```javascript
+// Manually set and save API key
+WarpMind.setApiKey('your-new-api-key');
+
+// Check if an API key is already saved
+const saved = WarpMind.getSavedApiKey();
+console.log('Saved API key:', saved ? 'Yes' : 'No');
+
+// Clear saved API key (user will be prompted again next time)
+WarpMind.clearSavedApiKey();
+
+// Force prompt for new API key
+const newKey = await WarpMind.promptForApiKey();
 ```
 
 ### Changing Settings Later
@@ -105,13 +144,13 @@ console.log('Tokens used:', analysis.usage);
 ## Basic Chat Methods
 
 ### `chat(message, options)`
-The main method for talking to AI. Super flexible!
+The main method for communicating with AI. Supports both single messages and conversation history.
 
 ```javascript
 // Simple question
 const response = await mind.chat("Explain photosynthesis");
 
-// Conversation with history (the AI remembers context!)
+// Conversation with history
 const conversation = [
     { role: 'system', content: 'You are a helpful programming tutor' },
     { role: 'user', content: 'What is a for loop?' },
@@ -120,14 +159,14 @@ const conversation = [
 ];
 const response = await mind.chat(conversation);
 
-// Understanding message roles:
+// Message roles:
 // 'system' = Instructions for how AI should behave
 // 'user' = What the human says
 // 'assistant' = What the AI said before
 ```
 
 ### `streamChat(message, onChunk, options)`
-Get responses word-by-word as AI generates them (like ChatGPT!)
+Stream responses in real-time as AI generates them.
 
 ```javascript
 let fullResponse = '';
@@ -148,7 +187,7 @@ const response = await mind.complete("The three laws of robotics are");
 
 ### Image Analysis with `analyzeImage(image, prompt, options)`
 
-Make AI that can "see" and understand images!
+AI image analysis and description:
 
 ```javascript
 // Analyze uploaded image
@@ -165,7 +204,7 @@ const analysis = await mind.analyzeImage(
     }
 );
 
-// Creative applications
+// Other applications
 const meme = await mind.analyzeImage(imageFile, "Create a funny caption for this image");
 const code = await mind.analyzeImage(codeScreenshot, "Explain what this code does");
 
@@ -175,14 +214,14 @@ const result = await mind.analyzeImage(imageFile, "Analyze this graph", {
     includeUsage: true 
 });
 console.log('Analysis:', result.text);
-console.log('Tokens used:', result.usage); // High detail images use more tokens!
+console.log('Tokens used:', result.usage); // High detail images use more tokens
 ```
 
 **Important**: The `detail: 'high'` option provides more detailed analysis but uses approximately 2× the tokens (costs more).
 
 ### Text-to-Speech with `textToSpeech(text, options)`
 
-Make AI that can talk!
+Convert text to speech audio:
 
 ```javascript
 // Basic speech
@@ -208,7 +247,7 @@ const streamingAudio = await mind.textToSpeech("This is a longer text that will 
     }
 });
 
-// Create AI narrator for your projects!
+// Example: AI narrator
 const story = await mind.chat("Tell a 30-second adventure story");
 const narration = await mind.textToSpeech(story, { voice: 'fable', speed: 0.9 });
 await mind.playAudio(narration);
@@ -216,7 +255,7 @@ await mind.playAudio(narration);
 
 ### Speech-to-Text with `speechToText(audioFile, options)`
 
-Make AI that can listen!
+Convert audio to text:
 
 ```javascript
 // Transcribe uploaded audio
@@ -248,11 +287,11 @@ console.log('Audio processing cost:', result.usage);
 
 ### Voice Chat with `createVoiceChat(systemPrompt, options)`
 
-Create voice conversations with AI!
+Create voice conversations with AI:
 
 ```javascript
-// Create a voice tutor
-const voiceTutor = mind.createVoiceChat(
+// Create a voice assistant
+const voiceAssistant = mind.createVoiceChat(
     "You are a helpful assistant. Keep responses under 30 seconds.",
     {
         autoSpeak: true,     // AI automatically speaks responses
@@ -264,24 +303,24 @@ const voiceTutor = mind.createVoiceChat(
 
 // Start voice interaction
 document.getElementById('talkButton').onclick = async () => {
-    await voiceTutor.startRecording();
+    await voiceAssistant.startRecording();
     // User speaks...
-    const result = await voiceTutor.stopRecordingAndRespond();
+    const result = await voiceAssistant.stopRecordingAndRespond();
     
     console.log('You said:', result.userMessage);
     console.log('AI replied:', result.aiResponse);
     // AI response is automatically spoken if autoSpeak: true
 };
 
-// Voice chat also supports .abort() method
+// Stop recording and any ongoing processing
 document.getElementById('stopButton').onclick = () => {
-    voiceTutor.abort(); // Stops recording and any ongoing processing
+    voiceAssistant.abort();
 };
 ```
 
 ## Tool Calling - Let AI Use Your Functions
 
-This is where it gets really cool! You can teach AI how to use JavaScript functions you write. The AI will automatically decide when and how to call your functions to help answer questions.
+You can register JavaScript functions that AI can call automatically when needed. The AI will decide when and how to call your functions to help answer questions.
 
 ### `registerTool(toolDefinition)`
 
@@ -328,10 +367,10 @@ mind.registerTool({
     }
 });
 
-// Now chat normally - AI will use tools when needed!
+// Now chat normally - AI will use tools when appropriate
 const response = await mind.chat("What's the weather in Tokyo and what's 15 * 23?");
 // AI automatically calls getWeather('Tokyo') and calculate('15 * 23')
-// Then gives you a natural language response with the results!
+// Then provides a natural language response with the results
 ```
 
 ### Real-World Tool Examples
@@ -400,13 +439,13 @@ mind.registerTool({
 4. **AI calls your functions** with the right parameters
 5. **AI uses the results** to give a complete answer
 
-The AI is smart about when to use tools - it won't call them unnecessarily!
+The AI will not call tools unnecessarily - it only uses them when they're needed to answer the question.
 
-## Structured Data Processing
+### Structured Data Processing
 
 ### `process(prompt, data, schema, options)`
 
-Perfect for extracting and organizing information!
+Extract and organize information from unstructured data:
 
 ```javascript
 // Analyze customer feedback
@@ -513,12 +552,12 @@ WarpMind automatically retries failed requests with exponential backoff:
 
 ## Development & Building
 
-### For Users (Just Use It!)
+### For Users
 
-You don't need to build anything! Just:
+Download and use the library:
 1. Download `warpMind.js` from the `dist/` folder
 2. Include it in your HTML with `<script src="warpMind.js"></script>`
-3. Start coding!
+3. Start coding
 
 ### For Advanced Users & Contributors
 
@@ -571,7 +610,7 @@ warpMind/
 - **`examples/`** - Real working examples to learn from
 - **`tests/`** - Comprehensive test suite (71 tests, all passing)
 
-This lets advanced users work on the modular source code while keeping it simple for users who just want to use the library!
+This lets advanced users work on the modular source code while keeping it simple for users who just want to use the library.
 
 ## License
 
