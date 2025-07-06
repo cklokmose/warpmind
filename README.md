@@ -335,6 +335,47 @@ console.log('PDF breakdown:', storageInfo.pdfs);
 await mind.forgetPdf('research-paper');
 ```
 
+### Loading PDFs into Memory with `recall(pdfId)`
+
+The `recall()` method loads a previously processed PDF from storage back into memory, making it available for chat and tool calling without reprocessing:
+
+```javascript
+// Load a previously processed PDF into memory
+await mind.recall('research-paper');
+
+// After recall, the PDF is available for chat
+const answer = await mind.chat("What were the key findings?");
+
+// Recall multiple PDFs if needed
+await mind.recall('paper1');
+await mind.recall('paper2');
+```
+
+**Benefits of `recall()`:**
+- **Fast Loading**: Instantly loads PDF from cache without reprocessing
+- **Tool Registration**: Automatically registers search tools for AI to use
+- **Memory Efficient**: Only loads PDF data when needed
+- **Seamless Integration**: Works transparently with chat and other methods
+
+**When to use `recall()`:**
+- Loading PDFs that were processed in a previous session
+- Switching between different PDFs in your application
+- Building PDF library management interfaces
+- Implementing "quick load" functionality
+
+```javascript
+// Example: PDF library management
+const availablePdfs = await mind.listReadPdfs();
+console.log('Available PDFs:', availablePdfs);
+
+// Let user select a PDF to recall
+const selectedPdfId = 'user-selected-pdf';
+await mind.recall(selectedPdfId);
+
+// PDF is now ready for use
+const response = await mind.chat("Summarize this document");
+```
+
 ### Chat with PDF Content
 
 Once a PDF is loaded, WarpMind automatically registers retrieval tools that enable the AI to search and reference the document content:
@@ -392,7 +433,8 @@ See `examples/pdf-reader-demo.html` for a complete demonstration of PDF reading 
 - File upload and URL loading
 - Real-time processing progress
 - Chat interface with loaded PDFs
-- Storage management
+- PDF library management with recall functionality
+- Storage management and usage tracking
 - Multi-modal content analysis
 
 ---

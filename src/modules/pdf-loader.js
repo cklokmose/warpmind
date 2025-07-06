@@ -8,41 +8,15 @@ let pdfjsLib;
 let pdfLoadingPromise;
 
 if (typeof window !== 'undefined') {
-  // Browser environment - load PDF.js from CDN or bundle
-  if (typeof window.pdfjsLib === 'undefined') {
-    // Load PDF.js dynamically if not already loaded
-    pdfLoadingPromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-      script.onload = () => {
-        // Wait for pdfjsLib to be available on window
-        if (window.pdfjsLib) {
-          pdfjsLib = window.pdfjsLib;
-          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-          resolve();
-        } else {
-          // Fallback: wait a bit more for the library to initialize
-          setTimeout(() => {
-            if (window.pdfjsLib) {
-              pdfjsLib = window.pdfjsLib;
-              pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-              resolve();
-            } else {
-              reject(new Error('PDF.js failed to load'));
-            }
-          }, 100);
-        }
-      };
-      script.onerror = () => reject(new Error('Failed to load PDF.js'));
-      document.head.appendChild(script);
-    });
-  } else {
-    // PDF.js already loaded
+  // Browser environment - check for existing PDF.js or load dynamically
+  if (window.pdfjsLib) {
+    // PDF.js already loaded (e.g., via Webstrates, pre-bundled, etc.)
     pdfjsLib = window.pdfjsLib;
-    if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
+    configureWorker();
     pdfLoadingPromise = Promise.resolve();
+  } else {
+    // PDF.js not loaded - set up loading promise
+    pdfLoadingPromise = loadPdfJs();
   }
 } else {
   // Node.js environment - require PDF.js
@@ -59,6 +33,113 @@ if (typeof window !== 'undefined') {
   } catch (error) {
     console.warn('PDF.js not available in Node.js environment');
     pdfLoadingPromise = Promise.reject(error);
+  }
+}
+
+// Helper function to configure PDF.js worker
+function configureWorker() {
+  try {
+    if (pdfjsLib && pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  } catch (error) {
+    console.warn('Failed to configure PDF.js worker:', error);
+  }
+}
+
+// Robust PDF.js loading function
+async function loadPdfJs() {
+  return new Promise((resolve, reject) => {
+    // Check if we're in a restrictive environment (e.g., strict CSP)
+    if (isRestrictedEnvironment()) {
+      reject(new Error('PDF.js loading is restricted in this environment. Please pre-load PDF.js before initializing WarpMind.'));
+      return;
+    }
+
+    // First, wait a bit to see if PDF.js is being loaded externally (e.g., by Webstrates)
+    let attempts = 0;
+    const maxWaitAttempts = 20; // Wait up to 2 seconds
+    
+    const checkForExternalLoad = () => {
+      if (window.pdfjsLib) {
+        pdfjsLib = window.pdfjsLib;
+        configureWorker();
+        resolve();
+      } else if (attempts < maxWaitAttempts) {
+        attempts++;
+        setTimeout(checkForExternalLoad, 100);
+      } else {
+        // No external loading detected, try dynamic loading
+        loadPdfJsDynamically().then(resolve).catch(reject);
+      }
+    };
+    
+    checkForExternalLoad();
+  });
+}
+
+// Dynamic PDF.js loading with better error handling
+function loadPdfJsDynamically() {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    
+    let resolved = false;
+    
+    script.onload = () => {
+      if (resolved) return;
+      
+      // Use a more robust checking mechanism
+      let checkAttempts = 0;
+      const maxCheckAttempts = 50; // Check for up to 5 seconds
+      
+      const checkPdfJsAvailable = () => {
+        if (window.pdfjsLib) {
+          pdfjsLib = window.pdfjsLib;
+          configureWorker();
+          resolved = true;
+          resolve();
+        } else if (checkAttempts < maxCheckAttempts) {
+          checkAttempts++;
+          setTimeout(checkPdfJsAvailable, 100);
+        } else {
+          resolved = true;
+          reject(new Error('PDF.js library failed to initialize after loading'));
+        }
+      };
+      
+      checkPdfJsAvailable();
+    };
+    
+    script.onerror = () => {
+      if (resolved) return;
+      resolved = true;
+      reject(new Error('Failed to load PDF.js from CDN. Please check your internet connection or pre-load PDF.js.'));
+    };
+    
+    // Add timeout for the entire loading process
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        reject(new Error('PDF.js loading timed out'));
+      }
+    }, 30000); // 30 second timeout
+    
+    document.head.appendChild(script);
+  });
+}
+
+// Check if we're in a restrictive environment
+function isRestrictedEnvironment() {
+  try {
+    // Test if we can create and append a script element
+    const testScript = document.createElement('script');
+    testScript.src = 'data:text/javascript,';
+    document.head.appendChild(testScript);
+    document.head.removeChild(testScript);
+    return false;
+  } catch (error) {
+    return true; // CSP or other restrictions prevent script loading
   }
 }
 
@@ -412,12 +493,8 @@ function createPdfLoaderModule(client) {
         // Check if PDF is already processed
         const existingMetadata = await storage.getMetadata(pdfId);
         if (existingMetadata) {
-          // Load from cache
-          const chunks = await storage.getChunks(pdfId);
-          loadedPdfs.set(pdfId, { metadata: existingMetadata, chunks });
-          
-          // Register retrieval tool
-          this._registerPdfRetrievalTool(pdfId, existingMetadata.title);
+          // Use recall method for consistency
+          await this.recall(pdfId);
           
           if (onProgress) onProgress(1.0);
           return pdfId;
@@ -581,6 +658,33 @@ function createPdfLoaderModule(client) {
       
       // Unregister retrieval tool
       this._unregisterPdfRetrievalTool(pdfId);
+    },
+
+    async recall(pdfId) {
+      // Check if PDF is already loaded in memory
+      if (loadedPdfs.has(pdfId)) {
+        return pdfId; // Already loaded
+      }
+
+      // Check if PDF exists in storage
+      const metadata = await storage.getMetadata(pdfId);
+      if (!metadata) {
+        throw new Error(`PDF with ID "${pdfId}" not found. Use readPdf() to process it first.`);
+      }
+
+      // Load chunks from storage
+      const chunks = await storage.getChunks(pdfId);
+      if (!chunks || chunks.length === 0) {
+        throw new Error(`PDF "${pdfId}" has no content chunks. The PDF may be corrupted in storage.`);
+      }
+
+      // Load into memory cache
+      loadedPdfs.set(pdfId, { metadata, chunks });
+
+      // Register retrieval tools
+      this._registerPdfRetrievalTool(pdfId, metadata.title);
+
+      return pdfId;
     },
 
     async getPdfStorageInfo() {

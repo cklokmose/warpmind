@@ -326,7 +326,7 @@
         </div>
         
         <div class="section">
-            <h2>� Extract Structured Data</h2>
+            <h2>🔧 Extract Structured Data</h2>
             <p>Use the process method to extract structured information from your PDF content. Define a schema and let AI extract the data automatically.</p>
             
             <div class="preset-buttons">
@@ -370,8 +370,8 @@
         </div>
         
         <div class="section">
-            <h2>�📚 PDF Library</h2>
-            <p>Manage your loaded PDF documents and storage.</p>
+            <h2>📚 PDF Library</h2>
+            <p>Manage your loaded PDF documents and storage. Use the "Recall" button to load a PDF into memory and enable chat functionality. The currently loaded PDF is highlighted and marked as "Current".</p>
             
             <button class="button" id="refreshLibrary">Refresh Library</button>
             <button class="button" id="showStorage">Show Storage Info</button>
@@ -574,10 +574,17 @@
                     const pdfItem = document.createElement('div');
                     pdfItem.className = 'pdf-item';
                     
+                    // Check if this PDF is currently selected
+                    const isSelected = currentPdfId === pdf.id;
+                    if (isSelected) {
+                        pdfItem.style.backgroundColor = '#e8f4f8';
+                        pdfItem.style.border = '1px solid #3498db';
+                    }
+                    
                     const pdfInfo = document.createElement('div');
                     pdfInfo.className = 'pdf-info';
                     pdfInfo.innerHTML = `
-                        <div class="pdf-title">${pdf.title}</div>
+                        <div class="pdf-title">${pdf.title} ${isSelected ? '(Current)' : ''}</div>
                         <div class="pdf-meta">
                             ${pdf.numPages} pages • ${pdf.totalChunks} chunks • 
                             Processed: ${new Date(pdf.processedAt).toLocaleDateString()}
@@ -586,8 +593,12 @@
                     
                     const pdfActions = document.createElement('div');
                     pdfActions.innerHTML = `
-                        <button class="button" onclick="selectPdf('${pdf.id}')">Select</button>
-                        <button class="button" onclick="forgetPdf('${pdf.id}')" style="background: #e74c3c;">Forget</button>
+                        <button class="button" onclick="recallPdf('${pdf.id}')" ${isSelected ? 'disabled' : ''}>
+                            ${isSelected ? 'Current' : 'Recall'}
+                        </button>
+                        <button class="button" onclick="forgetPdf('${pdf.id}')" style="background: #e74c3c;">
+                            Forget
+                        </button>
                     `;
                     
                     pdfItem.appendChild(pdfInfo);
@@ -600,11 +611,33 @@
             }
         }
         
-        // Select PDF
-        function selectPdf(pdfId) {
-            currentPdfId = pdfId;
-            showMessage(`Selected PDF: ${pdfId}`, 'success');
-            enableChat();
+        // Select PDF using recall
+        async function selectPdf(pdfId) {
+            if (!mind) {
+                showMessage('WarpMind not initialized', 'error');
+                return;
+            }
+            
+            try {
+                showMessage(`Loading PDF ${pdfId} into memory...`, 'system');
+                
+                // Use recall to load the PDF into memory and register its tools
+                await mind.recall(pdfId);
+                
+                currentPdfId = pdfId;
+                showMessage(`PDF ${pdfId} loaded and ready for chat`, 'success');
+                enableChat();
+                updatePdfLibrary(); // Update the UI to show the current PDF
+                
+            } catch (error) {
+                showMessage(`Failed to load PDF ${pdfId}: ${error.message}`, 'error');
+                console.error('PDF recall error:', error);
+            }
+        }
+        
+        // Recall PDF wrapper function for button events
+        async function recallPdf(pdfId) {
+            await selectPdf(pdfId);
         }
         
         // Forget PDF
