@@ -34,7 +34,10 @@ Include the library and initialize:
     <button onclick="askAI()">Test AI</button>
     <div id="response"></div>
 
-    <script src="warpMind.js"></script>
+    <!-- Include WarpMind library -->
+    <script src="https://warp.cs.au.dk/libs/warpmind.js"></script>
+    <!-- Or use local file: <script src="warpmind.js"></script> -->
+    
     <script>
         const mind = new WarpMind({
             baseURL: 'https://warp.cs.au.dk/mind/',
@@ -56,7 +59,7 @@ Include the library and initialize:
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',  // API endpoint
     apiKey: 'your-auth-key',                 // Authentication
-    model: 'gpt-3.5-turbo',                  // Model selection
+    model: 'gpt-4o',                         // Model selection
     temperature: 0.7,                        // Response creativity (0-2)
     timeoutMs: 30000                         // Request timeout
 });
@@ -64,7 +67,7 @@ const mind = new WarpMind({
 // Runtime configuration changes
 mind.setApiKey('new-auth-key');
 mind.setBaseURL('https://warp.cs.au.dk/mind/');
-mind.setModel('gpt-4');
+mind.setModel('gpt-4o');
 ```
 
 ### Token Usage Tracking
@@ -279,6 +282,50 @@ const summary = await mind.chat("Summarize the methodology");
 const imageAnalysis = await mind.chat("Describe figure 3");
 ```
 
+### Structured Data Extraction
+
+Extract structured information directly from loaded PDFs using the `process` method:
+
+```javascript
+// Load PDF first
+await mind.readPdf('research-paper.pdf');
+// or recall: await mind.recall('paper-id');
+
+// Extract data using "pdf" shorthand
+const paperAnalysis = await mind.process(
+    "Extract key information from this research paper",
+    "pdf",
+    {
+        title: "Paper title",
+        authors: "Array of author names",
+        methodology: "Research methodology used",
+        keyFindings: "Array of main findings",
+        conclusions: "Main conclusions"
+    }
+);
+
+// Focused extraction
+const methodology = await mind.process(
+    "Focus on the methodology section",
+    "pdf",
+    {
+        method: "What method was applied",
+        sampleSize: "Number of participants",
+        procedure: "Step-by-step procedure"
+    }
+);
+
+// With usage tracking
+const result = await mind.process(
+    "Extract author information", 
+    "pdf", 
+    { authors: "Array of author names", institution: "Research institution" },
+    { includeUsage: true }
+);
+console.log('Data:', result.data);
+console.log('Cost:', result.usage);
+```
+
 ### Processing Pipeline
 
 - **Text Extraction**: PDF.js-based text extraction
@@ -393,46 +440,13 @@ const info = await mind.process(
 );
 ```
 
-### PDF Processing
-
-Extract structured data directly from loaded PDFs:
-
-```javascript
-// Load PDF first
-await mind.readPdf('research-paper.pdf');
-// or recall: await mind.recall('paper-id');
-
-// Extract data using "pdf" shorthand
-const paperAnalysis = await mind.process(
-    "Extract key information from this research paper",
-    "pdf",
-    {
-        title: "Paper title",
-        authors: "Array of author names",
-        methodology: "Research methodology used",
-        keyFindings: "Array of main findings",
-        conclusions: "Main conclusions"
-    }
-);
-
-// Focused extraction
-const methodology = await mind.process(
-    "Focus on the methodology section",
-    "pdf",
-    {
-        method: "What method was applied",
-        sampleSize: "Number of participants",
-        procedure: "Step-by-step procedure"
-    }
-);
-```
-
 ### Process Features
 
 - Schema validation and automatic retries
 - JSON object output
 - Usage tracking with `{ includeUsage: true }`
 - Error handling and graceful degradation
+- PDF processing with `"pdf"` shorthand (see PDF section)
 
 ```javascript
 const result = await mind.process(
@@ -488,7 +502,7 @@ Key prompting and storage for browser applications:
 // No API key needed - will prompt automatically
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',
-    model: 'gpt-3.5-turbo'
+    model: 'gpt-4o'
 });
 
 // First use prompts for key, subsequent visits load from localStorage
@@ -581,7 +595,7 @@ mind.registerTool({ name: "myTool", description: "...", parameters: {...}, handl
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/v1',  // Warp CS API endpoint
     apiKey: 'your-key',                        // Your API key
-    model: 'gpt-3.5-turbo',                    // AI model
+    model: 'gpt-4o',                           // AI model
     temperature: 0.7,                          // Creativity level
     timeoutMs: 30000                           // Default timeout
 });
