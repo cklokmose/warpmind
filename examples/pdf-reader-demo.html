@@ -210,6 +210,44 @@
         .example-link:hover {
             background: #d4e9f1;
         }
+        .schema-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+        .process-result {
+            background: white;
+            border: 1px solid #ecf0f1;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .json-output {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .preset-buttons {
+            margin-bottom: 10px;
+        }
+        .preset-buttons button {
+            margin-right: 5px;
+            margin-bottom: 5px;
+            font-size: 12px;
+            padding: 6px 12px;
+        }
     </style>
 </head>
 <body>
@@ -288,7 +326,51 @@
         </div>
         
         <div class="section">
-            <h2>📚 PDF Library</h2>
+            <h2>� Extract Structured Data</h2>
+            <p>Use the process method to extract structured information from your PDF content. Define a schema and let AI extract the data automatically.</p>
+            
+            <div class="preset-buttons">
+                <button class="button" onclick="loadPresetSchema('summary')">Document Summary</button>
+                <button class="button" onclick="loadPresetSchema('research')">Research Paper</button>
+                <button class="button" onclick="loadPresetSchema('authors')">Authors Only</button>
+                <button class="button" onclick="loadPresetSchema('financial')">Financial Document</button>
+                <button class="button" onclick="loadPresetSchema('contact')">Contact Information</button>
+                <button class="button" onclick="loadPresetSchema('custom')">Clear Schema</button>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label for="extractPrompt" style="display: block; margin-bottom: 5px; font-weight: bold;">Extraction Prompt:</label>
+                <input type="text" id="extractPrompt" class="chat-input" 
+                       placeholder="Describe what you want to extract (e.g., 'Extract key findings and methodology')" 
+                       value="Extract the main information from this document" />
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label for="extractSchema" style="display: block; margin-bottom: 5px; font-weight: bold;">JSON Schema (define structure):</label>
+                <textarea id="extractSchema" class="schema-input" 
+                          placeholder="Enter JSON schema object defining the structure you want...">
+{
+  "title": "Document title",
+  "authors": "Array of author names",
+  "abstract": "Document abstract or summary",
+  "keyFindings": "Array of key findings",
+  "methodology": "Research methodology used",
+  "conclusions": "Main conclusions"
+}
+                </textarea>
+            </div>
+            
+            <button class="button" id="extractData" disabled>Extract Structured Data</button>
+            <button class="button" onclick="clearProcessResult()">Clear Results</button>
+            
+            <div class="process-result" id="processResult" style="display: none;">
+                <h3>Extracted Data:</h3>
+                <div id="processOutput"></div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>�📚 PDF Library</h2>
             <p>Manage your loaded PDF documents and storage.</p>
             
             <button class="button" id="refreshLibrary">Refresh Library</button>
@@ -330,6 +412,11 @@
                 
                 showMessage('WarpMind initialized successfully', 'success');
                 updatePdfLibrary();
+                updateExtractButton();
+                
+                // Load default preset
+                loadPresetSchema('summary');
+                
             } catch (error) {
                 showMessage(`Failed to initialize WarpMind: ${error.message}`, 'error');
             }
@@ -409,6 +496,9 @@
             const chatInput = document.getElementById('chatInput');
             chatInput.disabled = false;
             chatInput.placeholder = 'Ask a question about the PDF...';
+            
+            // Enable extract button
+            updateExtractButton();
         }
         
         // Send chat message
@@ -530,6 +620,7 @@
                         currentPdfId = null;
                         const chatMessages = document.getElementById('chatMessages');
                         chatMessages.innerHTML = '<div class="message system">Load a PDF document first to start chatting</div>';
+                        updateExtractButton();
                     }
                     
                     updatePdfLibrary();
@@ -586,6 +677,203 @@
             }
         }
         
+        // Load preset schema
+        function loadPresetSchema(type) {
+            const promptInput = document.getElementById('extractPrompt');
+            const schemaInput = document.getElementById('extractSchema');
+            
+            const presets = {
+                summary: {
+                    prompt: "Extract a comprehensive summary of this document",
+                    schema: {
+                        title: "Document title",
+                        authors: "Array of author names",
+                        abstract: "Document abstract or summary",
+                        keyPoints: "Array of main points or findings",
+                        conclusions: "Main conclusions",
+                        documentType: "Type of document (research paper, report, etc.)"
+                    }
+                },
+                research: {
+                    prompt: "Extract research paper information and findings. Focus on the title page and first few paragraphs to identify document authors (not cited authors). Look for author names near the title, in headers, or with institutional affiliations.",
+                    schema: {
+                        title: "Research paper title from the title page",
+                        authors: "Array of document authors from title page or header (not cited authors). Include first and last names only, no titles or affiliations",
+                        authorAffiliations: "Array of institutional affiliations for the authors",
+                        abstract: "Paper abstract from the beginning of the document",
+                        researchQuestion: "Main research question or hypothesis",
+                        methodology: "Research methodology used",
+                        keyFindings: "Array of key findings from results section",
+                        limitations: "Study limitations mentioned",
+                        futureWork: "Suggestions for future research",
+                        keywords: "Array of keywords if explicitly listed"
+                    }
+                },
+                financial: {
+                    prompt: "Extract financial information and key metrics",
+                    schema: {
+                        documentType: "Type of financial document",
+                        period: "Time period covered",
+                        revenue: "Revenue figures mentioned",
+                        expenses: "Major expenses",
+                        profit: "Profit/loss information",
+                        keyMetrics: "Array of important financial metrics",
+                        risks: "Risk factors mentioned",
+                        outlook: "Future outlook or projections"
+                    }
+                },
+                contact: {
+                    prompt: "Extract contact information and organizational details",
+                    schema: {
+                        organizationName: "Organization or company name",
+                        contactPersons: "Array of people mentioned with roles",
+                        addresses: "Array of addresses",
+                        phoneNumbers: "Array of phone numbers",
+                        emails: "Array of email addresses",
+                        websites: "Array of websites or URLs",
+                        departments: "Array of departments mentioned"
+                    }
+                },
+                authors: {
+                    prompt: "Extract ONLY the document authors (not cited authors). Look specifically at the title page, header, or first page for names that appear with the document title or institutional affiliations. Ignore any names in references, citations, or bibliography sections.",
+                    schema: {
+                        title: "Document title from title page",
+                        documentAuthors: "Array of document authors from title page/header - first and last names only, no titles",
+                        authorInstitutions: "Array of institutional affiliations corresponding to each author",
+                        correspondingAuthor: "Email or contact info for corresponding author if mentioned",
+                        documentType: "Type of document (research paper, report, thesis, etc.)",
+                        abstract: "Document abstract if present",
+                        publicationInfo: "Journal name, conference, or publication venue if mentioned"
+                    }
+                },
+                custom: {
+                    prompt: "Extract the main information from this document",
+                    schema: {
+                        title: "Document title",
+                        summary: "Brief summary",
+                        keyInformation: "Array of key information points"
+                    }
+                }
+            };
+            
+            const preset = presets[type];
+            if (preset) {
+                promptInput.value = preset.prompt;
+                schemaInput.value = JSON.stringify(preset.schema, null, 2);
+            }
+        }
+        
+        // Extract structured data
+        async function extractStructuredData() {
+            if (!mind || !currentPdfId) {
+                showMessage('Please load a PDF first', 'error');
+                return;
+            }
+            
+            const prompt = document.getElementById('extractPrompt').value.trim();
+            const schemaText = document.getElementById('extractSchema').value.trim();
+            
+            if (!prompt || !schemaText) {
+                showMessage('Please enter both a prompt and schema', 'error');
+                return;
+            }
+            
+            let schema;
+            try {
+                schema = JSON.parse(schemaText);
+            } catch (error) {
+                showMessage('Invalid JSON schema format', 'error');
+                return;
+            }
+            
+            const extractButton = document.getElementById('extractData');
+            extractButton.disabled = true;
+            extractButton.textContent = 'Extracting...';
+            
+            try {
+                showMessage('Processing document and extracting structured data...', 'system');
+                
+                // For author extraction, get the first part of the document which typically contains metadata
+                const isAuthorExtraction = JSON.stringify(schema).toLowerCase().includes('author');
+                
+                let pdfData;
+                if (isAuthorExtraction) {
+                    // Get first few chunks which typically contain title page and metadata
+                    pdfData = await mind.chat(`Please use the search tool to find content from the beginning of PDF "${currentPdfId}" with query "title author abstract introduction" and return up to 4 chunks from the start of the document.`);
+                } else {
+                    // Get full PDF text for general processing
+                    pdfData = await mind.chat(`Please use the full text tool to get the complete content of the PDF "${currentPdfId}".`);
+                }
+                
+                // Enhanced prompt for author extraction
+                let enhancedPrompt = prompt;
+                if (isAuthorExtraction) {
+                    enhancedPrompt += "\n\nIMPORTANT: Focus on the document's own authors (from title page/header), NOT authors mentioned in citations or references. Look for names that appear:\n- Near the document title\n- In the header or footer\n- With institutional affiliations\n- Before the abstract\nIgnore names in bibliography, citations, or reference lists.";
+                }
+                
+                // Process the PDF data with the schema (without includeUsage to avoid API errors)
+                const result = await mind.process(enhancedPrompt, pdfData, schema);
+                
+                // Display results
+                displayProcessResult(result);
+                
+                showMessage('Structured data extracted successfully!', 'success');
+                
+            } catch (error) {
+                showMessage(`Failed to extract data: ${error.message}`, 'error');
+                console.error('Extraction error:', error);
+            } finally {
+                extractButton.disabled = false;
+                extractButton.textContent = 'Extract Structured Data';
+            }
+        }
+        
+        // Display process result
+        function displayProcessResult(result) {
+            const processResult = document.getElementById('processResult');
+            const processOutput = document.getElementById('processOutput');
+            
+            let html = '';
+            
+            if (result.data) {
+                html += '<div class="json-output">' + JSON.stringify(result.data, null, 2) + '</div>';
+            } else {
+                html += '<div class="json-output">' + JSON.stringify(result, null, 2) + '</div>';
+            }
+            
+            if (result.usage) {
+                html += `
+                    <div style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 4px; font-size: 12px;">
+                        <strong>Token Usage:</strong> 
+                        Prompt: ${result.usage.prompt_tokens || 0}, 
+                        Completion: ${result.usage.completion_tokens || 0}, 
+                        Total: ${result.usage.total_tokens || 0}
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 4px; font-size: 12px; color: #856404;">
+                        <strong>Note:</strong> Token usage information not available for this API endpoint.
+                    </div>
+                `;
+            }
+            
+            processOutput.innerHTML = html;
+            processResult.style.display = 'block';
+        }
+        
+        // Clear process result
+        function clearProcessResult() {
+            const processResult = document.getElementById('processResult');
+            processResult.style.display = 'none';
+        }
+        
+        // Update extract button state
+        function updateExtractButton() {
+            const extractButton = document.getElementById('extractData');
+            extractButton.disabled = !currentPdfId;
+        }
+        
         // Event listeners
         document.getElementById('loadPdf').addEventListener('click', () => {
             const fileInput = document.getElementById('pdfFile');
@@ -617,6 +905,8 @@
         document.getElementById('refreshLibrary').addEventListener('click', updatePdfLibrary);
         
         document.getElementById('showStorage').addEventListener('click', showStorageInfo);
+        
+        document.getElementById('extractData').addEventListener('click', extractStructuredData);
         
         // Initialize on page load
         window.addEventListener('load', initWarpMind);
