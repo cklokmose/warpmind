@@ -450,6 +450,12 @@ const pdfId = await mind.readPdf(file, {
   onProgress: (progress) => console.log(`${progress * 100}% done`)
 });
 
+// Example with the included test PDF
+const testPdfId = await mind.readPdf('examples/instrumental_interaction.pdf', {
+  processImages: true,
+  imageDetail: 'high'  // Good for analyzing academic diagrams
+});
+
 // Check if PDF(s) are already read and cached
 const isRead = await mind.isPdfRead(pdfId);
 const areRead = await mind.isPdfRead([pdfId1, pdfId2, pdfId3]);
@@ -477,6 +483,7 @@ const answer = await mind.chat("What does the chart in section 3 show?");
 - [ ] Add to `src/warpmind.js` as a mixin module
 - [ ] Update `webpack.config.js` to handle PDF.js dependencies
 - [ ] Add example in `examples/pdf-chat.html`
+- [ ] Use `examples/instrumental_interaction.pdf` for testing and demonstrations
 - [ ] Update README with PDF capabilities
 
 **Technical Considerations:**
@@ -513,6 +520,8 @@ const answer = await mind.chat("What does the chart in section 3 show?");
 - [ ] Storage quota handling tests
 - [ ] Storage size calculation and reporting tests
 - [ ] PDF metadata storage and retrieval tests
+- [ ] End-to-end tests using `examples/instrumental_interaction.pdf`
+- [ ] Multi-modal RAG tests with the example PDF (text + images)
 
 ### Benefits
 - **RAG Capabilities**: Enable AI to answer questions based on uploaded documents
