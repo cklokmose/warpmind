@@ -327,7 +327,7 @@
         
         <div class="section">
             <h2>🔧 Extract Structured Data</h2>
-            <p>Use the process method to extract structured information from your PDF content. Define a schema and let AI extract the data automatically.</p>
+            <p>Use the streamlined <code>process("prompt", "pdf", schema)</code> method to extract structured information directly from your PDF content. Define a schema and let AI extract the data automatically using the optimized PDF processing approach.</p>
             
             <div class="preset-buttons">
                 <button class="button" onclick="loadPresetSchema('summary')">Document Summary</button>
@@ -826,26 +826,16 @@
             try {
                 showMessage('Processing document and extracting structured data...', 'system');
                 
-                // For author extraction, get the first part of the document which typically contains metadata
-                const isAuthorExtraction = JSON.stringify(schema).toLowerCase().includes('author');
-                
-                let pdfData;
-                if (isAuthorExtraction) {
-                    // Get first few chunks which typically contain title page and metadata
-                    pdfData = await mind.chat(`Please use the search tool to find content from the beginning of PDF "${currentPdfId}" with query "title author abstract introduction" and return up to 4 chunks from the start of the document.`);
-                } else {
-                    // Get full PDF text for general processing
-                    pdfData = await mind.chat(`Please use the full text tool to get the complete content of the PDF "${currentPdfId}".`);
-                }
-                
                 // Enhanced prompt for author extraction
                 let enhancedPrompt = prompt;
+                const isAuthorExtraction = JSON.stringify(schema).toLowerCase().includes('author');
                 if (isAuthorExtraction) {
                     enhancedPrompt += "\n\nIMPORTANT: Focus on the document's own authors (from title page/header), NOT authors mentioned in citations or references. Look for names that appear:\n- Near the document title\n- In the header or footer\n- With institutional affiliations\n- Before the abstract\nIgnore names in bibliography, citations, or reference lists.";
                 }
                 
-                // Process the PDF data with the schema (without includeUsage to avoid API errors)
-                const result = await mind.process(enhancedPrompt, pdfData, schema);
+                // Use the streamlined PDF processing approach
+                // This replaces the previous clunky method of manually getting PDF text via chat
+                const result = await mind.process(enhancedPrompt, "pdf", schema);
                 
                 // Display results
                 displayProcessResult(result);

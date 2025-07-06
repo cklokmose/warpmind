@@ -434,8 +434,11 @@ See `examples/pdf-reader-demo.html` for a complete demonstration of PDF reading 
 - Real-time processing progress
 - Chat interface with loaded PDFs
 - PDF library management with recall functionality
+- **Structured data extraction using `process("prompt", "pdf", schema)`**
 - Storage management and usage tracking
 - Multi-modal content analysis
+
+The demo showcases the streamlined PDF processing approach using `mind.process("Extract info", "pdf", schema)` for cleaner, more efficient data extraction from PDF documents.
 
 ---
 
@@ -621,6 +624,71 @@ const report = await mind.process(
         recommendation: "advice for student"
     }
 );
+```
+
+#### PDF Processing with `process()`
+
+For PDF documents, you can use `"pdf"` as the data parameter to extract structured information directly from the currently loaded PDF:
+
+```javascript
+// Load a PDF first
+await mind.readPdf('research-paper.pdf');
+// or recall a previously loaded PDF
+await mind.recall('research-paper-id');
+
+// Extract structured data from the PDF
+const paperAnalysis = await mind.process(
+    "Extract key information from this research paper",
+    "pdf",  // Special keyword for PDF processing
+    {
+        title: "Paper title",
+        authors: "Array of author names",
+        methodology: "Research methodology used",
+        keyFindings: "Array of main findings",
+        conclusions: "Main conclusions",
+        limitations: "Study limitations mentioned"
+    }
+);
+
+// Extract specific information
+const methodology = await mind.process(
+    "Focus on the methodology section",
+    "pdf",
+    {
+        method: "What method was applied",
+        sampleSize: "Number of participants or data points",
+        procedure: "Step-by-step procedure",
+        tools: "Tools or software used"
+    }
+);
+
+// Financial document processing
+const financial = await mind.process(
+    "Extract financial metrics",
+    "pdf",
+    {
+        revenue: "Total revenue figures",
+        expenses: "Major expense categories",
+        profit: "Net profit or loss",
+        period: "Time period covered"
+    }
+);
+```
+
+**Benefits of PDF processing with `process()`:**
+- **Automatic Content Retrieval**: No need to manually get PDF text
+- **Smart Content Selection**: AI automatically finds relevant sections
+- **Context-Aware**: Understands document structure and content
+- **Efficient**: Optimized for PDF content extraction
+
+**Traditional vs. PDF Processing:**
+```javascript
+// Traditional approach (still works)
+const pdfText = await mind.chat("Get full text from PDF");
+const result = await mind.process("Extract info", pdfText, schema);
+
+// New streamlined approach
+const result = await mind.process("Extract info", "pdf", schema);
 ```
 
 The `process` method automatically:
@@ -814,6 +882,15 @@ const text = await mind.speechToText(audioFile)
 
 // Structured data processing
 const result = await mind.process("Extract info", data, schema)
+
+// PDF processing (shorthand)
+const pdfData = await mind.process("Extract info", "pdf", schema)
+
+// PDF management
+await mind.readPdf(file)          // Load PDF
+await mind.recall("pdf-id")       // Recall from storage
+await mind.listReadPdfs()         // List all PDFs
+await mind.forgetPdf("pdf-id")    // Remove from storage
 
 // Register custom AI tools
 mind.registerTool({ name: "myTool", description: "...", parameters: {...}, handler: async (args) => {...} })
