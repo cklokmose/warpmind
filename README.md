@@ -136,7 +136,7 @@ Process images with AI vision models:
 const imageFile = document.getElementById('imageInput').files[0];
 const description = await mind.analyzeImage(imageFile, "Describe this image");
 
-// From URL
+// From URL (must be direct image URL)
 const analysis = await mind.analyzeImage(
     'https://example.com/photo.jpg',
     'What emotions are shown?',
@@ -152,6 +152,8 @@ const result = await mind.analyzeImage(imageFile, "Analyze this graph", {
     includeUsage: true 
 });
 ```
+
+**Note**: When using URLs, provide direct links to image files (`.jpg`, `.png`, `.gif`, `.webp`). Page URLs containing images won't work.
 
 ### Text-to-Speech
 
@@ -242,9 +244,16 @@ const pdfId = await mind.readPdf(pdfFile, {
     onProgress: (progress) => console.log(`${Math.round(progress * 100)}%`)
 });
 
-// From URL
+// From URL (full URL)
 const pdfId = await mind.readPdf('https://example.com/document.pdf');
+
+// From relative URL (relative to your web page)
+const pdfId = await mind.readPdf('documents/research-paper.pdf');
+const pdfId = await mind.readPdf('./instrumental_interaction.pdf');
+const pdfId = await mind.readPdf('/static/pdfs/document.pdf');
 ```
+
+The library supports File objects from input elements and HTTP URLs (both absolute and relative to your web server).
 
 ### PDF Management
 

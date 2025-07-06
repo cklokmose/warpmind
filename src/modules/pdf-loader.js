@@ -470,17 +470,22 @@ function createPdfLoaderModule(client) {
 
         // Handle different input types
         if (typeof src === 'string') {
-          if (src.startsWith('http')) {
-            // URL input
-            const response = await fetch(src);
-            if (!response.ok) throw new Error(`Failed to fetch PDF: ${response.statusText}`);
-            const arrayBuffer = await response.arrayBuffer();
-            file = new Uint8Array(arrayBuffer);
-            pdfId = pdfId || src.split('/').pop().replace('.pdf', '');
-          } else {
-            // File path input
-            throw new Error('File path inputs are not supported in browser environment');
+          // Check if it's a local file system path (Windows/Unix absolute paths)
+          const isLocalFilePath = /^([a-zA-Z]:\\|\/[^\/]|~\/|\.{1,2}[\\\/])/.test(src) && 
+                                 !src.startsWith('./') && 
+                                 !src.startsWith('../') && 
+                                 !src.startsWith('/');
+          
+          if (isLocalFilePath) {
+            throw new Error('Local file system paths are not supported in browser environment. Use relative URLs or full URLs instead.');
           }
+          
+          // All other strings are treated as URLs (relative or absolute)
+          const response = await fetch(src);
+          if (!response.ok) throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+          const arrayBuffer = await response.arrayBuffer();
+          file = new Uint8Array(arrayBuffer);
+          pdfId = pdfId || src.split('/').pop().replace('.pdf', '');
         } else if (src instanceof File) {
           // File object input
           const arrayBuffer = await src.arrayBuffer();
