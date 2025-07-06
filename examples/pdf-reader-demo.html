@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WarpMind PDF Reader Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        .section h2 {
+            color: #34495e;
+            margin-top: 0;
+        }
+        .file-input {
+            margin-bottom: 15px;
+        }
+        .file-input input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #bdc3c7;
+            border-radius: 6px;
+            background: white;
+        }
+        .url-input {
+            margin-bottom: 15px;
+        }
+        .url-input input[type="url"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .button:hover {
+            background: #2980b9;
+        }
+        .button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #3498db;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+        .chat-container {
+            margin-top: 20px;
+        }
+        .chat-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .chat-messages {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ecf0f1;
+            border-radius: 6px;
+            padding: 15px;
+            background: white;
+            margin-top: 10px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .message.user {
+            background: #e3f2fd;
+            margin-left: 20px;
+        }
+        .message.ai {
+            background: #f1f8e9;
+            margin-right: 20px;
+        }
+        .message.system {
+            background: #fff3e0;
+            font-style: italic;
+            text-align: center;
+        }
+        .pdf-list {
+            background: white;
+            border: 1px solid #ecf0f1;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        .pdf-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .pdf-item:last-child {
+            border-bottom: none;
+        }
+        .pdf-info {
+            flex: 1;
+        }
+        .pdf-title {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .pdf-meta {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        .storage-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        .error {
+            color: #e74c3c;
+            background: #fdf2f2;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #27ae60;
+            background: #f0fff4;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .option-group {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ecf0f1;
+        }
+        .option-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        .option-group input,
+        .option-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+        }
+        .example-link {
+            display: inline-block;
+            background: #e8f4f8;
+            color: #2c3e50;
+            padding: 8px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .example-link:hover {
+            background: #d4e9f1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 WarpMind PDF Reader Demo</h1>
+        
+        <div class="section">
+            <h2>📄 Load PDF Document</h2>
+            <p>Upload a PDF file or provide a URL to get started. The PDF will be processed to extract text and images, then indexed for semantic search.</p>
+            
+            <div class="file-input">
+                <input type="file" id="pdfFile" accept=".pdf" />
+            </div>
+            
+            <div class="url-input">
+                <input type="url" id="pdfUrl" placeholder="Or enter PDF URL (e.g., https://example.com/document.pdf)" />
+            </div>
+            
+            <div class="options">
+                <div class="option-group">
+                    <label for="chunkTokens">Chunk Size (tokens):</label>
+                    <input type="number" id="chunkTokens" value="400" min="100" max="1000" />
+                </div>
+                <div class="option-group">
+                    <label for="embedModel">Embedding Model:</label>
+                    <select id="embedModel">
+                        <option value="text-embedding-3-small">text-embedding-3-small</option>
+                        <option value="text-embedding-3-large">text-embedding-3-large</option>
+                        <option value="text-embedding-ada-002">text-embedding-ada-002</option>
+                    </select>
+                </div>
+                <div class="option-group">
+                    <label for="processImages">Process Images:</label>
+                    <select id="processImages">
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+                <div class="option-group">
+                    <label for="imageDetail">Image Detail:</label>
+                    <select id="imageDetail">
+                        <option value="low">Low (faster, cheaper)</option>
+                        <option value="high">High (slower, more expensive)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="button" id="loadPdf">Load PDF</button>
+            <button class="button" id="loadExamplePdf">Load Example PDF</button>
+            
+            <div class="progress-bar" id="progressBar" style="display: none;">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            
+            <div id="loadStatus"></div>
+            
+            <a href="examples/instrumental_interaction.pdf" class="example-link" target="_blank">
+                📖 View Example PDF (Instrumental Interaction)
+            </a>
+        </div>
+        
+        <div class="section">
+            <h2>💬 Chat with PDF</h2>
+            <p>Ask questions about the loaded PDF content. The AI will use semantic search to find relevant information.</p>
+            
+            <div class="chat-container">
+                <input type="text" class="chat-input" id="chatInput" 
+                       placeholder="Ask a question about the PDF (e.g., 'What is the main topic?', 'Describe the charts in section 3')" />
+                <button class="button" id="sendMessage">Send</button>
+                <button class="button" id="clearChat">Clear Chat</button>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message system">Load a PDF document first to start chatting</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📚 PDF Library</h2>
+            <p>Manage your loaded PDF documents and storage.</p>
+            
+            <button class="button" id="refreshLibrary">Refresh Library</button>
+            <button class="button" id="showStorage">Show Storage Info</button>
+            
+            <div class="pdf-list" id="pdfList">
+                <div class="message system">No PDFs loaded yet</div>
+            </div>
+            
+            <div class="storage-info" id="storageInfo" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Load PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // Configure PDF.js worker
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
+
+    <!-- Load WarpMind -->
+    <script src="../dist/warpmind.js?v=1.1.1"></script>
+    
+    <script>
+        let mind;
+        let currentPdfId = null;
+        
+        // Initialize WarpMind
+        async function initWarpMind() {
+            try {
+                mind = new WarpMind({
+                    // API key will be prompted automatically for real OpenAI API
+                    // For demo, you can also set baseURL to a different endpoint
+                    baseURL: 'https://warp.cs.au.dk/mind',
+                    model: 'gpt-4o'
+                });
+                
+                showMessage('WarpMind initialized successfully', 'success');
+                updatePdfLibrary();
+            } catch (error) {
+                showMessage(`Failed to initialize WarpMind: ${error.message}`, 'error');
+            }
+        }
+        
+        // Show status message
+        function showMessage(message, type = 'system') {
+            const statusDiv = document.getElementById('loadStatus');
+            statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+            
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 5000);
+            }
+        }
+        
+        // Update progress bar
+        function updateProgress(progress) {
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            
+            if (progress === 0) {
+                progressBar.style.display = 'none';
+            } else {
+                progressBar.style.display = 'block';
+                progressFill.style.width = `${progress * 100}%`;
+                
+                if (progress >= 1) {
+                    setTimeout(() => {
+                        progressBar.style.display = 'none';
+                    }, 1000);
+                }
+            }
+        }
+        
+        // Load PDF
+        async function loadPdf(source) {
+            if (!mind) {
+                showMessage('Please initialize WarpMind first', 'error');
+                return;
+            }
+            
+            const options = {
+                chunkTokens: parseInt(document.getElementById('chunkTokens').value),
+                embedModel: document.getElementById('embedModel').value,
+                processImages: document.getElementById('processImages').value === 'true',
+                imageDetail: document.getElementById('imageDetail').value,
+                onProgress: updateProgress
+            };
+            
+            try {
+                showMessage('Loading PDF...', 'system');
+                updateProgress(0.05);
+                
+                const pdfId = await mind.readPdf(source, options);
+                currentPdfId = pdfId;
+                
+                showMessage(`PDF loaded successfully! ID: ${pdfId}`, 'success');
+                updateProgress(1);
+                
+                // Update UI
+                updatePdfLibrary();
+                enableChat();
+                
+            } catch (error) {
+                showMessage(`Failed to load PDF: ${error.message}`, 'error');
+                updateProgress(0);
+            }
+        }
+        
+        // Enable chat interface
+        function enableChat() {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = '<div class="message system">PDF loaded! Ask questions about the document.</div>';
+            
+            const chatInput = document.getElementById('chatInput');
+            chatInput.disabled = false;
+            chatInput.placeholder = 'Ask a question about the PDF...';
+        }
+        
+        // Send chat message
+        async function sendMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const message = chatInput.value.trim();
+            
+            if (!message || !mind || !currentPdfId) return;
+            
+            const chatMessages = document.getElementById('chatMessages');
+            
+            // Add user message
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user';
+            userMessage.textContent = message;
+            chatMessages.appendChild(userMessage);
+            
+            // Clear input
+            chatInput.value = '';
+            
+            // Add thinking message
+            const thinkingMessage = document.createElement('div');
+            thinkingMessage.className = 'message system';
+            thinkingMessage.textContent = 'AI is thinking...';
+            chatMessages.appendChild(thinkingMessage);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            try {
+                const response = await mind.chat(message);
+                
+                // Remove thinking message
+                chatMessages.removeChild(thinkingMessage);
+                
+                // Add AI response
+                const aiMessage = document.createElement('div');
+                aiMessage.className = 'message ai';
+                aiMessage.textContent = response;
+                chatMessages.appendChild(aiMessage);
+                
+            } catch (error) {
+                // Remove thinking message
+                chatMessages.removeChild(thinkingMessage);
+                
+                // Add error message
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'message system';
+                errorMessage.textContent = `Error: ${error.message}`;
+                chatMessages.appendChild(errorMessage);
+            }
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Update PDF library
+        async function updatePdfLibrary() {
+            if (!mind) return;
+            
+            try {
+                const pdfs = await mind.listReadPdfs();
+                const pdfList = document.getElementById('pdfList');
+                
+                if (pdfs.length === 0) {
+                    pdfList.innerHTML = '<div class="message system">No PDFs loaded yet</div>';
+                    return;
+                }
+                
+                pdfList.innerHTML = '';
+                
+                for (const pdf of pdfs) {
+                    const pdfItem = document.createElement('div');
+                    pdfItem.className = 'pdf-item';
+                    
+                    const pdfInfo = document.createElement('div');
+                    pdfInfo.className = 'pdf-info';
+                    pdfInfo.innerHTML = `
+                        <div class="pdf-title">${pdf.title}</div>
+                        <div class="pdf-meta">
+                            ${pdf.numPages} pages • ${pdf.totalChunks} chunks • 
+                            Processed: ${new Date(pdf.processedAt).toLocaleDateString()}
+                        </div>
+                    `;
+                    
+                    const pdfActions = document.createElement('div');
+                    pdfActions.innerHTML = `
+                        <button class="button" onclick="selectPdf('${pdf.id}')">Select</button>
+                        <button class="button" onclick="forgetPdf('${pdf.id}')" style="background: #e74c3c;">Forget</button>
+                    `;
+                    
+                    pdfItem.appendChild(pdfInfo);
+                    pdfItem.appendChild(pdfActions);
+                    pdfList.appendChild(pdfItem);
+                }
+                
+            } catch (error) {
+                console.error('Failed to update PDF library:', error);
+            }
+        }
+        
+        // Select PDF
+        function selectPdf(pdfId) {
+            currentPdfId = pdfId;
+            showMessage(`Selected PDF: ${pdfId}`, 'success');
+            enableChat();
+        }
+        
+        // Forget PDF
+        async function forgetPdf(pdfId) {
+            if (!mind) return;
+            
+            if (confirm(`Are you sure you want to forget PDF "${pdfId}"? This will remove all cached data.`)) {
+                try {
+                    await mind.forgetPdf(pdfId);
+                    showMessage(`PDF ${pdfId} forgotten`, 'success');
+                    
+                    if (currentPdfId === pdfId) {
+                        currentPdfId = null;
+                        const chatMessages = document.getElementById('chatMessages');
+                        chatMessages.innerHTML = '<div class="message system">Load a PDF document first to start chatting</div>';
+                    }
+                    
+                    updatePdfLibrary();
+                } catch (error) {
+                    showMessage(`Failed to forget PDF: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        // Show storage info
+        async function showStorageInfo() {
+            if (!mind) return;
+            
+            try {
+                const storageInfo = await mind.getPdfStorageInfo();
+                const storageDiv = document.getElementById('storageInfo');
+                
+                let html = `
+                    <h3>Storage Information</h3>
+                    <p><strong>Total Size:</strong> ${storageInfo.totalSize.toFixed(2)} ${storageInfo.unit}</p>
+                    <h4>PDF Breakdown:</h4>
+                `;
+                
+                if (storageInfo.pdfs.length === 0) {
+                    html += '<p>No PDFs stored</p>';
+                } else {
+                    html += '<ul>';
+                    for (const pdf of storageInfo.pdfs) {
+                        html += `
+                            <li>
+                                <strong>${pdf.title}</strong>: ${pdf.size.toFixed(2)} MB 
+                                (${pdf.chunks} chunks, processed ${new Date(pdf.processedAt).toLocaleDateString()})
+                            </li>
+                        `;
+                    }
+                    html += '</ul>';
+                }
+                
+                storageDiv.innerHTML = html;
+                storageDiv.style.display = 'block';
+                
+            } catch (error) {
+                showMessage(`Failed to get storage info: ${error.message}`, 'error');
+            }
+        }
+        
+        // Clear chat
+        function clearChat() {
+            const chatMessages = document.getElementById('chatMessages');
+            if (currentPdfId) {
+                chatMessages.innerHTML = '<div class="message system">Chat cleared. PDF is still loaded.</div>';
+            } else {
+                chatMessages.innerHTML = '<div class="message system">Load a PDF document first to start chatting</div>';
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('loadPdf').addEventListener('click', () => {
+            const fileInput = document.getElementById('pdfFile');
+            const urlInput = document.getElementById('pdfUrl');
+            
+            if (fileInput.files[0]) {
+                loadPdf(fileInput.files[0]);
+            } else if (urlInput.value.trim()) {
+                loadPdf(urlInput.value.trim());
+            } else {
+                showMessage('Please select a file or enter a URL', 'error');
+            }
+        });
+        
+        document.getElementById('loadExamplePdf').addEventListener('click', () => {
+            loadPdf('examples/instrumental_interaction.pdf');
+        });
+        
+        document.getElementById('sendMessage').addEventListener('click', sendMessage);
+        
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        document.getElementById('clearChat').addEventListener('click', clearChat);
+        
+        document.getElementById('refreshLibrary').addEventListener('click', updatePdfLibrary);
+        
+        document.getElementById('showStorage').addEventListener('click', showStorageInfo);
+        
+        // Initialize on page load
+        window.addEventListener('load', initWarpMind);
+    </script>
+</body>
+</html>

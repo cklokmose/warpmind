@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WarpMind PDF Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .method-test {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WarpMind PDF Functionality Test</h1>
+    <p>This page tests the PDF reading and RAG functionality in WarpMind.</p>
+    
+    <button onclick="runTests()">Run PDF Tests</button>
+    <button onclick="clearResults()">Clear Results</button>
+    
+    <div id="results"></div>
+
+    <script src="../dist/warpmind.js"></script>
+    <script>
+        let results = document.getElementById('results');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+            console.log(message);
+        }
+        
+        function clearResults() {
+            results.innerHTML = '';
+        }
+        
+        async function runTests() {
+            clearResults();
+            log('Starting PDF functionality tests...', 'info');
+            
+            try {
+                // Test 1: Initialize WarpMind
+                log('Test 1: Initializing WarpMind...', 'info');
+                const mind = new WarpMind({
+                    apiKey: 'test-key',
+                    baseURL: 'https://api.test.com'
+                });
+                log('✓ WarpMind initialized successfully', 'success');
+                
+                // Test 2: Check if PDF methods are available
+                log('Test 2: Checking PDF methods availability...', 'info');
+                const pdfMethods = ['readPdf', 'isPdfRead', 'listReadPdfs', 'forgetPdf', 'getPdfStorageInfo'];
+                let methodsAvailable = true;
+                
+                for (const method of pdfMethods) {
+                    if (typeof mind[method] === 'function') {
+                        log(`✓ ${method}() method is available`, 'success');
+                    } else {
+                        log(`✗ ${method}() method is NOT available`, 'error');
+                        methodsAvailable = false;
+                    }
+                }
+                
+                if (methodsAvailable) {
+                    log('✓ All PDF methods are available', 'success');
+                } else {
+                    log('✗ Some PDF methods are missing', 'error');
+                }
+                
+                // Test 3: Test getPdfStorageInfo (should work without API calls)
+                log('Test 3: Testing getPdfStorageInfo...', 'info');
+                try {
+                    const storageInfo = await mind.getPdfStorageInfo();
+                    log(`✓ getPdfStorageInfo() returned: ${JSON.stringify(storageInfo)}`, 'success');
+                } catch (error) {
+                    log(`✗ getPdfStorageInfo() failed: ${error.message}`, 'error');
+                }
+                
+                // Test 4: Test listReadPdfs (should work without API calls)
+                log('Test 4: Testing listReadPdfs...', 'info');
+                try {
+                    const pdfList = await mind.listReadPdfs();
+                    log(`✓ listReadPdfs() returned: ${JSON.stringify(pdfList)}`, 'success');
+                } catch (error) {
+                    log(`✗ listReadPdfs() failed: ${error.message}`, 'error');
+                }
+                
+                // Test 5: Test isPdfRead (should work without API calls)
+                log('Test 5: Testing isPdfRead...', 'info');
+                try {
+                    const isRead = await mind.isPdfRead('test-pdf-id');
+                    log(`✓ isPdfRead() returned: ${isRead}`, 'success');
+                } catch (error) {
+                    log(`✗ isPdfRead() failed: ${error.message}`, 'error');
+                }
+                
+                // Test 6: Test with multiple IDs
+                log('Test 6: Testing isPdfRead with multiple IDs...', 'info');
+                try {
+                    const isRead = await mind.isPdfRead(['pdf1', 'pdf2']);
+                    log(`✓ isPdfRead() with array returned: ${JSON.stringify(isRead)}`, 'success');
+                } catch (error) {
+                    log(`✗ isPdfRead() with array failed: ${error.message}`, 'error');
+                }
+                
+                // Test 7: Check if PDF.js is available
+                log('Test 7: Checking PDF.js availability...', 'info');
+                if (typeof window.pdfjsLib !== 'undefined') {
+                    log('✓ PDF.js is available in browser', 'success');
+                } else {
+                    log('ℹ PDF.js will be loaded dynamically when needed', 'info');
+                }
+                
+                // Test 8: Check IndexedDB availability
+                log('Test 8: Checking IndexedDB availability...', 'info');
+                if (typeof window.indexedDB !== 'undefined') {
+                    log('✓ IndexedDB is available', 'success');
+                } else {
+                    log('✗ IndexedDB is NOT available', 'error');
+                }
+                
+                log('All basic PDF functionality tests completed!', 'success');
+                
+            } catch (error) {
+                log(`✗ Test failed with error: ${error.message}`, 'error');
+                console.error('Test error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

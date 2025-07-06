@@ -28,7 +28,7 @@ class BaseClient {
   constructor(config = {}) {
     this.baseURL = config.baseURL || 'https://api.openai.com';
     this.apiKey = config.apiKey || '';
-    this.model = config.model || 'gpt-4o';
+    this.model = config.model || 'gpt-4o-mini';
     this.temperature = config.temperature || 0.7;
     this.defaultTimeoutMs = config.defaultTimeoutMs || 30000;
   }

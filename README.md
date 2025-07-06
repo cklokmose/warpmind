@@ -10,12 +10,15 @@ A JavaScript library for AI integration designed for browser environments. Works
 - **Smart Tools** - Let AI use custom functions you create
 - **Data Processing** - Extract and structure information from text
 - **Real-time Apps** - Stream AI responses as they're generated
+- **Document Analysis** - Read and analyze PDFs with semantic search
+- **Knowledge Base** - Build searchable document collections with RAG
 
 ## Key Features
 
 - **No Installation** - Works directly in browsers, no build tools required
-- **Lightweight** - 16.1 KiB minified
-- **Multi-modal** - Text, images, voice, and custom tool support
+- **Lightweight** - 368 KiB with PDF support, modular design
+- **Multi-modal** - Text, images, voice, PDFs, and custom tool support
+- **PDF Reading** - Extract text and images from PDFs with semantic search
 - **Tool Calling** - Let AI use functions you write
 - **Streaming** - Real-time response streaming
 - **Auto-retry** - Built-in error handling and automatic retries with exponential backoff
@@ -277,21 +280,138 @@ document.getElementById('stopButton').onclick = () => {
 };
 ```
 
-## Tool Calling - Let AI Use Your Functions
+## PDF Reading & RAG (Retrieval-Augmented Generation)
 
-You can register JavaScript functions that AI can call automatically when needed. The AI will decide when and how to call your functions to help answer questions.
+WarpMind can read PDF documents, extract both text and images, and provide semantic search capabilities. This enables powerful document analysis and question-answering based on PDF content.
 
-### `registerTool(toolDefinition)`
+### Loading PDFs with `readPdf(source, options)`
+
+```javascript
+// Load from file input
+const fileInput = document.getElementById('pdfFile');
+const pdfFile = fileInput.files[0];
+
+const pdfId = await mind.readPdf(pdfFile, {
+    id: 'research-paper',                     // Optional custom ID
+    chunkTokens: 400,                        // Tokens per chunk (default: 400)
+    embedModel: 'text-embedding-3-small',    // Embedding model
+    processImages: true,                     // Extract and analyze images (default: true)
+    imageDetail: 'high',                     // 'low' or 'high' for image analysis
+    imagePrompt: 'Describe this chart or diagram for academic use',
+    onProgress: (progress) => {
+        console.log(`Processing: ${Math.round(progress * 100)}%`);
+    }
+});
+
+// Load from URL
+const pdfId = await mind.readPdf('https://example.com/document.pdf');
+
+// Load example PDF included with WarpMind
+const exampleId = await mind.readPdf('examples/instrumental_interaction.pdf', {
+    processImages: true,
+    imageDetail: 'high'  // Good for analyzing academic diagrams
+});
+```
+
+### PDF Management
+
+```javascript
+// Check if PDFs are loaded
+const isLoaded = await mind.isPdfRead('research-paper');
+const loadedStatus = await mind.isPdfRead(['paper1', 'paper2', 'paper3']);
+
+// List all loaded PDFs
+const pdfList = await mind.listReadPdfs();
+console.log('Loaded PDFs:', pdfList);
+// Returns: [{ id: 'research-paper', title: 'Research Paper', numPages: 25, totalChunks: 67, processedAt: '2024-01-15T10:30:00Z' }]
+
+// Get storage information
+const storageInfo = await mind.getPdfStorageInfo();
+console.log('Storage used:', storageInfo.totalSize, storageInfo.unit);
+console.log('PDF breakdown:', storageInfo.pdfs);
+// Returns: { totalSize: 15.2, unit: 'MB', pdfs: [{id: 'pdf1', size: 5.1, chunks: 45}, ...] }
+
+// Remove a PDF from storage
+await mind.forgetPdf('research-paper');
+```
+
+### Chat with PDF Content
+
+Once a PDF is loaded, WarpMind automatically registers retrieval tools that enable the AI to search and reference the document content:
+
+```javascript
+// After loading a PDF, the AI can answer questions about it
+const answer = await mind.chat("What is the main conclusion of this research?");
+const summary = await mind.chat("Summarize the methodology section");
+const imageAnalysis = await mind.chat("What does the chart in figure 3 show?");
+
+// AI automatically searches relevant content and provides contextualized answers
+```
+
+### Multi-Modal PDF Processing
+
+WarpMind processes both text and images from PDFs:
+
+- **Text Extraction**: Extracts all text content using PDF.js
+- **Image Analysis**: Captures charts, diagrams, and figures
+- **Vision AI**: Analyzes images using vision models to generate descriptions
+- **Semantic Chunking**: Combines text and image descriptions into searchable chunks
+- **Persistent Storage**: Caches processed content in IndexedDB for fast reload
+
+### Advanced PDF Features
+
+```javascript
+// Fine-tuned processing for academic papers
+const academicPdf = await mind.readPdf(file, {
+    chunkTokens: 600,                        // Larger chunks for academic content
+    processImages: true,
+    imageDetail: 'high',                     // Better for complex diagrams
+    imagePrompt: 'Describe this scientific diagram, chart, or figure in detail, including any data trends, labels, and key findings shown.',
+    embedModel: 'text-embedding-3-large'    // More accurate embeddings
+});
+
+// Optimized for speed and cost
+const quickPdf = await mind.readPdf(file, {
+    chunkTokens: 300,                        // Smaller chunks
+    processImages: false,                    // Skip image processing
+    embedModel: 'text-embedding-3-small'    // Faster, cheaper embeddings
+});
+```
+
+### PDF Use Cases
+
+- **Research Papers**: Analyze academic papers, understand methodologies, extract key findings
+- **Technical Documentation**: Search through manuals, understand procedures, find specific information
+- **Legal Documents**: Review contracts, find clauses, understand terms
+- **Educational Materials**: Study textbooks, answer questions about content, create summaries
+- **Reports**: Extract insights from business reports, financial documents, analysis papers
+
+### PDF Example Demo
+
+See `examples/pdf-reader-demo.html` for a complete demonstration of PDF reading capabilities, including:
+- File upload and URL loading
+- Real-time processing progress
+- Chat interface with loaded PDFs
+- Storage management
+- Multi-modal content analysis
+
+---
+
+## 🔧 Tool Calling System
+
+Let AI use custom functions you create. Perfect for connecting AI to databases, APIs, or custom logic.
+
+### Basic Tool Registration
 
 ```javascript
 // Register a weather lookup tool
 mind.registerTool({
     name: 'getWeather',
-    description: 'Get current weather for any city',
+    description: 'Get current weather for a city',
     parameters: {
         type: 'object',
         properties: {
-            city: { type: 'string', description: 'The city name' },
+            city: { type: 'string', description: 'City name' },
             units: { type: 'string', enum: ['celsius', 'fahrenheit'] }
         },
         required: ['city']
@@ -399,6 +519,19 @@ mind.registerTool({
 5. **AI uses the results** to give a complete answer
 
 The AI will not call tools unnecessarily - it only uses them when they're needed to answer the question.
+
+### Tool Calling Compatibility
+
+**✅ Methods that support tool calling:**
+- `chat()` - Full tool calling support
+- `ask()` - Supports tools (wrapper around chat)
+- `analyzeImage()` - Can use tools alongside image analysis
+- `process()` - Can use tools for data processing
+
+**❌ Methods that don't support tool calling:**
+- `streamChat()` - No tool support (streaming conflicts with tool execution)
+- `complete()` - Uses different API endpoint that doesn't support tools
+- Audio methods (`textToSpeech`, `speechToText`, `createVoiceChat`) - Voice interfaces don't support tools
 
 ### Structured Data Processing
 
@@ -593,7 +726,7 @@ warpMind/
 │   └── streaming/
 │       └── sse-parser.js  # Real-time streaming
 ├── dist/
-│   └── warpMind.js        # Built library (single file, 16.1 KiB)
+│   └── warpMind.js        # Built library (single file, 368 KiB)
 ├── examples/              # Working demos (start here!)
 ├── tests/                 # Node.js tests (71 tests)
 ├── docs/                  # Documentation

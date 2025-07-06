@@ -91,10 +91,20 @@ function createVisionModule(client) {
         }
       ];
 
-      return await client.chat(messages, { 
-        model: options.model || 'gpt-4o',
-        ...options 
-      });
+      // Extract only valid chat options, excluding vision-specific options like 'detail'
+      const chatOptions = {
+        model: options.model || 'gpt-4o'
+      };
+      
+      // Only pass through recognized chat options
+      if (options.temperature !== undefined) chatOptions.temperature = options.temperature;
+      if (options.max_tokens !== undefined) chatOptions.max_tokens = options.max_tokens;
+      if (options.top_p !== undefined) chatOptions.top_p = options.top_p;
+      if (options.frequency_penalty !== undefined) chatOptions.frequency_penalty = options.frequency_penalty;
+      if (options.presence_penalty !== undefined) chatOptions.presence_penalty = options.presence_penalty;
+      if (options.timeoutMs !== undefined) chatOptions.timeoutMs = options.timeoutMs;
+
+      return await client.chat(messages, chatOptions);
     }
   };
 }

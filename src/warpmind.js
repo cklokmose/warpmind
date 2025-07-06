@@ -21,6 +21,9 @@ let createVisionModule;
 // Import data processing module factory
 let createDataProcessingModule;
 
+// Import PDF loader module factory
+let createPdfLoaderModule;
+
 if (typeof module !== 'undefined' && module.exports) {
   // Node.js environment
   const utils = require('./util.js');
@@ -42,6 +45,9 @@ if (typeof module !== 'undefined' && module.exports) {
   
   // Import data processing module in Node.js
   createDataProcessingModule = require('./modules/data-processing.js');
+  
+  // Import PDF loader module in Node.js
+  createPdfLoaderModule = require('./modules/pdf-loader.js');
 } else {
   // Browser environment - webpack should bundle util.js
   try {
@@ -64,6 +70,9 @@ if (typeof module !== 'undefined' && module.exports) {
     
     // Import data processing module in browser
     createDataProcessingModule = require('./modules/data-processing.js');
+    
+    // Import PDF loader module in browser
+    createPdfLoaderModule = require('./modules/pdf-loader.js');
   } catch (error) {
     throw new Error('Utility functions are required. Please ensure util.js is bundled with your application.');
   }
@@ -109,6 +118,10 @@ class WarpMind extends BaseClient {
     // Integrate data processing module methods
     const dataProcessingMethods = createDataProcessingModule(this);
     Object.assign(this, dataProcessingMethods);
+    
+    // Integrate PDF loader module methods
+    const pdfLoaderMethods = createPdfLoaderModule(this);
+    Object.assign(this, pdfLoaderMethods);
   }
 
   /**
@@ -520,6 +533,31 @@ class WarpMind extends BaseClient {
     } catch (error) {
       throw new Error(`Tool execution failed: ${error.message}`);
     }
+  }
+
+  /**
+   * Generate embeddings for text using OpenAI's embedding models
+   * @param {string} text - Text to generate embeddings for
+   * @param {Object} options - Optional parameters
+   * @param {string} options.model - Embedding model to use (default: 'text-embedding-3-small')
+   * @param {number} options.timeoutMs - Request timeout in milliseconds
+   * @returns {Promise<number[]>} - The embedding vector
+   */
+  async embed(text, options = {}) {
+    const { model = 'text-embedding-3-small', timeoutMs = this.timeoutMs } = options;
+    
+    const requestBody = {
+      model: model,
+      input: text
+    };
+
+    const response = await this.makeRequest('/embeddings', requestBody, { timeoutMs });
+
+    if (response.data && response.data.length > 0) {
+      return response.data[0].embedding;
+    }
+    
+    throw new Error('Failed to generate embedding: No embedding data returned');
   }
 }
 
