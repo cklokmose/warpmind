@@ -393,3 +393,137 @@ class WarpMind extends BaseClient {
 - ✅ Maintain backward compatibility during development phase
 - ✅ **COMPLETED**: Cleaned up backward compatibility code since library is not yet in production
 - ✅ All new features should be opt-in where applicable
+
+## 📝 TODO: Phase 7 - PDF Reading & RAG (Retrieval-Augmented Generation)
+
+**Priority**: Medium
+**Estimated Size**: Large (300-500 lines)
+**Dependencies**: PDF.js, embeddings API, vector storage
+
+### Goal
+Add PDF reading capabilities to WarpMind with semantic search and retrieval-augmented generation. This would allow users to load PDFs, chunk and index them, and have AI answer questions based on the PDF content.
+
+### Implementation Plan
+
+**Create `src/modules/pdf-loader.js`:**
+- [ ] `readPdf(src, options)` method that:
+  - Accepts File objects or URLs
+  - Extracts text from PDF pages using PDF.js
+  - Extracts images, diagrams, and figures from PDF pages
+  - Analyzes images using vision AI and generates text descriptions
+  - Chunks text into manageable pieces (configurable token size)
+  - Generates embeddings for each chunk (text + image descriptions)
+  - Stores vectors in IndexedDB with metadata
+  - Auto-registers a retrieval tool for semantic search
+  - Returns a PDF ID for future reference
+- [ ] `getPdfStorageInfo()` method that:
+  - Calculates total IndexedDB storage used by PDF data
+  - Returns storage breakdown by individual PDFs
+  - Provides size information in human-readable format (MB/GB)
+  - Helps users manage storage quota efficiently
+
+**Key Features:**
+- [ ] **PDF Text Extraction**: Use PDF.js to extract text from PDF pages
+- [ ] **PDF Image Extraction**: Extract images, diagrams, charts, and figures from PDF pages
+- [ ] **Vision AI Integration**: Analyze extracted images using WarpMind's vision capabilities
+- [ ] **Multi-modal Chunking**: Combine text and image descriptions into coherent chunks
+- [ ] **Intelligent Chunking**: Split text into chunks based on token count or semantic boundaries
+- [ ] **Embedding Generation**: Generate embeddings using OpenAI's embedding models
+- [ ] **Vector Storage**: Store embeddings in IndexedDB for persistence across browser sessions
+- [ ] **Semantic Search**: Find relevant chunks using cosine similarity
+- [ ] **Storage Management**: Monitor and manage IndexedDB storage usage
+- [ ] **Auto-Tool Registration**: Automatically register retrieval tools for loaded PDFs
+- [ ] **Persistent Caching**: Cache processed PDFs in IndexedDB to avoid reprocessing on page reload
+- [ ] **Progress Callbacks**: Provide progress feedback during PDF processing
+- [ ] **Fast Reload**: Previously processed PDFs load instantly from IndexedDB cache
+
+**API Design:**
+```javascript
+// Read and index a PDF with image processing
+const pdfId = await mind.readPdf(file, {
+  id: 'custom-id',           // Optional custom ID
+  chunkTokens: 400,          // Tokens per chunk
+  embedModel: 'text-embedding-3-small',
+  processImages: true,       // Extract and analyze images (default: true)
+  imageDetail: 'low',        // 'low' or 'high' for image analysis detail
+  imagePrompt: 'Describe this image, chart, or diagram in detail for academic use',
+  onProgress: (progress) => console.log(`${progress * 100}% done`)
+});
+
+// Check if PDF(s) are already read and cached
+const isRead = await mind.isPdfRead(pdfId);
+const areRead = await mind.isPdfRead([pdfId1, pdfId2, pdfId3]);
+
+// List all read PDFs
+const readPdfs = await mind.listReadPdfs();
+
+// Check storage usage for PDF data
+const storageInfo = await mind.getPdfStorageInfo();
+// Returns: { totalSize: 15.2, unit: 'MB', pdfs: [{id: 'pdf1', size: 5.1}, ...] }
+
+// Remove a PDF from memory and cache
+await mind.forgetPdf(pdfId);
+
+// AI can now answer questions about both text and images
+const answer = await mind.chat("What does the chart in section 3 show?");
+```
+
+**Dependencies to Add:**
+- [ ] PDF.js (for PDF text extraction)
+- [ ] ml-distance-cosine (for vector similarity)
+- [ ] Consider IndexedDB wrapper for easier vector storage
+
+**Integration Points:**
+- [ ] Add to `src/warpmind.js` as a mixin module
+- [ ] Update `webpack.config.js` to handle PDF.js dependencies
+- [ ] Add example in `examples/pdf-chat.html`
+- [ ] Update README with PDF capabilities
+
+**Technical Considerations:**
+- [ ] Handle large PDFs efficiently (streaming/chunking)
+- [ ] Implement proper error handling for PDF parsing
+- [ ] Consider memory usage with large embeddings
+- [ ] Add cleanup methods for removing indexed PDFs from IndexedDB
+- [ ] Handle PDF security/permissions appropriately
+- [ ] Implement IndexedDB schema versioning for future compatibility
+- [ ] Add PDF metadata storage (title, author, date processed, chunk count)
+- [ ] Consider compression for stored vectors to save space
+- [ ] Handle IndexedDB storage quota limits gracefully
+- [ ] Implement storage size tracking and reporting
+- [ ] Add warnings when approaching storage limits
+- [ ] **Image Processing Considerations**:
+  - [ ] Extract images from PDF pages using PDF.js rendering
+  - [ ] Filter out decorative images vs. content images
+  - [ ] Handle different image formats (JPEG, PNG, embedded graphics)
+  - [ ] Batch image analysis to avoid rate limits
+  - [ ] Cache image descriptions to avoid reprocessing
+  - [ ] Consider image size optimization before analysis
+  - [ ] Handle OCR for images containing text
+  - [ ] Associate images with their surrounding text context
+
+**Testing:**
+- [ ] Unit tests for PDF text extraction
+- [ ] Unit tests for PDF image extraction
+- [ ] Tests for image analysis and description generation
+- [ ] Tests for multi-modal chunking algorithms
+- [ ] Integration tests for semantic search
+- [ ] Performance tests with large PDFs
+- [ ] Performance tests with image-heavy PDFs
+- [ ] IndexedDB persistence tests (cache/reload scenarios)
+- [ ] Storage quota handling tests
+- [ ] Storage size calculation and reporting tests
+- [ ] PDF metadata storage and retrieval tests
+
+### Benefits
+- **RAG Capabilities**: Enable AI to answer questions based on uploaded documents
+- **Educational Use**: Perfect for students working with research papers, textbooks
+- **Document Analysis**: Analyze and summarize PDF content
+- **Knowledge Base**: Build searchable knowledge bases from PDF collections
+
+### Example Use Cases
+- Students asking questions about uploaded lecture notes (including diagrams and charts)
+- Researchers querying academic papers (analyzing both text and figures)
+- Legal document analysis and Q&A (including charts, signatures, diagrams)
+- Technical documentation search and assistance (with flowcharts and technical diagrams)
+- Medical paper analysis (interpreting charts, X-rays, and diagnostic images)
+- Scientific research analysis (understanding data visualizations and experimental setups)
