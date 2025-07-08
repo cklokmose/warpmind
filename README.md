@@ -2,6 +2,21 @@
 
 JavaScript library for AI integration in web browsers. Single-file import, works with https://warp.cs.au.dk/mind.
 
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Configuration Options](#configuration-options)
+- [Core Methods](#core-methods)
+- [Multi-Modal Processing](#multi-modal-processing)
+- [PDF Processing](#pdf-processing)
+- [Memory System](#memory-system)
+- [Custom Tool Integration](#custom-tool-integration)
+- [Structured Data Processing](#structured-data-processing)
+- [Error Handling](#error-handling)
+- [API Key Management](#api-key-management)
+- [Development](#development)
+- [License](#license)
+
 ## Quick Start
 
 Include the library and initialize:
@@ -40,7 +55,7 @@ Include the library and initialize:
 The `examples/` directory contains interactive demonstrations:
 
 - **`memory-demo.html`** - Full memory system UI with storage, search, management, and memory tool chat
-- **`memory-tool-demo.html`** - Standalone interactive demo showing automatic memory tool activation
+- **`memory-tool-demo.html`** - Standalone demo showing automatic memory-tool activation
 - **`chat-interface.html`** - Complete chat interface with streaming responses  
 - **`pdf-reader-demo.html`** - PDF analysis and semantic search
 - **`basic-example.html`** - Simple getting started example
@@ -53,7 +68,20 @@ npm run serve
 # Then open http://localhost:8080/examples/memory-demo.html
 ```
 
-## Configuration
+## Configuration Options
+
+Create a new WarpMind instance with these configuration options:
+
+| Option | Type | Default | Description | Return Type |
+|--------|------|---------|-------------|-------------|
+| `baseURL` | string | Required | API endpoint URL | - |
+| `apiKey` | string | Optional | Authentication key (prompted if missing) | - |
+| `model` | string | `'gpt-4o'` | AI model to use | - |
+| `temperature` | number | `0.7` | Response creativity (0-2) | - |
+| `timeoutMs` | number | `30000` | Request timeout in milliseconds | - |
+| `memoryToolEnabled` | boolean | `true` | Enable automatic memory tool | - |
+| `memoryToolExplicitOnly` | boolean | `true` | Only use memory when explicitly requested | - |
+| `memoryToolMaxResults` | number | `5` | Maximum memories per search | - |
 
 ```javascript
 const mind = new WarpMind({
@@ -82,7 +110,7 @@ console.log('Tokens used:', response.usage);
 
 ## Core Methods
 
-### `chat(message, options)`
+### `chat(message, options)` → string | object
 
 Primary communication method. Supports single messages and conversation history:
 
@@ -105,7 +133,7 @@ Message roles:
 - `user`: Human input
 - `assistant`: Previous AI responses
 
-### `streamChat(message, onChunk, options)`
+### `streamChat(message, onChunk, options)` → void
 
 Real-time response streaming:
 
@@ -117,7 +145,7 @@ await mind.streamChat("Write a short story", (chunk) => {
 });
 ```
 
-### `complete(prompt, options)`
+### `complete(prompt, options)` → string
 
 Text completion:
 
@@ -155,7 +183,7 @@ const result = await mind.analyzeImage(imageFile, "Analyze this graph", {
 
 **Note**: When using URLs, provide direct links to image files (`.jpg`, `.png`, `.gif`, `.webp`). Page URLs containing images won't work.
 
-### Text-to-Speech
+### `textToSpeech(text, options)` → Blob
 
 Convert text to audio:
 
@@ -181,7 +209,7 @@ const streamingAudio = await mind.textToSpeech("Long text content", {
 });
 ```
 
-### Speech-to-Text
+### `speechToText(audioFile, options)` → string | object
 
 Convert audio to text:
 
@@ -201,7 +229,7 @@ console.log('Transcription:', result.text);
 console.log('Processing cost:', result.usage);
 ```
 
-### Voice Chat
+### `createVoiceChat(systemPrompt, options)` → VoiceChat
 
 Voice conversation interface:
 
@@ -228,7 +256,9 @@ document.getElementById('talkButton').onclick = async () => {
 
 Load and analyze PDF documents with semantic search capabilities.
 
-### Loading PDFs
+### `readPdf(source, options)` → string
+
+Load and analyze PDF documents with semantic search capabilities:
 
 ```javascript
 // From file input
@@ -269,7 +299,9 @@ const storageInfo = await mind.getPdfStorageInfo();
 await mind.forgetPdf('research-paper');
 ```
 
-### Loading from Storage
+### `recallPdf(pdfId)` → void
+
+Load previously processed PDF into memory:
 
 ```javascript
 // Load previously processed PDF into memory
@@ -340,14 +372,22 @@ console.log('Cost:', result.usage);
 
 ## Memory System
 
-Store and retrieve information using semantic embeddings for intelligent recall:
+### `remember(text, options)` → object
+
+Store information using semantic embeddings:
 
 ```javascript
 // Store a memory with tags
 const memory = await mind.remember("I love Italian food, especially carbonara", { 
     tags: ['food', 'preferences'] 
 });
+```
 
+### `recall(query, options)` → array
+
+Retrieve information using semantic search:
+
+```javascript
 // Search memories semantically
 const foodMemories = await mind.recall("what do I like to eat", { limit: 5 });
 
@@ -356,7 +396,11 @@ const workMemories = await mind.recall("meetings", {
     useKeywordSearch: true,
     limit: 10 
 });
+```
 
+### Memory Management
+
+```javascript
 // Get all memories
 const allMemories = await mind.getMemories();
 
@@ -419,11 +463,13 @@ The memory system automatically handles:
 
 Open `examples/memory-demo.html` in your browser to explore memory features with a full UI for managing memories, searching, and testing the memory tool chat functionality with different scenarios.
 
-## Tool Integration
+## Custom Tool Integration
 
 Connect AI to custom functions. The AI automatically decides when to use your tools.
 
-### Basic Tool Registration
+### `registerTool(toolConfig)` → void
+
+Basic tool registration:
 
 ```javascript
 mind.registerTool({
@@ -496,6 +542,8 @@ mind.registerTool({
 **No tool support**: `streamChat()`, `complete()`, audio methods
 
 ## Structured Data Processing
+
+### `process(prompt, source, schema, options)` → object
 
 Extract and organize information using defined schemas:
 
@@ -627,17 +675,17 @@ const key = await WarpMind.promptForApiKey(); // Force new prompt
 
 ### Usage
 
-1. Download `warpMind.js` from `dist/` folder
-2. Include in HTML: `<script src="warpMind.js"></script>`
+1. Download `warpmind.js` from `dist/` folder
+2. Include in HTML: `<script src="warpmind.js"></script>`
 3. Initialize and use
 
 ### Building from Source
 
 ```bash
 git clone <repository-url>
-cd warpMind
+cd warpmind
 npm install
-npm run build    # Creates dist/warpMind.js
+npm run build    # Creates dist/warpmind.js
 npm test         # Run test suite
 ```
 
@@ -645,19 +693,19 @@ npm test         # Run test suite
 
 ```
 src/                     # Modular source code
-├── warpMind.js         # Main library
+├── warpmind.js         # Main library
 ├── core/               # HTTP client & retry logic
 ├── modules/            # Feature modules (audio, vision, data)
 └── streaming/          # Real-time streaming
 
-dist/warpMind.js        # Single built file (368 KiB)
+dist/warpmind.js        # Single built file (368 KiB)
 examples/               # Working demonstrations
 tests/                  # Test suite (71 tests)
 ```
 
 ## Quick Reference
 
-### Essential Methods
+### Essential Methods:
 ```javascript
 // Basic chat
 await mind.chat("Hello world")
@@ -695,14 +743,14 @@ await mind.forget(memoryId)                              // Delete memory
 mind.registerTool({ name: "myTool", description: "...", parameters: {...}, handler: async (args) => {...} })
 ```
 
-### Common Options
+### Common Options:
 - `timeoutMs: 30000` - Request timeout in milliseconds
 - `includeUsage: true` - Track token usage for cost monitoring
 - `detail: 'high'` - High-detail image analysis (costs ~2x tokens)
 - `stream: true` - Enable streaming for real-time responses
 - `voice: 'nova'` - Choose TTS voice ('alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer')
 
-### Configuration
+### Configuration:
 ```javascript
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/v1',  // Warp CS API endpoint
@@ -712,5 +760,9 @@ const mind = new WarpMind({
     timeoutMs: 30000                           // Default timeout
 });
 ```
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
 
 ---
