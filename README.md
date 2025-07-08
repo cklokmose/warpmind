@@ -2,25 +2,6 @@
 
 JavaScript library for AI integration in web browsers. Single-file import, works with https://warp.cs.au.dk/mind.
 
-## Core Capabilities
-
-- **Text Chat** - Conversation with AI models
-- **Memory System** - Semantic storage and retrieval with embeddings
-- **Image Analysis** - Computer vision and image description
-- **Voice Processing** - Speech-to-text and text-to-speech
-- **PDF Analysis** - Document reading with semantic search
-- **Tool Integration** - Connect AI to custom functions
-- **Streaming** - Real-time response generation
-- **Data Extraction** - Structured information processing
-
-## Architecture
-
-- **Size**: 368 KiB total, modular design
-- **Dependencies**: None (works directly in browsers)
-- **API**: RESTful integration with OpenAI-compatible endpoints
-- **Storage**: IndexedDB for PDF caching
-- **Networking**: Built-in retry logic and error handling
-
 ## Quick Start
 
 Include the library and initialize:
@@ -52,6 +33,24 @@ Include the library and initialize:
     </script>
 </body>
 </html>
+```
+
+## Examples
+
+The `examples/` directory contains interactive demonstrations:
+
+- **`memory-demo.html`** - Full memory system UI with storage, search, management, and memory tool chat
+- **`memory-tool-demo.html`** - Standalone interactive demo showing automatic memory tool activation
+- **`chat-interface.html`** - Complete chat interface with streaming responses  
+- **`pdf-reader-demo.html`** - PDF analysis and semantic search
+- **`basic-example.html`** - Simple getting started example
+- **`complete-test-suite.html`** - Comprehensive feature testing
+
+To run examples with a local server (required for CORS):
+
+```bash
+npm run serve
+# Then open http://localhost:8080/examples/memory-demo.html
 ```
 
 ## Configuration
@@ -125,73 +124,6 @@ Text completion:
 ```javascript
 const response = await mind.complete("The three laws of robotics are");
 ```
-
-## Memory System
-
-Store and retrieve information using semantic embeddings for intelligent recall:
-
-```javascript
-// Store a memory with tags
-const memory = await mind.remember("I love Italian food, especially carbonara", { 
-    tags: ['food', 'preferences'] 
-});
-
-// Search memories semantically
-const foodMemories = await mind.recall("what do I like to eat", { limit: 5 });
-
-// Search by keywords/tags
-const workMemories = await mind.recall("meetings", { 
-    useKeywordSearch: true,
-    limit: 10 
-});
-
-// Get all memories
-const allMemories = await mind.getMemories();
-
-// Delete a memory
-await mind.forget(memory.id);
-
-// Export/import memories for backup
-const exportData = await mind.exportMemories();
-const importStats = await mind.importMemories(exportData);
-```
-
-### Memory Tool Integration
-
-The memory system includes an intelligent tool that automatically activates during conversations when you explicitly ask to remember or recall information:
-
-```javascript
-// The AI will automatically search your memories when you ask
-const response = await mind.chat("What do you remember about my food preferences?");
-
-// Or recall work-related information
-const workInfo = await mind.chat("Can you recall my project deadlines?");
-
-// General questions won't trigger memory search
-const general = await mind.chat("What is the capital of France?");
-```
-
-**Memory Tool Configuration:**
-```javascript
-const mind = new WarpMind({
-    memoryToolEnabled: true,        // Enable memory tool (default: true)
-    memoryToolExplicitOnly: true,   // Only use when explicitly requested
-    memoryToolMaxResults: 5         // Max memories per search
-});
-```
-
-### Memory Storage
-
-The memory system automatically handles:
-- **Embedding Generation**: Converts text to semantic vectors
-- **Cross-Platform Storage**: IndexedDB (browser) or in-memory (Node.js)
-- **Similarity Search**: Finds relevant memories using cosine similarity
-- **Keyword Fallback**: Falls back to tag/keyword search when embeddings fail
-- **UUID Management**: Generates unique identifiers for each memory
-
-### Try the Interactive Demo
-
-Open `examples/memory-demo.html` in your browser to explore memory features with a full UI for managing memories, searching, and testing the memory tool chat functionality with different scenarios.
 
 ## Multi-Modal Processing
 
@@ -410,6 +342,73 @@ console.log('Cost:', result.usage);
 - **Semantic Chunking**: Embedding-based text segmentation
 - **Storage**: IndexedDB caching for persistence
 
+## Memory System
+
+Store and retrieve information using semantic embeddings for intelligent recall:
+
+```javascript
+// Store a memory with tags
+const memory = await mind.remember("I love Italian food, especially carbonara", { 
+    tags: ['food', 'preferences'] 
+});
+
+// Search memories semantically
+const foodMemories = await mind.recall("what do I like to eat", { limit: 5 });
+
+// Search by keywords/tags
+const workMemories = await mind.recall("meetings", { 
+    useKeywordSearch: true,
+    limit: 10 
+});
+
+// Get all memories
+const allMemories = await mind.getMemories();
+
+// Delete a memory
+await mind.forget(memory.id);
+
+// Export/import memories for backup
+const exportData = await mind.exportMemories();
+const importStats = await mind.importMemories(exportData);
+```
+
+### Memory Tool Integration
+
+The memory system includes an intelligent tool that automatically activates during conversations when you explicitly ask to remember or recall information:
+
+```javascript
+// The AI will automatically search your memories when you ask
+const response = await mind.chat("What do you remember about my food preferences?");
+
+// Or recall work-related information
+const workInfo = await mind.chat("Can you recall my project deadlines?");
+
+// General questions won't trigger memory search
+const general = await mind.chat("What is the capital of France?");
+```
+
+**Memory Tool Configuration:**
+```javascript
+const mind = new WarpMind({
+    memoryToolEnabled: true,        // Enable memory tool (default: true)
+    memoryToolExplicitOnly: true,   // Only use when explicitly requested
+    memoryToolMaxResults: 5         // Max memories per search
+});
+```
+
+### Memory Storage
+
+The memory system automatically handles:
+- **Embedding Generation**: Converts text to semantic vectors
+- **Cross-Platform Storage**: IndexedDB (browser) or in-memory (Node.js)
+- **Similarity Search**: Finds relevant memories using cosine similarity
+- **Keyword Fallback**: Falls back to tag/keyword search when embeddings fail
+- **UUID Management**: Generates unique identifiers for each memory
+
+### Try the Interactive Demo
+
+Open `examples/memory-demo.html` in your browser to explore memory features with a full UI for managing memories, searching, and testing the memory tool chat functionality with different scenarios.
+
 ## Tool Integration
 
 Connect AI to custom functions. The AI automatically decides when to use your tools.
@@ -595,6 +594,25 @@ WarpMind.clearSavedApiKey();             // Clear saved key
 const key = await WarpMind.promptForApiKey(); // Force new prompt
 ```
 
+## Core Capabilities
+
+- **Text Chat** - Conversation with AI models
+- **Memory System** - Semantic storage and retrieval with embeddings
+- **Image Analysis** - Computer vision and image description
+- **Voice Processing** - Speech-to-text and text-to-speech
+- **PDF Analysis** - Document reading with semantic search
+- **Tool Integration** - Connect AI to custom functions
+- **Streaming** - Real-time response generation
+- **Data Extraction** - Structured information processing
+
+## Architecture
+
+- **Size**: 368 KiB total, modular design
+- **Dependencies**: None (works directly in browsers)
+- **API**: RESTful integration with OpenAI-compatible endpoints
+- **Storage**: IndexedDB for PDF caching
+- **Networking**: Built-in retry logic and error handling
+
 ## Development
 
 ### Usage
@@ -625,24 +643,6 @@ src/                     # Modular source code
 dist/warpMind.js        # Single built file (368 KiB)
 examples/               # Working demonstrations
 tests/                  # Test suite (71 tests)
-```
-
-## Examples
-
-The `examples/` directory contains interactive demonstrations:
-
-- **`memory-demo.html`** - Full memory system UI with storage, search, management, and memory tool chat
-- **`memory-tool-demo.html`** - Standalone interactive demo showing automatic memory tool activation
-- **`chat-interface.html`** - Complete chat interface with streaming responses  
-- **`pdf-reader-demo.html`** - PDF analysis and semantic search
-- **`basic-example.html`** - Simple getting started example
-- **`complete-test-suite.html`** - Comprehensive feature testing
-
-To run examples with a local server (required for CORS):
-
-```bash
-npm run serve
-# Then open http://localhost:8080/examples/memory-demo.html
 ```
 
 ## Quick Reference
