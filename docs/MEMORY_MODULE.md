@@ -50,6 +50,13 @@ WarpMind Memory API
 - [x] Document import/export functionality
 - [x] Add import/export tests to test suite
 
+### Phase 7: Memory Tool Integration
+- [ ] Implement memory tool for chat/process method integration
+- [ ] Add tool that allows AI to access memories via recall() when explicitly requested
+- [ ] Ensure tool is only used when user explicitly asks to remember/recall information
+- [ ] Add memory tool to default tool set with proper usage constraints
+- [ ] Document memory tool usage and limitations
+
 ### Technical Notes:
 - **Core Integration**: Memory module uses `this.embed()` method from core WarpMind class
 - **Embedding API**: Core `embed()` method calls `/embeddings` endpoint with configurable model
@@ -57,6 +64,8 @@ WarpMind Memory API
 - **Storage**: IndexedDB for persistence, fallback to localStorage if needed
 - **Search**: Cosine similarity for vector search (simple dot product implementation)
 - **Format**: Store memories as `{ id, content, embedding?, rawData?, tags?, timestamp }`
+- **Tool Integration**: Memory tool allows AI to access stored memories via chat/process methods when explicitly requested
+- **Usage Constraints**: Memory tool only activates when user explicitly mentions remembering/recalling information
 
 ---
 
@@ -271,3 +280,110 @@ Notes
 
 - All data is stored locally using IndexedDB.
 - Memory is private to the current app unless explicitly exported or synced.
+
+## Memory Tool Integration Specification
+
+### Overview
+
+WarpMind should include a built-in tool that allows the AI to access stored memories during chat and process method calls. This tool enables the AI to recall relevant information when users explicitly request memory-related operations.
+
+### Tool Specification
+
+```javascript
+// Memory tool definition
+const memoryTool = {
+  name: "recall_memory",
+  description: "Search for relevant memories when the user explicitly asks to remember or recall information. Only use this tool when the user specifically mentions remembering, recalling, or accessing stored information.",
+  parameters: {
+    type: "object",
+    properties: {
+      query: {
+        type: "string",
+        description: "The search query to find relevant memories"
+      },
+      limit: {
+        type: "number",
+        description: "Maximum number of memories to retrieve (default: 5)",
+        default: 5
+      },
+      tags: {
+        type: "array",
+        items: { type: "string" },
+        description: "Optional tags to filter memories"
+      }
+    },
+    required: ["query"]
+  }
+};
+```
+
+### Usage Constraints
+
+The memory tool should **ONLY** be used when:
+1. User explicitly asks to "remember" something from previous conversations
+2. User asks to "recall" or "find" stored information
+3. User mentions wanting to access "memories" or "stored data"
+4. User asks "what do you remember about..." or similar phrasing
+
+The tool should **NOT** be used for:
+- General knowledge questions
+- Current conversation context
+- Information that should be answered from training data
+- Automatic memory access without explicit user request
+
+### Implementation Details
+
+```javascript
+// Tool function implementation
+async function recallMemory(args) {
+  const { query, limit = 5, tags } = args;
+  
+  try {
+    const memories = await this.recall(query, { limit, tags });
+    
+    if (memories.length === 0) {
+      return "No relevant memories found for the query.";
+    }
+    
+    return memories.map(memory => ({
+      content: memory.content,
+      tags: memory.tags || [],
+      timestamp: new Date(memory.timestamp).toLocaleString(),
+      relevanceScore: memory.relevanceScore
+    }));
+  } catch (error) {
+    return `Error accessing memories: ${error.message}`;
+  }
+}
+```
+
+### Integration Points
+
+1. **Chat Method**: Include memory tool in default tool set for chat() calls
+2. **Process Method**: Include memory tool in default tool set for process() calls  
+3. **Tool Filtering**: Ensure tool is only available when memory module is initialized
+4. **Context Awareness**: Tool should understand it's searching stored memories, not general knowledge
+
+### Example Usage
+
+```javascript
+// User: "What do you remember about my project deadlines?"
+// AI will use the recall_memory tool with query: "project deadlines"
+
+// User: "Can you recall any notes I stored about the meeting?"  
+// AI will use the recall_memory tool with query: "meeting notes"
+
+// User: "What is the capital of France?"
+// AI will NOT use the memory tool (general knowledge question)
+```
+
+### Configuration Options
+
+```javascript
+const mind = new WarpMind({
+  // ... other options
+  memoryToolEnabled: true,        // Enable/disable memory tool (default: true if memory module present)
+  memoryToolExplicitOnly: true,   // Only use when explicitly requested (default: true)
+  memoryToolMaxResults: 5         // Default limit for memory searches (default: 5)
+});
+```
