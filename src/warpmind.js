@@ -24,6 +24,9 @@ let createDataProcessingModule;
 // Import PDF loader module factory
 let createPdfLoaderModule;
 
+// Import memory module factory
+let createMemoryModule;
+
 if (typeof module !== 'undefined' && module.exports) {
   // Node.js environment
   const utils = require('./util.js');
@@ -45,6 +48,9 @@ if (typeof module !== 'undefined' && module.exports) {
   
   // Import data processing module in Node.js
   createDataProcessingModule = require('./modules/data-processing.js');
+  
+  // Import memory module in Node.js
+  createMemoryModule = require('./modules/memory.js');
   
   // Import PDF loader module in Node.js
   createPdfLoaderModule = require('./modules/pdf-loader.js');
@@ -70,6 +76,9 @@ if (typeof module !== 'undefined' && module.exports) {
     
     // Import data processing module in browser
     createDataProcessingModule = require('./modules/data-processing.js');
+    
+    // Import memory module in browser
+    createMemoryModule = require('./modules/memory.js');
     
     // Import PDF loader module in browser
     createPdfLoaderModule = require('./modules/pdf-loader.js');
@@ -122,6 +131,10 @@ class WarpMind extends BaseClient {
     // Integrate PDF loader module methods
     const pdfLoaderMethods = createPdfLoaderModule(this);
     Object.assign(this, pdfLoaderMethods);
+    
+    // Integrate memory module methods
+    const memoryMethods = createMemoryModule(this);
+    Object.assign(this, memoryMethods);
   }
 
   /**
@@ -536,28 +549,49 @@ class WarpMind extends BaseClient {
   }
 
   /**
-   * Generate embeddings for text using OpenAI's embedding models
-   * @param {string} text - Text to generate embeddings for
+   * Generate embeddings for text using the embeddings API
+   * @param {string} text - The text to generate embeddings for
    * @param {Object} options - Optional parameters
-   * @param {string} options.model - Embedding model to use (default: 'text-embedding-3-small')
+   * @param {string} options.model - The embedding model to use (default: 'text-embedding-3-small')
    * @param {number} options.timeoutMs - Request timeout in milliseconds
-   * @returns {Promise<number[]>} - The embedding vector
+   * @returns {Promise<number[]>} - The embedding vector as an array of numbers
    */
   async embed(text, options = {}) {
-    const { model = 'text-embedding-3-small', timeoutMs = this.timeoutMs } = options;
-    
-    const requestBody = {
-      model: model,
+    if (!text || typeof text !== 'string') {
+      throw new Error('Text input is required and must be a string');
+    }
+
+    const requestData = {
+      model: options.model || 'text-embedding-3-small',
       input: text
     };
 
-    const response = await this.makeRequest('/embeddings', requestBody, { timeoutMs });
-
-    if (response.data && response.data.length > 0) {
-      return response.data[0].embedding;
-    }
+    // Add other options, but filter out our custom ones to avoid conflicts
+    const filteredOptions = { ...options };
+    delete filteredOptions.model;
+    delete filteredOptions.timeoutMs;
     
-    throw new Error('Failed to generate embedding: No embedding data returned');
+    Object.assign(requestData, filteredOptions);
+
+    const requestOptions = {
+      timeoutMs: options.timeoutMs
+    };
+
+    try {
+      const response = await this.makeRequest('/embeddings', requestData, requestOptions);
+      
+      if (!response.data || !response.data[0] || !response.data[0].embedding) {
+        throw new Error('Invalid embedding response format');
+      }
+
+      return response.data[0].embedding;
+    } catch (error) {
+      // Re-throw with more context if it's an API error
+      if (error.message.includes('API request failed')) {
+        throw new Error(`Embedding generation failed: ${error.message}`);
+      }
+      throw error;
+    }
   }
 }
 

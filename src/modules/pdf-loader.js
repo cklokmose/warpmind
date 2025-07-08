@@ -19,20 +19,23 @@ if (typeof window !== 'undefined') {
     pdfLoadingPromise = loadPdfJs();
   }
 } else {
-  // Node.js environment - require PDF.js
+  // Node.js environment - try to require PDF.js carefully
   try {
-    // Check if we're in a Jest testing environment
-    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
-      // In Jest test environment, skip PDF.js loading to avoid ESM issues
+    // Check if we're in a Jest testing environment or if DOMMatrix is not available
+    if (typeof process !== 'undefined' && 
+        (process.env.NODE_ENV === 'test' || typeof DOMMatrix === 'undefined')) {
+      // In Jest test environment or when DOM APIs aren't available, skip PDF.js loading
+      console.log('PDF.js not available in Node.js environment');
       pdfjsLib = null;
-      pdfLoadingPromise = null; // Will be set to rejected promise when PDF functions are called
+      pdfLoadingPromise = null; // Will be set when needed
     } else {
-      pdfjsLib = require('pdfjs-dist');
+      pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
       pdfLoadingPromise = Promise.resolve();
     }
   } catch (error) {
     console.warn('PDF.js not available in Node.js environment');
-    pdfLoadingPromise = Promise.reject(error);
+    pdfjsLib = null;
+    pdfLoadingPromise = null; // Will be set when needed
   }
 }
 
@@ -145,14 +148,19 @@ function isRestrictedEnvironment() {
 
 // Wait for PDF.js to be ready before using it
 async function ensurePdfJsLoaded() {
-  // Check if we're in a Jest test environment
-  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
-    throw new Error('PDF.js not available in test environment');
+  // Check if we're in a Jest test environment or Node.js without browser APIs
+  if (typeof process !== 'undefined' && 
+      (process.env.NODE_ENV === 'test' || typeof DOMMatrix === 'undefined')) {
+    throw new Error('PDF.js not available in Node.js environment');
   }
   
   if (pdfLoadingPromise) {
     await pdfLoadingPromise;
+  } else if (!pdfjsLib) {
+    // pdfLoadingPromise is null, which means we're in Node.js without PDF.js support
+    throw new Error('PDF.js is not available in Node.js environment. Please use in a browser.');
   }
+  
   if (!pdfjsLib) {
     throw new Error('PDF.js is not available. Please ensure PDF.js is loaded before using PDF features.');
   }

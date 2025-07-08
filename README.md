@@ -5,6 +5,7 @@ JavaScript library for AI integration in web browsers. Single-file import, works
 ## Core Capabilities
 
 - **Text Chat** - Conversation with AI models
+- **Memory System** - Semantic storage and retrieval with embeddings
 - **Image Analysis** - Computer vision and image description
 - **Voice Processing** - Speech-to-text and text-to-speech
 - **PDF Analysis** - Document reading with semantic search
@@ -124,6 +125,45 @@ Text completion:
 ```javascript
 const response = await mind.complete("The three laws of robotics are");
 ```
+
+## Memory System
+
+Store and retrieve information using semantic embeddings for intelligent recall:
+
+```javascript
+// Store a memory with tags
+const memory = await mind.remember("I love Italian food, especially carbonara", { 
+    tags: ['food', 'preferences'] 
+});
+
+// Search memories semantically
+const foodMemories = await mind.recall("what do I like to eat", { limit: 5 });
+
+// Search by keywords/tags
+const workMemories = await mind.recall("meetings", { 
+    useKeywordSearch: true,
+    limit: 10 
+});
+
+// Get all memories
+const allMemories = await mind.getMemories();
+
+// Delete a memory
+await mind.forget(memory.id);
+```
+
+### Memory Storage
+
+The memory system automatically handles:
+- **Embedding Generation**: Converts text to semantic vectors
+- **Cross-Platform Storage**: IndexedDB (browser) or in-memory (Node.js)
+- **Similarity Search**: Finds relevant memories using cosine similarity
+- **Keyword Fallback**: Falls back to tag/keyword search when embeddings fail
+- **UUID Management**: Generates unique identifiers for each memory
+
+### Try the Interactive Demo
+
+Open `examples/memory-demo.html` in your browser to explore memory features with a full UI for managing memories, searching, and testing different scenarios.
 
 ## Multi-Modal Processing
 
@@ -557,6 +597,23 @@ src/                     # Modular source code
 dist/warpMind.js        # Single built file (368 KiB)
 examples/               # Working demonstrations
 tests/                  # Test suite (71 tests)
+```
+
+## Examples
+
+The `examples/` directory contains interactive demonstrations:
+
+- **`memory-demo.html`** - Full memory system UI with storage, search, and management
+- **`chat-interface.html`** - Complete chat interface with streaming responses  
+- **`pdf-reader-demo.html`** - PDF analysis and semantic search
+- **`basic-example.html`** - Simple getting started example
+- **`complete-test-suite.html`** - Comprehensive feature testing
+
+To run examples with a local server (required for CORS):
+
+```bash
+npm run serve
+# Then open http://localhost:8080/examples/memory-demo.html
 ```
 
 ## Quick Reference
