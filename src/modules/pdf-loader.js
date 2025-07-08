@@ -172,7 +172,7 @@ const DB_NAME = 'warpmind-pdf-storage';
 const DB_VERSION = 3; // Increment version for optimized storage schema
 const STORE_NAME = 'pdf-chunks';
 const METADATA_STORE = 'pdf-metadata';
-const CONTENT_STORE = 'pdf-content'; // Store for full content (text and images)
+const CONTENT_STORE = 'pdf-content'; // Store for full text content
 
 class PdfStorage {
   constructor() {
@@ -224,7 +224,7 @@ class PdfStorage {
           metaStore.createIndex('processedAt', 'processedAt', { unique: false });
         }
 
-        // Create content store - single source of truth for text and images
+        // Create content store - single source of truth for text content
         if (!db.objectStoreNames.contains(CONTENT_STORE)) {
           const contentStore = db.createObjectStore(CONTENT_STORE, { keyPath: 'id' });
           contentStore.createIndex('pdfId', 'pdfId', { unique: false });
@@ -245,14 +245,13 @@ class PdfStorage {
     const transaction = this.db.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     
-    // Store only references and indices - no duplicate text or images
+    // Store only references and indices - text-only optimization
     const chunkData = {
       id: `${pdfId}-${chunkIndex}`,
       pdfId,
       chunkIndex,
       textStart: chunk.textStart,
       textEnd: chunk.textEnd,
-      imageIndices: chunk.imageIndices || [],
       embedding: chunk.embedding,
       embeddingText: chunk.embeddingText,
       pageReferences: chunk.pageReferences
@@ -393,7 +392,7 @@ class PdfStorage {
     const fullTextContent = await this.getContent(pdfId, 'fullText');
     const fullText = fullTextContent ? fullTextContent.data : '';
 
-    // Reconstruct chunks with lightweight references (no duplicate images)
+    // Reconstruct chunks with text-only optimization
     const reconstructedChunks = [];
     for (const chunk of chunks) {
       // Extract text using indices
@@ -404,7 +403,6 @@ class PdfStorage {
         pdfId: chunk.pdfId,
         chunkIndex: chunk.chunkIndex,
         text,
-        imageIndices: chunk.imageIndices || [], // Keep as references only
         embedding: chunk.embedding,
         embeddingText: chunk.embeddingText,
         pageReferences: chunk.pageReferences,
@@ -532,7 +530,6 @@ class PdfStorage {
         const metadataSize = JSON.stringify({
           textStart: chunk.textStart,
           textEnd: chunk.textEnd,
-          imageIndices: chunk.imageIndices,
           pageReferences: chunk.pageReferences
         }).length;
         return acc + embeddingSize + metadataSize;
@@ -559,24 +556,6 @@ class PdfStorage {
       pdfs: pdfSizes.sort((a, b) => b.size - a.size),
       optimized: true // Flag to indicate this is using optimized storage
     };
-  }
-
-  async getChunkImages(pdfId, imageIndices) {
-    if (!imageIndices || imageIndices.length === 0) {
-      return [];
-    }
-
-    // First try to get from in-memory cache
-    if (loadedPdfs.has(pdfId)) {
-      const pdfData = loadedPdfs.get(pdfId);
-      if (pdfData.getAllImages) {
-        const allImages = pdfData.getAllImages();
-        return imageIndices.map(idx => allImages[idx]).filter(Boolean);
-      }
-    }
-
-    // Fall back to storage
-    return await storage.getChunkImages(pdfId, imageIndices);
   }
 }
 
@@ -639,9 +618,6 @@ function createPdfLoaderModule(client) {
         id = null,
         chunkTokens = 400,
         embedModel = 'text-embedding-3-small',
-        processImages = true,
-        imageDetail = 'low',
-        imagePrompt = 'Describe this image, chart, or diagram in detail for academic use',
         onProgress = null
       } = options;
       
@@ -759,7 +735,7 @@ function createPdfLoaderModule(client) {
           throw new Error(`Failed to load PDF document: ${error.message}`);
         }
 
-        // Extract text and images from all pages
+        // Extract text from all pages
         const pageContents = [];
         for (let pageNum = 1; pageNum <= numPages; pageNum++) {
           const page = await pdfDoc.getPage(pageNum);
@@ -767,17 +743,11 @@ function createPdfLoaderModule(client) {
           // Extract text
           const textContent = await page.getTextContent();
           const pageText = textContent.items.map(item => item.str).join(' ');
-          
-          let pageImages = [];
-          if (processImages) {
-            // Extract images from page
-            pageImages = await this._extractImagesFromPage(page, imageDetail, imagePrompt);
-          }
 
+          // Store text only - no image processing
           pageContents.push({
             pageNum,
-            text: pageText,
-            images: pageImages
+            text: pageText
           });
 
           safeProgress(0.1 + (pageNum / numPages) * 0.4);
@@ -786,23 +756,8 @@ function createPdfLoaderModule(client) {
         // Combine all text and create chunks
         const fullText = pageContents.map(page => page.text).join('\n\n');
         const textChunks = chunkText(fullText, chunkTokens);
-
-        // Collect all unique images
-        const allImages = [];
-        const imageMap = new Map(); // For deduplication
         
-        for (const page of pageContents) {
-          for (const image of page.images) {
-            const imageKey = image.description; // Use description as key for deduplication
-            if (!imageMap.has(imageKey)) {
-              const imageIndex = allImages.length;
-              allImages.push({ ...image, pageNum: page.pageNum });
-              imageMap.set(imageKey, imageIndex);
-            }
-          }
-        }
-
-        // Create enhanced chunks with text position indices and image references
+        // Create simplified chunks with text-only processing
         const enhancedChunks = [];
         let currentTextPosition = 0;
 
@@ -822,22 +777,13 @@ function createPdfLoaderModule(client) {
           }
           const textEnd = textStart + chunkText.length;
           
-          // Find relevant images for this chunk based on page references
+          // Find relevant pages for this chunk 
           const chunkPageRefs = this._findPageReferences(chunkText, pageContents);
-          const relevantImageIndices = [];
-          
-          for (let imgIndex = 0; imgIndex < allImages.length; imgIndex++) {
-            const image = allImages[imgIndex];
-            if (chunkPageRefs.includes(image.pageNum)) {
-              relevantImageIndices.push(imgIndex);
-            }
-          }
 
           enhancedChunks.push({
             chunkIndex: i,
             textStart,
             textEnd,
-            imageIndices: relevantImageIndices,
             pageReferences: chunkPageRefs
           });
 
@@ -862,11 +808,8 @@ function createPdfLoaderModule(client) {
           // Check for valid start/end indices
           if (chunk.textStart >= 0 && chunk.textEnd <= fullText.length && chunk.textStart < chunk.textEnd) {
             const chunkText = fullText.substring(chunk.textStart, chunk.textEnd);
-            // Combine text and relevant image descriptions for embedding
-            const relevantImages = chunk.imageIndices.map(idx => allImages[idx]).filter(Boolean);
-            const imageDescriptions = relevantImages.map(img => img.description || '').join(' ');
-            const embeddingText = chunkText + (imageDescriptions ? ' ' + imageDescriptions : '');
-            chunkTextsForEmbedding.push({ chunk, embeddingText });
+            // Text-only processing
+            chunkTextsForEmbedding.push({ chunk, embeddingText: chunkText });
           } else {
             console.warn(`Invalid text indices for chunk ${i}: start=${chunk.textStart}, end=${chunk.textEnd}, textLength=${fullText.length}`);
             chunkTextsForEmbedding.push({ 
@@ -911,10 +854,7 @@ function createPdfLoaderModule(client) {
           totalChunks: chunksWithEmbeddings.length,
           chunkTokens,
           embedModel,
-          processImages,
-          imageDetail,
-          estimatedTokens: Math.ceil(fullText.length / 4),
-          totalImages: allImages.length
+          estimatedTokens: Math.ceil(fullText.length / 4)
         };
 
         safeProgress(0.85);
@@ -928,22 +868,9 @@ function createPdfLoaderModule(client) {
           await storage.storeContent(pdfId, 'fullText', fullText);
           safeProgress(0.9);
 
-          // Store each unique image once - batch in groups of 5 to avoid UI freezing
-          for (let i = 0; i < allImages.length; i += 5) {
-            const imageBatch = allImages.slice(i, i + 5);
-            await Promise.all(
-              imageBatch.map((img, idx) => 
-                storage.storeContent(pdfId, 'image', img, i + idx)
-              )
-            );
-            
-            const imageProgress = 0.9 + (Math.min(i + 5, allImages.length) / allImages.length) * 0.05;
-            safeProgress(imageProgress);
-          }
-
           // Store page contents for formatting purposes
           await storage.storeContent(pdfId, 'pageContents', pageContents);
-          safeProgress(0.96);
+          safeProgress(0.92);
 
           // Store optimized chunks (only indices and embeddings) - batch for performance
           for (let i = 0; i < chunksWithEmbeddings.length; i += 10) {
@@ -952,7 +879,7 @@ function createPdfLoaderModule(client) {
               chunkBatch.map(chunk => storage.storeChunk(pdfId, chunk.chunkIndex, chunk))
             );
             
-            const chunkProgress = 0.96 + (Math.min(i + 10, chunksWithEmbeddings.length) / chunksWithEmbeddings.length) * 0.04;
+            const chunkProgress = 0.92 + (Math.min(i + 10, chunksWithEmbeddings.length) / chunksWithEmbeddings.length) * 0.08;
             safeProgress(chunkProgress);
           }
           
@@ -962,13 +889,12 @@ function createPdfLoaderModule(client) {
           throw new Error(`Failed to store PDF data: ${error.message}`);
         }
 
-        // Create lightweight chunks for in-memory cache (no duplicate images)
+        // Create lightweight chunks for in-memory cache (text-only optimization)
         const reconstructedChunks = chunksWithEmbeddings.map(chunk => ({
           id: `${pdfId}-${chunk.chunkIndex}`,
           pdfId,
           chunkIndex: chunk.chunkIndex,
           text: fullText.substring(chunk.textStart, chunk.textEnd),
-          imageIndices: chunk.imageIndices || [], // Keep as references only
           embedding: chunk.embedding,
           embeddingText: chunk.embeddingText,
           pageReferences: chunk.pageReferences,
@@ -976,12 +902,10 @@ function createPdfLoaderModule(client) {
           textEnd: chunk.textEnd
         }));
 
-        // Cache in memory with additional content (images stored separately)
+        // Cache in memory for quick access (text-only optimization)
         loadedPdfs.set(pdfId, { 
           metadata: { ...metadata, fullText, pageContents },
-          chunks: reconstructedChunks,
-          // Store image lookup for when needed
-          getAllImages: () => allImages
+          chunks: reconstructedChunks
         });
 
         // Register retrieval tool
@@ -1088,64 +1012,6 @@ function createPdfLoaderModule(client) {
 
     async getPdfStorageInfo() {
       return await storage.getStorageInfo();
-    },
-
-    async _extractImagesFromPage(page, detail, prompt) {
-      // Skip image analysis if we don't have a valid API key
-      if (!client.apiKey || client.apiKey === 'test-key' || client.apiKey.includes('demo')) {
-        console.log('Skipping image analysis: Demo mode or no API key');
-        return [];
-      }
-      
-      const images = [];
-      
-      try {
-        // Get page viewport for rendering
-        const viewport = page.getViewport({ scale: 1.0 });
-        
-        // Create canvas for rendering
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        // Render page to canvas
-        await page.render({
-          canvasContext: context,
-          viewport: viewport
-        }).promise;
-
-        // Convert canvas to blob
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-        
-        // Analyze image with vision AI
-        try {
-          const analysis = await client.analyzeImage(blob, prompt, {
-            detail: detail
-          });
-          
-          if (analysis && analysis.trim()) {
-            images.push({
-              description: analysis,
-              type: 'page-render',
-              detail: detail
-            });
-          }
-        } catch (error) {
-          console.warn('Failed to analyze page image:', error);
-          // Add a placeholder description for the image
-          images.push({
-            description: `Image from page (analysis failed: ${error.message})`,
-            type: 'page-render',
-            detail: detail
-          });
-        }
-
-      } catch (error) {
-        console.warn('Failed to extract images from page:', error);
-      }
-
-      return images;
     },
 
     async _generateEmbedding(text, model) {
@@ -1272,11 +1138,6 @@ function createPdfLoaderModule(client) {
           parameters: {
             type: 'object',
             properties: {
-              includeImages: {
-                type: 'boolean',
-                description: 'Whether to include image descriptions in the output (default: true)',
-                default: true
-              },
               includePageNumbers: {
                 type: 'boolean', 
                 description: 'Whether to include page number markers in the text (default: true)',
@@ -1286,7 +1147,7 @@ function createPdfLoaderModule(client) {
             required: []
           },
           handler: async (args) => {
-            return await this._getFullPdfText(pdfId, args.includeImages !== false, args.includePageNumbers !== false);
+            return await this._getFullPdfText(pdfId, args.includePageNumbers !== false);
           }
         });
       } catch (error) {
@@ -1337,28 +1198,10 @@ function createPdfLoaderModule(client) {
             text = text.substring(0, 1200) + '...';
           }
           
-          // Get images on demand only if we have image indices
-          let images = [];
-          if (chunk.imageIndices && chunk.imageIndices.length > 0) {
-            try {
-              const chunkImages = await this.getChunkImages(pdfId, chunk.imageIndices.slice(0, 2)); // Limit to 2 images
-              images = chunkImages.map(img => ({
-                description: img.description && img.description.length > 200 ? 
-                  img.description.substring(0, 200) + '...' : 
-                  img.description || 'Image',
-                type: img.type || 'image'
-              }));
-            } catch (error) {
-              console.warn('Failed to load images for chunk:', error);
-              images = [];
-            }
-          }
-          
           results.push({
             text,
             similarity: chunk.similarity,
             pageReferences: chunk.pageReferences,
-            images,
             chunkIndex: chunk.chunkIndex
           });
         }
@@ -1374,7 +1217,7 @@ function createPdfLoaderModule(client) {
       }
     },
 
-    async _getFullPdfText(pdfId, includeImages = true, includePageNumbers = true) {
+    async _getFullPdfText(pdfId, includePageNumbers = true) {
       try {
         // Get PDF metadata and content
         let metadata, fullText, pageContents;
@@ -1403,8 +1246,8 @@ function createPdfLoaderModule(client) {
 
         let result = fullText;
 
-        // If we need to include images or page numbers, format the text appropriately
-        if ((includeImages || includePageNumbers) && pageContents && pageContents.length > 0) {
+        // If we need page numbers, format the text appropriately
+        if (includePageNumbers && pageContents && pageContents.length > 0) {
           let formattedText = '';
           
           for (let i = 0; i < pageContents.length; i++) {
@@ -1417,16 +1260,7 @@ function createPdfLoaderModule(client) {
             
             // Add page text
             formattedText += page.text;
-            
-            // Add image descriptions if requested
-            if (includeImages && page.images && page.images.length > 0) {
-              formattedText += '\n\n[Images on this page:\n';
-              for (const image of page.images) {
-                formattedText += `- ${image.description}\n`;
-              }
-              formattedText += ']\n';
-            }
-            
+                        
             formattedText += '\n\n';
           }
           
@@ -1492,51 +1326,6 @@ function createPdfLoaderModule(client) {
         
       } catch (error) {
         console.error('Error processing text chunk:', error);
-        throw error;
-      }
-    },
-
-    async _processImageChunk(chunkId, image, pageNum, options) {
-      try {
-        // Generate embedding for the image description
-        const description = `Image on page ${pageNum}`;
-        this._safeProgressCallback(options.currentProgress, `Generating embedding for image on page ${pageNum}`);
-        
-        // Start progress pulse before potentially slow embedding operation
-        startProgressPulse(options.currentProgress, `Generating embedding for image on page ${pageNum}`);
-        
-        const embedding = await this._generateEmbedding(description, options.embeddingModel);
-        
-        // Stop progress pulse as we've completed this embedding
-        stopProgressPulse();
-        
-        // Store the image content first
-        const contentId = await this._storeContent(image, 'image');
-        
-        // Store the chunk with reference to the content
-        const chunkData = {
-          id: chunkId,
-          contentId,
-          type: 'image',
-          pages: [pageNum],
-          metadata: {
-            pageNum,
-            source: options.source || 'pdf',
-            title: options.title || 'Untitled PDF',
-          },
-          embedding
-        };
-
-        // Store the chunk in IndexedDB
-        await this._storeChunk(chunkData);
-        
-        // Update progress
-        options.currentProgress += options.progressIncrement;
-        this._safeProgressCallback(options.currentProgress, `Processed image on page ${pageNum}`);
-        options.chunkCounter++;
-        
-      } catch (error) {
-        console.error('Error processing image chunk:', error);
         throw error;
       }
     },

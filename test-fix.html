@@ -40,12 +40,10 @@
             results.innerHTML = '<p>Processing PDF...</p>';
 
             try {
-                // Test the PDF reading with image analysis
+                // Test the PDF reading
                 console.log('Starting PDF analysis...');
                 const pdfData = await mind.readPdf(file, {
-                    includeImages: true,
-                    imageDetail: 'low',
-                    imagePrompt: 'Describe what you see in this image'
+                    // All image parameters have been removed for optimization
                 });
 
                 console.log('PDF analysis completed:', pdfData);
@@ -53,7 +51,6 @@
                     <h3>Success!</h3>
                     <p><strong>Pages:</strong> ${pdfData.pages}</p>
                     <p><strong>Text chunks:</strong> ${pdfData.chunks.length}</p>
-                    <p><strong>Images found:</strong> ${pdfData.images.length}</p>
                     <p><strong>Total tokens:</strong> ${pdfData.totalTokens}</p>
                 `;
             } catch (error) {
