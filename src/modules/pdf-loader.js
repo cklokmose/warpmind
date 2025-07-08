@@ -561,8 +561,8 @@ class PdfStorage {
 
 // Utility functions for text chunking and vector operations
 function chunkText(text, maxTokens = 400) {
-  // Simple chunking based on sentences and token estimation
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  // Improved chunking that preserves original text structure
+  const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
   const chunks = [];
   let currentChunk = '';
   let currentTokens = 0;
@@ -575,7 +575,7 @@ function chunkText(text, maxTokens = 400) {
       currentChunk = sentence;
       currentTokens = sentenceTokens;
     } else {
-      currentChunk += (currentChunk ? '. ' : '') + sentence;
+      currentChunk += (currentChunk ? ' ' : '') + sentence;
       currentTokens += sentenceTokens;
     }
   }
@@ -725,9 +725,10 @@ function createPdfLoaderModule(client) {
         }
 
         // Load PDF document
+        let numPages;
         try {
           pdfDoc = await pdfjsLib.getDocument({ data: file }).promise;
-          const numPages = pdfDoc.numPages;
+          numPages = pdfDoc.numPages;
         
           safeProgress(0.1);
         } catch (error) {
@@ -765,17 +766,10 @@ function createPdfLoaderModule(client) {
 
         for (let i = 0; i < textChunks.length; i++) {
           const chunkText = textChunks[i];
-          // Handle case when text isn't found (prevent infinite looping)
-          let textStart = fullText.indexOf(chunkText, currentTextPosition);
-          if (textStart === -1) {
-            console.warn(`Chunk text not found from position ${currentTextPosition}, searching from beginning`);
-            textStart = fullText.indexOf(chunkText, 0);
-            if (textStart === -1) {
-              console.warn(`Chunk text still not found, using fallback position`);
-              textStart = currentTextPosition;
-            }
-          }
-          const textEnd = textStart + chunkText.length;
+          
+          // Try to find chunk text with improved matching
+          let textStart = this._findChunkPosition(fullText, chunkText, currentTextPosition);
+          let textEnd = textStart + chunkText.length;
           
           // Find relevant pages for this chunk 
           const chunkPageRefs = this._findPageReferences(chunkText, pageContents);
@@ -1086,6 +1080,58 @@ function createPdfLoaderModule(client) {
         hash = hash & hash; // Convert to 32bit integer
       }
       return Math.abs(hash);
+    },
+
+    _findChunkPosition(fullText, chunkText, startPosition = 0) {
+      // First try exact match from the current position
+      let position = fullText.indexOf(chunkText, startPosition);
+      if (position !== -1) {
+        return position;
+      }
+      
+      // If exact match fails, try fuzzy matching by normalizing whitespace
+      const normalizeText = (text) => text.replace(/\s+/g, ' ').trim();
+      const normalizedChunk = normalizeText(chunkText);
+      const normalizedFull = normalizeText(fullText);
+      
+      position = normalizedFull.indexOf(normalizedChunk, Math.max(0, startPosition - 100));
+      if (position !== -1) {
+        // Map back to original text position by counting characters
+        let originalPos = 0;
+        let normalizedPos = 0;
+        
+        while (normalizedPos < position && originalPos < fullText.length) {
+          if (!/\s/.test(fullText[originalPos]) || normalizedFull[normalizedPos] === ' ') {
+            normalizedPos++;
+          }
+          originalPos++;
+        }
+        return originalPos;
+      }
+      
+      // Try searching from the beginning
+      position = fullText.indexOf(chunkText, 0);
+      if (position !== -1) {
+        return position;
+      }
+      
+      // Try fuzzy match from beginning
+      position = normalizedFull.indexOf(normalizedChunk, 0);
+      if (position !== -1) {
+        let originalPos = 0;
+        let normalizedPos = 0;
+        
+        while (normalizedPos < position && originalPos < fullText.length) {
+          if (!/\s/.test(fullText[originalPos]) || normalizedFull[normalizedPos] === ' ') {
+            normalizedPos++;
+          }
+          originalPos++;
+        }
+        return originalPos;
+      }
+      
+      // Last resort: use approximate position based on chunk order
+      return Math.max(startPosition, 0);
     },
 
     _findPageReferences(text, pageContents) {

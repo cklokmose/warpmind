@@ -289,7 +289,7 @@
         
         <div class="section">
             <h2>📄 Load PDF Document</h2>
-            <p>Upload a PDF file or provide a URL to get started. The PDF will be processed to extract text and images, then indexed for semantic search.</p>
+            <p>Upload a PDF file or provide a URL to get started. The PDF will be processed to extract text and indexed for semantic search.</p>
             
             <div class="file-input">
                 <input type="file" id="pdfFile" accept=".pdf" />
@@ -310,20 +310,6 @@
                         <option value="text-embedding-3-small">text-embedding-3-small</option>
                         <option value="text-embedding-3-large">text-embedding-3-large</option>
                         <option value="text-embedding-ada-002">text-embedding-ada-002</option>
-                    </select>
-                </div>
-                <div class="option-group">
-                    <label for="processImages">Process Images:</label>
-                    <select id="processImages">
-                        <option value="true">Yes</option>
-                        <option value="false">No</option>
-                    </select>
-                </div>
-                <div class="option-group">
-                    <label for="imageDetail">Image Detail:</label>
-                    <select id="imageDetail">
-                        <option value="low">Low (faster, cheaper)</option>
-                        <option value="high">High (slower, more expensive)</option>
                     </select>
                 </div>
             </div>
@@ -349,7 +335,7 @@
             
             <div class="chat-container">
                 <input type="text" class="chat-input" id="chatInput" 
-                       placeholder="Ask a question about the PDF (e.g., 'What is the main topic?', 'Describe the charts in section 3')" />
+                       placeholder="Ask a question about the PDF (e.g., 'What is the main topic?', 'Summarize the key findings')" />
                 <button class="button" id="sendMessage">Send</button>
                 <button class="button" id="clearChat">Clear Chat</button>
                 
@@ -512,8 +498,6 @@
             const options = {
                 chunkTokens: parseInt(document.getElementById('chunkTokens').value),
                 embedModel: document.getElementById('embedModel').value,
-                processImages: document.getElementById('processImages').value === 'true',
-                imageDetail: document.getElementById('imageDetail').value,
                 onProgress: (progress, description) => updateProgress(progress, description)
             };
             
