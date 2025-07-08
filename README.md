@@ -273,7 +273,7 @@ await mind.forgetPdf('research-paper');
 
 ```javascript
 // Load previously processed PDF into memory
-await mind.recall('research-paper');
+await mind.recallPdf('research-paper');
 
 // Now available for chat
 const answer = await mind.chat("What were the key findings?");
@@ -295,7 +295,7 @@ Extract structured information directly from loaded PDFs using the `process` met
 ```javascript
 // Load PDF first
 await mind.readPdf('research-paper.pdf');
-// or recall: await mind.recall('paper-id');
+// or recall: await mind.recallPdf('paper-id');
 
 // Extract data using "pdf" shorthand
 const paperAnalysis = await mind.process(
@@ -680,7 +680,7 @@ const pdfData = await mind.process("Extract info", "pdf", schema)
 
 // PDF management
 await mind.readPdf(file)          // Load PDF
-await mind.recall("pdf-id")       // Recall from storage
+await mind.recallPdf("pdf-id")       // Recall from storage
 await mind.listReadPdfs()         // List all PDFs
 await mind.forgetPdf("pdf-id")    // Remove from storage
 

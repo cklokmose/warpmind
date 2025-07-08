@@ -1,6 +1,6 @@
 const WarpMind = require('../src/warpmind');
 
-describe('WarpMind recall() method', () => {
+describe('WarpMind recallPdf() method', () => {
   let mind;
 
   beforeEach(() => {
@@ -14,7 +14,7 @@ describe('WarpMind recall() method', () => {
     jest.clearAllMocks();
   });
 
-  describe('recall functionality', () => {
+  describe('recallPdf functionality', () => {
     it('should recall a previously processed PDF from storage', async () => {
       // Mock storage methods
       const mockMetadata = {
@@ -44,7 +44,7 @@ describe('WarpMind recall() method', () => {
       mind._pdfStorage = mockStorage;
 
       // Mock the storage methods on the PDF loader module
-      jest.spyOn(mind, 'recall').mockImplementation(async (pdfId) => {
+      jest.spyOn(mind, 'recallPdf').mockImplementation(async (pdfId) => {
         const metadata = await mockStorage.getMetadata(pdfId);
         if (!metadata) {
           throw new Error(`PDF with ID "${pdfId}" not found. Use readPdf() to process it first.`);
@@ -54,7 +54,7 @@ describe('WarpMind recall() method', () => {
         return pdfId;
       });
 
-      const result = await mind.recall('test-pdf');
+      const result = await mind.recallPdf('test-pdf');
 
       expect(result).toBe('test-pdf');
       expect(mockStorage.getMetadata).toHaveBeenCalledWith('test-pdf');
@@ -68,7 +68,7 @@ describe('WarpMind recall() method', () => {
         getMetadata: jest.fn().mockResolvedValue(null)
       };
 
-      jest.spyOn(mind, 'recall').mockImplementation(async (pdfId) => {
+      jest.spyOn(mind, 'recallPdf').mockImplementation(async (pdfId) => {
         const metadata = await mockStorage.getMetadata(pdfId);
         if (!metadata) {
           throw new Error(`PDF with ID "${pdfId}" not found. Use readPdf() to process it first.`);
@@ -76,7 +76,7 @@ describe('WarpMind recall() method', () => {
         return pdfId;
       });
 
-      await expect(mind.recall('non-existent-pdf')).rejects.toThrow(
+      await expect(mind.recallPdf('non-existent-pdf')).rejects.toThrow(
         'PDF with ID "non-existent-pdf" not found. Use readPdf() to process it first.'
       );
     });
@@ -94,7 +94,7 @@ describe('WarpMind recall() method', () => {
         getChunks: jest.fn().mockResolvedValue([])
       };
 
-      jest.spyOn(mind, 'recall').mockImplementation(async (pdfId) => {
+      jest.spyOn(mind, 'recallPdf').mockImplementation(async (pdfId) => {
         const metadata = await mockStorage.getMetadata(pdfId);
         if (!metadata) {
           throw new Error(`PDF with ID "${pdfId}" not found. Use readPdf() to process it first.`);
@@ -106,40 +106,40 @@ describe('WarpMind recall() method', () => {
         return pdfId;
       });
 
-      await expect(mind.recall('empty-pdf')).rejects.toThrow(
+      await expect(mind.recallPdf('empty-pdf')).rejects.toThrow(
         'PDF "empty-pdf" has no content chunks. The PDF may be corrupted in storage.'
       );
     });
 
     it('should return immediately if PDF is already loaded in memory', async () => {
       // Mock that PDF is already in memory
-      jest.spyOn(mind, 'recall').mockImplementation(async (pdfId) => {
+      jest.spyOn(mind, 'recallPdf').mockImplementation(async (pdfId) => {
         // Simulate PDF already being in loadedPdfs Map
         return pdfId; // Already loaded, return immediately
       });
 
-      const result = await mind.recall('already-loaded-pdf');
+      const result = await mind.recallPdf('already-loaded-pdf');
       expect(result).toBe('already-loaded-pdf');
     });
   });
 
   describe('integration with readPdf', () => {
     it('should be used by readPdf when PDF already exists', async () => {
-      // Mock that readPdf calls recall when PDF exists
-      mind.recall = jest.fn().mockResolvedValue('existing-pdf');
+      // Mock that readPdf calls recallPdf when PDF exists
+      mind.recallPdf = jest.fn().mockResolvedValue('existing-pdf');
 
       // Mock readPdf to simulate finding existing PDF
       mind.readPdf = jest.fn().mockImplementation(async (src, options = {}) => {
         const pdfId = options.id || 'existing-pdf';
         // Simulate checking storage and finding existing PDF
-        await mind.recall(pdfId);
+        await mind.recallPdf(pdfId);
         return pdfId;
       });
 
       const result = await mind.readPdf('test.pdf', { id: 'existing-pdf' });
 
       expect(result).toBe('existing-pdf');
-      expect(mind.recall).toHaveBeenCalledWith('existing-pdf');
+      expect(mind.recallPdf).toHaveBeenCalledWith('existing-pdf');
     });
   });
 });

@@ -712,8 +712,8 @@ function createPdfLoaderModule(client) {
         // Check if PDF is already processed
         const existingMetadata = await storage.getMetadata(pdfId);
         if (existingMetadata) {
-          // Use recall method for consistency
-          await this.recall(pdfId);
+          // Use recallPdf method for consistency
+          await this.recallPdf(pdfId);
           
           safeProgress(1.0);
           return pdfId;
@@ -967,7 +967,7 @@ function createPdfLoaderModule(client) {
       this._unregisterPdfRetrievalTool(pdfId);
     },
 
-    async recall(pdfId) {
+    async recallPdf(pdfId) {
       // Check if PDF is already loaded in memory
       if (loadedPdfs.has(pdfId)) {
         return pdfId; // Already loaded

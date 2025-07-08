@@ -666,8 +666,8 @@
             try {
                 showMessage(`Loading PDF ${pdfId} into memory...`, 'system');
                 
-                // Use recall to load the PDF into memory and register its tools
-                await mind.recall(pdfId);
+                // Use recallPdf to load the PDF into memory and register its tools
+                await mind.recallPdf(pdfId);
                 
                 currentPdfId = pdfId;
                 showMessage(`PDF ${pdfId} loaded and ready for chat`, 'success');
