@@ -72,19 +72,44 @@
             background: #bdc3c7;
             cursor: not-allowed;
         }
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #ecf0f1;
-            border-radius: 10px;
+        .progress-container {
+            margin: 20px 0;
+            background: #f1f1f1;
+            border-radius: 5px;
+            height: 25px;
+            position: relative;
             overflow: hidden;
-            margin: 10px 0;
+            display: none;
         }
-        .progress-fill {
+        .progress-bar {
+            background: #4CAF50;
             height: 100%;
-            background: #3498db;
+            width: 0%;
             transition: width 0.3s ease;
-            border-radius: 10px;
+        }
+        .progress-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            font-size: 0.9em;
+            font-weight: 500;
+            text-shadow: 0 0 2px rgba(255,255,255,0.7);
+        }
+        .slow-response {
+            color: #d35400;
+            animation: pulse 2s infinite;
+            font-weight: 600;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
         }
         .chat-container {
             margin-top: 20px;
@@ -171,6 +196,14 @@
             padding: 10px;
             border-radius: 6px;
             margin: 10px 0;
+        }
+        .warning {
+            color: #f39c12;
+            background: #fff8e1;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            border-left: 4px solid #f39c12;
         }
         .options {
             display: grid;
@@ -298,8 +331,9 @@
             <button class="button" id="loadPdf">Load PDF</button>
             <button class="button" id="loadExamplePdf">Load Example PDF</button>
             
-            <div class="progress-bar" id="progressBar" style="display: none;">
-                <div class="progress-fill" id="progressFill"></div>
+            <div class="progress-container" id="progressBar" style="display: none;">
+                <div class="progress-bar" id="progressFill"></div>
+                <div class="progress-text" id="progressText"></div>
             </div>
             
             <div id="loadStatus"></div>
@@ -435,19 +469,34 @@
         }
         
         // Update progress bar
-        function updateProgress(progress) {
+        function updateProgress(progress, description) {
             const progressBar = document.getElementById('progressBar');
             const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
             
             if (progress === 0) {
                 progressBar.style.display = 'none';
+                progressText.textContent = '';
             } else {
                 progressBar.style.display = 'block';
                 progressFill.style.width = `${progress * 100}%`;
                 
+                // Display description if available
+                if (description) {
+                    progressText.textContent = description;
+                    
+                    // Highlight slow backend responses
+                    if (description.includes('waiting for backend') || description.includes('backend response')) {
+                        progressText.classList.add('slow-response');
+                    } else {
+                        progressText.classList.remove('slow-response');
+                    }
+                }
+                
                 if (progress >= 1) {
                     setTimeout(() => {
                         progressBar.style.display = 'none';
+                        progressText.textContent = '';
                     }, 1000);
                 }
             }
@@ -465,17 +514,29 @@
                 embedModel: document.getElementById('embedModel').value,
                 processImages: document.getElementById('processImages').value === 'true',
                 imageDetail: document.getElementById('imageDetail').value,
-                onProgress: updateProgress
+                onProgress: (progress, description) => updateProgress(progress, description)
             };
             
             try {
                 showMessage('Loading PDF...', 'system');
                 updateProgress(0.05);
                 
+                // Set up a long operation warning
+                let isLongOperation = false;
+                const longOperationTimeout = setTimeout(() => {
+                    isLongOperation = true;
+                    showMessage('PDF processing is taking longer than expected. This is normal for large or complex documents, and for slower backend responses.', 'warning');
+                }, 15000); // Show warning after 15 seconds
+                
                 const pdfId = await mind.readPdf(source, options);
+                clearTimeout(longOperationTimeout);
                 currentPdfId = pdfId;
                 
-                showMessage(`PDF loaded successfully! ID: ${pdfId}`, 'success');
+                if (isLongOperation) {
+                    showMessage(`PDF loaded successfully after extended processing! ID: ${pdfId}`, 'success');
+                } else {
+                    showMessage(`PDF loaded successfully! ID: ${pdfId}`, 'success');
+                }
                 updateProgress(1);
                 
                 // Update UI

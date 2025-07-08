@@ -169,9 +169,10 @@ async function ensurePdfJsLoaded() {
 
 // IndexedDB configuration
 const DB_NAME = 'warpmind-pdf-storage';
-const DB_VERSION = 1;
+const DB_VERSION = 3; // Increment version for optimized storage schema
 const STORE_NAME = 'pdf-chunks';
 const METADATA_STORE = 'pdf-metadata';
+const CONTENT_STORE = 'pdf-content'; // Store for full content (text and images)
 
 class PdfStorage {
   constructor() {
@@ -210,7 +211,7 @@ class PdfStorage {
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
         
-        // Create chunks store
+        // Create chunks store - optimized to store only indices and references
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
           store.createIndex('pdfId', 'pdfId', { unique: false });
@@ -221,6 +222,13 @@ class PdfStorage {
         if (!db.objectStoreNames.contains(METADATA_STORE)) {
           const metaStore = db.createObjectStore(METADATA_STORE, { keyPath: 'id' });
           metaStore.createIndex('processedAt', 'processedAt', { unique: false });
+        }
+
+        // Create content store - single source of truth for text and images
+        if (!db.objectStoreNames.contains(CONTENT_STORE)) {
+          const contentStore = db.createObjectStore(CONTENT_STORE, { keyPath: 'id' });
+          contentStore.createIndex('pdfId', 'pdfId', { unique: false });
+          contentStore.createIndex('type', 'type', { unique: false });
         }
       };
     });
@@ -237,16 +245,89 @@ class PdfStorage {
     const transaction = this.db.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     
+    // Store only references and indices - no duplicate text or images
     const chunkData = {
       id: `${pdfId}-${chunkIndex}`,
       pdfId,
       chunkIndex,
-      ...chunk
+      textStart: chunk.textStart,
+      textEnd: chunk.textEnd,
+      imageIndices: chunk.imageIndices || [],
+      embedding: chunk.embedding,
+      embeddingText: chunk.embeddingText,
+      pageReferences: chunk.pageReferences
     };
 
     return new Promise((resolve, reject) => {
       const request = store.put(chunkData);
       request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async storeContent(pdfId, type, data, index = null) {
+    await this.init();
+    
+    // Handle test environment gracefully
+    if (this.db.isMockDb) {
+      return Promise.resolve();
+    }
+    
+    const transaction = this.db.transaction([CONTENT_STORE], 'readwrite');
+    const store = transaction.objectStore(CONTENT_STORE);
+    
+    const contentId = index !== null ? `${pdfId}-${type}-${index}` : `${pdfId}-${type}`;
+    const contentData = {
+      id: contentId,
+      pdfId,
+      type,
+      data,
+      index,
+      storedAt: new Date().toISOString()
+    };
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(contentData);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getContent(pdfId, type, index = null) {
+    await this.init();
+    
+    // Handle test environment gracefully
+    if (this.db.isMockDb) {
+      return Promise.resolve(null);
+    }
+    
+    const transaction = this.db.transaction([CONTENT_STORE], 'readonly');
+    const store = transaction.objectStore(CONTENT_STORE);
+    
+    const contentId = index !== null ? `${pdfId}-${type}-${index}` : `${pdfId}-${type}`;
+
+    return new Promise((resolve, reject) => {
+      const request = store.get(contentId);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getAllContentForPdf(pdfId) {
+    await this.init();
+    
+    // Handle test environment gracefully
+    if (this.db.isMockDb) {
+      return Promise.resolve([]);
+    }
+    
+    const transaction = this.db.transaction([CONTENT_STORE], 'readonly');
+    const store = transaction.objectStore(CONTENT_STORE);
+    const index = store.index('pdfId');
+
+    return new Promise((resolve, reject) => {
+      const request = index.getAll(pdfId);
+      request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
   }
@@ -294,6 +375,47 @@ class PdfStorage {
     });
   }
 
+  async getReconstructedChunks(pdfId) {
+    await this.init();
+    
+    // Handle test environment gracefully
+    if (this.db.isMockDb) {
+      return Promise.resolve([]);
+    }
+    
+    // Get chunk metadata
+    const chunks = await this.getChunks(pdfId);
+    if (!chunks || chunks.length === 0) {
+      return [];
+    }
+
+    // Get full text content
+    const fullTextContent = await this.getContent(pdfId, 'fullText');
+    const fullText = fullTextContent ? fullTextContent.data : '';
+
+    // Reconstruct chunks with lightweight references (no duplicate images)
+    const reconstructedChunks = [];
+    for (const chunk of chunks) {
+      // Extract text using indices
+      const text = fullText.substring(chunk.textStart, chunk.textEnd);
+      
+      reconstructedChunks.push({
+        id: chunk.id,
+        pdfId: chunk.pdfId,
+        chunkIndex: chunk.chunkIndex,
+        text,
+        imageIndices: chunk.imageIndices || [], // Keep as references only
+        embedding: chunk.embedding,
+        embeddingText: chunk.embeddingText,
+        pageReferences: chunk.pageReferences,
+        textStart: chunk.textStart,
+        textEnd: chunk.textEnd
+      });
+    }
+
+    return reconstructedChunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
+  }
+
   async getMetadata(pdfId) {
     await this.init();
     
@@ -338,17 +460,20 @@ class PdfStorage {
       return Promise.resolve();
     }
     
-    const transaction = this.db.transaction([STORE_NAME, METADATA_STORE], 'readwrite');
+    const transaction = this.db.transaction([STORE_NAME, METADATA_STORE, CONTENT_STORE], 'readwrite');
     const chunkStore = transaction.objectStore(STORE_NAME);
     const metaStore = transaction.objectStore(METADATA_STORE);
-    const index = chunkStore.index('pdfId');
+    const contentStore = transaction.objectStore(CONTENT_STORE);
+    
+    const chunkIndex = chunkStore.index('pdfId');
+    const contentIndex = contentStore.index('pdfId');
 
     return new Promise((resolve, reject) => {
       // Delete all chunks for this PDF
-      const chunkRequest = index.getAll(pdfId);
+      const chunkRequest = chunkIndex.getAll(pdfId);
       chunkRequest.onsuccess = () => {
         const chunks = chunkRequest.result;
-        const deletePromises = chunks.map(chunk => {
+        const chunkDeletePromises = chunks.map(chunk => {
           return new Promise((res, rej) => {
             const delRequest = chunkStore.delete(chunk.id);
             delRequest.onsuccess = () => res();
@@ -356,12 +481,27 @@ class PdfStorage {
           });
         });
 
-        Promise.all(deletePromises).then(() => {
-          // Delete metadata
-          const metaRequest = metaStore.delete(pdfId);
-          metaRequest.onsuccess = () => resolve();
-          metaRequest.onerror = () => reject(metaRequest.error);
-        }).catch(reject);
+        // Delete all content for this PDF
+        const contentRequest = contentIndex.getAll(pdfId);
+        contentRequest.onsuccess = () => {
+          const content = contentRequest.result;
+          const contentDeletePromises = content.map(item => {
+            return new Promise((res, rej) => {
+              const delRequest = contentStore.delete(item.id);
+              delRequest.onsuccess = () => res();
+              delRequest.onerror = () => rej(delRequest.error);
+            });
+          });
+
+          // Wait for all deletions to complete
+          Promise.all([...chunkDeletePromises, ...contentDeletePromises]).then(() => {
+            // Delete metadata
+            const metaRequest = metaStore.delete(pdfId);
+            metaRequest.onsuccess = () => resolve();
+            metaRequest.onerror = () => reject(metaRequest.error);
+          }).catch(reject);
+        };
+        contentRequest.onerror = () => reject(contentRequest.error);
       };
       chunkRequest.onerror = () => reject(chunkRequest.error);
     });
@@ -376,30 +516,67 @@ class PdfStorage {
 
     for (const metadata of allMetadata) {
       const chunks = await this.getChunks(metadata.id);
-      const pdfSize = chunks.reduce((acc, chunk) => {
-        // Estimate size based on text content and embeddings
-        const textSize = new Blob([chunk.text]).size;
-        const embeddingSize = chunk.embedding ? chunk.embedding.length * 4 : 0; // 4 bytes per float
-        const imageSize = chunk.images ? chunk.images.reduce((sum, img) => sum + (img.description?.length || 0), 0) : 0;
-        return acc + textSize + embeddingSize + imageSize;
+      const content = await this.getAllContentForPdf(metadata.id);
+      
+      // Calculate size from content store (single source of truth)
+      const contentSize = content.reduce((acc, item) => {
+        const dataSize = typeof item.data === 'string' ? 
+          new Blob([item.data]).size : 
+          (item.data?.length || 0) * 4; // Assume embedding arrays are float32
+        return acc + dataSize;
       }, 0);
+      
+      // Calculate chunk metadata size (much smaller now)
+      const chunkSize = chunks.reduce((acc, chunk) => {
+        const embeddingSize = chunk.embedding ? chunk.embedding.length * 4 : 0;
+        const metadataSize = JSON.stringify({
+          textStart: chunk.textStart,
+          textEnd: chunk.textEnd,
+          imageIndices: chunk.imageIndices,
+          pageReferences: chunk.pageReferences
+        }).length;
+        return acc + embeddingSize + metadataSize;
+      }, 0);
+
+      const totalPdfSize = contentSize + chunkSize;
 
       pdfSizes.push({
         id: metadata.id,
         title: metadata.title || metadata.id,
-        size: pdfSize / (1024 * 1024), // Convert to MB
+        size: totalPdfSize / (1024 * 1024), // Convert to MB
+        contentSize: contentSize / (1024 * 1024),
+        chunkMetadataSize: chunkSize / (1024 * 1024),
         chunks: chunks.length,
         processedAt: metadata.processedAt
       });
 
-      totalSize += pdfSize;
+      totalSize += totalPdfSize;
     }
 
     return {
       totalSize: totalSize / (1024 * 1024), // Convert to MB
       unit: 'MB',
-      pdfs: pdfSizes.sort((a, b) => b.size - a.size)
+      pdfs: pdfSizes.sort((a, b) => b.size - a.size),
+      optimized: true // Flag to indicate this is using optimized storage
     };
+  }
+
+  async getChunkImages(pdfId, imageIndices) {
+    if (!imageIndices || imageIndices.length === 0) {
+      return [];
+    }
+
+    // First try to get from in-memory cache
+    if (loadedPdfs.has(pdfId)) {
+      const pdfData = loadedPdfs.get(pdfId);
+      if (pdfData.getAllImages) {
+        const allImages = pdfData.getAllImages();
+        return imageIndices.map(idx => allImages[idx]).filter(Boolean);
+      }
+    }
+
+    // Fall back to storage
+    return await storage.getChunkImages(pdfId, imageIndices);
   }
 }
 
@@ -467,10 +644,63 @@ function createPdfLoaderModule(client) {
         imagePrompt = 'Describe this image, chart, or diagram in detail for academic use',
         onProgress = null
       } = options;
+      
+      // Safe progress update function that won't throw errors
+      const safeProgress = (progress) => {
+        if (typeof onProgress === 'function') {
+          try {
+            onProgress(progress);
+          } catch (e) {
+            console.warn('Error in progress callback:', e);
+          }
+        }
+      };
 
       let pdfId = id;
       let pdfDoc;
       let file;
+      
+      // Start with initial progress
+      safeProgress(0.01);
+
+      // Setup progress pulse to ensure regular UI updates even during slow operations
+      let lastProgressUpdate = 0;
+      let progressPulseInterval = null;
+      
+      const startProgressPulse = (currentProgress, description) => {
+        if (progressPulseInterval) clearInterval(progressPulseInterval);
+        
+        // Create a pulse that shows small increments to indicate the system is still working
+        let pulseCount = 0;
+        progressPulseInterval = setInterval(() => {
+          pulseCount++;
+          // Only pulse if no real progress has been reported for 2 seconds
+          const now = Date.now();
+          if (now - lastProgressUpdate > 2000) {
+            const pulseDescription = `${description || 'Processing'} (waiting for backend response...)`;
+            this._safeProgressCallback(currentProgress, pulseDescription);
+          }
+          
+          // After 30 seconds (15 pulses at 2s intervals), show a more explicit message
+          if (pulseCount === 15) {
+            console.log('Operation taking longer than expected. Backend may be under heavy load.');
+          }
+        }, 2000);
+      };
+      
+      const stopProgressPulse = () => {
+        if (progressPulseInterval) {
+          clearInterval(progressPulseInterval);
+          progressPulseInterval = null;
+        }
+      };
+      
+      // Update our safe progress callback to track the last update time
+      const originalSafeProgressCallback = this._safeProgressCallback;
+      this._safeProgressCallback = (progress, description) => {
+        lastProgressUpdate = Date.now();
+        originalSafeProgressCallback.call(this, progress, description);
+      };
 
       try {
         // Ensure PDF.js is loaded before proceeding
@@ -509,7 +739,7 @@ function createPdfLoaderModule(client) {
           // Use recall method for consistency
           await this.recall(pdfId);
           
-          if (onProgress) onProgress(1.0);
+          safeProgress(1.0);
           return pdfId;
         }
 
@@ -519,10 +749,15 @@ function createPdfLoaderModule(client) {
         }
 
         // Load PDF document
-        pdfDoc = await pdfjsLib.getDocument({ data: file }).promise;
-        const numPages = pdfDoc.numPages;
-
-        if (onProgress) onProgress(0.1);
+        try {
+          pdfDoc = await pdfjsLib.getDocument({ data: file }).promise;
+          const numPages = pdfDoc.numPages;
+        
+          safeProgress(0.1);
+        } catch (error) {
+          console.error('Error loading PDF document:', error);
+          throw new Error(`Failed to load PDF document: ${error.message}`);
+        }
 
         // Extract text and images from all pages
         const pageContents = [];
@@ -545,44 +780,107 @@ function createPdfLoaderModule(client) {
             images: pageImages
           });
 
-          if (onProgress) onProgress(0.1 + (pageNum / numPages) * 0.4);
+          safeProgress(0.1 + (pageNum / numPages) * 0.4);
         }
 
         // Combine all text and create chunks
         const fullText = pageContents.map(page => page.text).join('\n\n');
         const textChunks = chunkText(fullText, chunkTokens);
 
-        // Create enhanced chunks with image context
+        // Collect all unique images
+        const allImages = [];
+        const imageMap = new Map(); // For deduplication
+        
+        for (const page of pageContents) {
+          for (const image of page.images) {
+            const imageKey = image.description; // Use description as key for deduplication
+            if (!imageMap.has(imageKey)) {
+              const imageIndex = allImages.length;
+              allImages.push({ ...image, pageNum: page.pageNum });
+              imageMap.set(imageKey, imageIndex);
+            }
+          }
+        }
+
+        // Create enhanced chunks with text position indices and image references
         const enhancedChunks = [];
-        let currentPageImages = [];
-        let currentPageNum = 1;
+        let currentTextPosition = 0;
+
+        safeProgress(0.5); // Update progress before starting the loop
 
         for (let i = 0; i < textChunks.length; i++) {
-          const chunk = textChunks[i];
+          const chunkText = textChunks[i];
+          // Handle case when text isn't found (prevent infinite looping)
+          let textStart = fullText.indexOf(chunkText, currentTextPosition);
+          if (textStart === -1) {
+            console.warn(`Chunk text not found from position ${currentTextPosition}, searching from beginning`);
+            textStart = fullText.indexOf(chunkText, 0);
+            if (textStart === -1) {
+              console.warn(`Chunk text still not found, using fallback position`);
+              textStart = currentTextPosition;
+            }
+          }
+          const textEnd = textStart + chunkText.length;
           
-          // Find relevant images for this chunk
-          const chunkImages = pageContents
-            .filter(page => page.images.length > 0)
-            .flatMap(page => page.images.map(img => ({ ...img, pageNum: page.pageNum })));
+          // Find relevant images for this chunk based on page references
+          const chunkPageRefs = this._findPageReferences(chunkText, pageContents);
+          const relevantImageIndices = [];
+          
+          for (let imgIndex = 0; imgIndex < allImages.length; imgIndex++) {
+            const image = allImages[imgIndex];
+            if (chunkPageRefs.includes(image.pageNum)) {
+              relevantImageIndices.push(imgIndex);
+            }
+          }
 
           enhancedChunks.push({
-            text: chunk,
-            images: chunkImages,
             chunkIndex: i,
-            pageReferences: this._findPageReferences(chunk, pageContents)
+            textStart,
+            textEnd,
+            imageIndices: relevantImageIndices,
+            pageReferences: chunkPageRefs
           });
 
-          if (onProgress) onProgress(0.5 + (i / textChunks.length) * 0.3);
+          currentTextPosition = textEnd;
+          
+          // Update progress less frequently to avoid UI freezing
+          if (i % 5 === 0) {
+            safeProgress(0.5 + (i / textChunks.length) * 0.3);
+          }
         }
+        
+        // Final progress update after loop completes
+        safeProgress(0.8);
 
         // Generate embeddings for each chunk
         const chunksWithEmbeddings = [];
+        
+        // Prepare all chunk texts for embedding
+        const chunkTextsForEmbedding = [];
         for (let i = 0; i < enhancedChunks.length; i++) {
           const chunk = enhancedChunks[i];
-          
-          // Combine text and image descriptions for embedding
-          const imageDescriptions = chunk.images.map(img => img.description).join(' ');
-          const embeddingText = chunk.text + (imageDescriptions ? ' ' + imageDescriptions : '');
+          // Check for valid start/end indices
+          if (chunk.textStart >= 0 && chunk.textEnd <= fullText.length && chunk.textStart < chunk.textEnd) {
+            const chunkText = fullText.substring(chunk.textStart, chunk.textEnd);
+            // Combine text and relevant image descriptions for embedding
+            const relevantImages = chunk.imageIndices.map(idx => allImages[idx]).filter(Boolean);
+            const imageDescriptions = relevantImages.map(img => img.description || '').join(' ');
+            const embeddingText = chunkText + (imageDescriptions ? ' ' + imageDescriptions : '');
+            chunkTextsForEmbedding.push({ chunk, embeddingText });
+          } else {
+            console.warn(`Invalid text indices for chunk ${i}: start=${chunk.textStart}, end=${chunk.textEnd}, textLength=${fullText.length}`);
+            chunkTextsForEmbedding.push({ 
+              chunk, 
+              embeddingText: `Chunk ${i} with invalid indices` 
+            });
+          }
+        }
+        
+        if (onProgress) onProgress(0.8);
+        
+        // Process embeddings with better progress updates
+        for (let i = 0; i < chunkTextsForEmbedding.length; i++) {
+          const { chunk, embeddingText } = chunkTextsForEmbedding[i];
           
           try {
             const embedding = await this._generateEmbedding(embeddingText, embedModel);
@@ -596,14 +894,17 @@ function createPdfLoaderModule(client) {
             chunksWithEmbeddings.push({
               ...chunk,
               embedding: null,
-              embeddingText
+              embeddingText: chunk.embeddingText
             });
           }
 
-          if (onProgress) onProgress(0.8 + (i / enhancedChunks.length) * 0.15);
+          // Update progress less frequently
+          if (i % 3 === 0 || i === chunkTextsForEmbedding.length - 1) {
+            safeProgress(0.8 + (i / chunkTextsForEmbedding.length) * 0.15);
+          }
         }
 
-        // Store in IndexedDB
+        // Store in optimized format
         const metadata = {
           title: pdfId,
           numPages,
@@ -612,19 +913,76 @@ function createPdfLoaderModule(client) {
           embedModel,
           processImages,
           imageDetail,
-          fullText: fullText, // Store the complete text
-          pageContents: pageContents, // Store page-by-page content with images
-          estimatedTokens: Math.ceil(fullText.length / 4) // Pre-calculate token estimate
+          estimatedTokens: Math.ceil(fullText.length / 4),
+          totalImages: allImages.length
         };
 
-        await storage.storeMetadata(pdfId, metadata);
+        safeProgress(0.85);
+        
+        try {
+          // Store metadata first
+          await storage.storeMetadata(pdfId, metadata);
+          safeProgress(0.87);
 
-        for (const chunk of chunksWithEmbeddings) {
-          await storage.storeChunk(pdfId, chunk.chunkIndex, chunk);
+          // Store full text once (single source of truth)
+          await storage.storeContent(pdfId, 'fullText', fullText);
+          safeProgress(0.9);
+
+          // Store each unique image once - batch in groups of 5 to avoid UI freezing
+          for (let i = 0; i < allImages.length; i += 5) {
+            const imageBatch = allImages.slice(i, i + 5);
+            await Promise.all(
+              imageBatch.map((img, idx) => 
+                storage.storeContent(pdfId, 'image', img, i + idx)
+              )
+            );
+            
+            const imageProgress = 0.9 + (Math.min(i + 5, allImages.length) / allImages.length) * 0.05;
+            safeProgress(imageProgress);
+          }
+
+          // Store page contents for formatting purposes
+          await storage.storeContent(pdfId, 'pageContents', pageContents);
+          safeProgress(0.96);
+
+          // Store optimized chunks (only indices and embeddings) - batch for performance
+          for (let i = 0; i < chunksWithEmbeddings.length; i += 10) {
+            const chunkBatch = chunksWithEmbeddings.slice(i, i + 10);
+            await Promise.all(
+              chunkBatch.map(chunk => storage.storeChunk(pdfId, chunk.chunkIndex, chunk))
+            );
+            
+            const chunkProgress = 0.96 + (Math.min(i + 10, chunksWithEmbeddings.length) / chunksWithEmbeddings.length) * 0.04;
+            safeProgress(chunkProgress);
+          }
+          
+          safeProgress(1.0);
+        } catch (error) {
+          console.error('Error storing PDF data:', error);
+          throw new Error(`Failed to store PDF data: ${error.message}`);
         }
 
-        // Cache in memory
-        loadedPdfs.set(pdfId, { metadata, chunks: chunksWithEmbeddings });
+        // Create lightweight chunks for in-memory cache (no duplicate images)
+        const reconstructedChunks = chunksWithEmbeddings.map(chunk => ({
+          id: `${pdfId}-${chunk.chunkIndex}`,
+          pdfId,
+          chunkIndex: chunk.chunkIndex,
+          text: fullText.substring(chunk.textStart, chunk.textEnd),
+          imageIndices: chunk.imageIndices || [], // Keep as references only
+          embedding: chunk.embedding,
+          embeddingText: chunk.embeddingText,
+          pageReferences: chunk.pageReferences,
+          textStart: chunk.textStart,
+          textEnd: chunk.textEnd
+        }));
+
+        // Cache in memory with additional content (images stored separately)
+        loadedPdfs.set(pdfId, { 
+          metadata: { ...metadata, fullText, pageContents },
+          chunks: reconstructedChunks,
+          // Store image lookup for when needed
+          getAllImages: () => allImages
+        });
 
         // Register retrieval tool
         this._registerPdfRetrievalTool(pdfId, metadata.title);
@@ -633,10 +991,28 @@ function createPdfLoaderModule(client) {
         return pdfId;
 
       } catch (error) {
+        // Log the full error for debugging
+        console.error('PDF processing error:', error);
+        
+        // Set progress to 0 to indicate failure
+        safeProgress(0);
+        
+        // Handle specific error types with friendly messages
         if (error.message.includes('PDF.js')) {
           throw new Error('PDF features are not available. This may be due to the environment not supporting PDF.js. Please ensure PDF.js can be loaded in your platform.');
+        } else if (error.name === 'PasswordException') {
+          throw new Error('The PDF is password protected. Please provide an unprotected PDF.');
+        } else if (error.name === 'InvalidPDFException') {
+          throw new Error('The PDF is invalid or corrupted. Please try a different file.');
+        } else if (error.message.includes('storage') || error.name === 'QuotaExceededError') {
+          throw new Error('Storage quota exceeded. Please clear some space by removing unused PDFs.');
+        } else {
+          // Generic error with the original message
+          throw new Error(`Failed to process PDF: ${error.message}`);
         }
-        throw new Error(`Failed to process PDF: ${error.message}`);
+      } finally {
+        // Make sure we clean up the progress pulse
+        stopProgressPulse();
       }
     },
 
@@ -685,14 +1061,24 @@ function createPdfLoaderModule(client) {
         throw new Error(`PDF with ID "${pdfId}" not found. Use readPdf() to process it first.`);
       }
 
-      // Load chunks from storage
-      const chunks = await storage.getChunks(pdfId);
+      // Load chunks from storage using optimized method
+      const chunks = await storage.getReconstructedChunks(pdfId);
       if (!chunks || chunks.length === 0) {
         throw new Error(`PDF "${pdfId}" has no content chunks. The PDF may be corrupted in storage.`);
       }
 
+      // Get additional content for metadata
+      const fullTextContent = await storage.getContent(pdfId, 'fullText');
+      const pageContentsContent = await storage.getContent(pdfId, 'pageContents');
+      
+      const enrichedMetadata = {
+        ...metadata,
+        fullText: fullTextContent ? fullTextContent.data : '',
+        pageContents: pageContentsContent ? pageContentsContent.data : []
+      };
+
       // Load into memory cache
-      loadedPdfs.set(pdfId, { metadata, chunks });
+      loadedPdfs.set(pdfId, { metadata: enrichedMetadata, chunks });
 
       // Register retrieval tools
       this._registerPdfRetrievalTool(pdfId, metadata.title);
@@ -765,7 +1151,24 @@ function createPdfLoaderModule(client) {
     async _generateEmbedding(text, model) {
       // Use the client's embed method
       try {
-        return await client.embed(text, { model });
+        // Add a timeout indicator for slow backend responses
+        const startTime = Date.now();
+        const timeoutWarning = setTimeout(() => {
+          console.log('Embedding request taking longer than expected. Backend may be slow to respond.');
+        }, 5000); // 5 second warning
+        
+        const result = await client.embed(text, { model });
+        
+        // Clear the timeout warning
+        clearTimeout(timeoutWarning);
+        
+        // Log duration for performance monitoring
+        const duration = Date.now() - startTime;
+        if (duration > 5000) {
+          console.log(`Embedding request completed after ${(duration/1000).toFixed(1)}s - backend response was slow.`);
+        }
+        
+        return result;
       } catch (error) {
         console.warn('API embedding failed, falling back to local embedding:', error.message);
         return this._generateLocalEmbedding(text);
@@ -904,7 +1307,7 @@ function createPdfLoaderModule(client) {
         if (loadedPdfs.has(pdfId)) {
           chunks = loadedPdfs.get(pdfId).chunks;
         } else {
-          chunks = await storage.getChunks(pdfId);
+          chunks = await storage.getReconstructedChunks(pdfId);
         }
 
         if (!chunks || chunks.length === 0) {
@@ -926,32 +1329,39 @@ function createPdfLoaderModule(client) {
           .slice(0, topResults);
 
         // Format results with truncation to avoid context length issues
-        const results = topChunks.map(chunk => {
+        const results = [];
+        for (const chunk of topChunks) {
           // Truncate text if it's too long (keep first 300 tokens worth of text)
           let text = chunk.text;
           if (text.length > 1200) { // Roughly 300 tokens
             text = text.substring(0, 1200) + '...';
           }
           
-          // Limit image descriptions to avoid context overflow
-          let images = chunk.images || [];
-          if (images.length > 2) {
-            images = images.slice(0, 2);
+          // Get images on demand only if we have image indices
+          let images = [];
+          if (chunk.imageIndices && chunk.imageIndices.length > 0) {
+            try {
+              const chunkImages = await this.getChunkImages(pdfId, chunk.imageIndices.slice(0, 2)); // Limit to 2 images
+              images = chunkImages.map(img => ({
+                description: img.description && img.description.length > 200 ? 
+                  img.description.substring(0, 200) + '...' : 
+                  img.description || 'Image',
+                type: img.type || 'image'
+              }));
+            } catch (error) {
+              console.warn('Failed to load images for chunk:', error);
+              images = [];
+            }
           }
           
-          return {
+          results.push({
             text,
             similarity: chunk.similarity,
             pageReferences: chunk.pageReferences,
-            images: images.map(img => ({
-              description: img.description.length > 200 ? 
-                img.description.substring(0, 200) + '...' : 
-                img.description,
-              type: img.type
-            })),
+            images,
             chunkIndex: chunk.chunkIndex
-          };
-        });
+          });
+        }
 
         return {
           results,
@@ -966,23 +1376,35 @@ function createPdfLoaderModule(client) {
 
     async _getFullPdfText(pdfId, includeImages = true, includePageNumbers = true) {
       try {
-        // Get PDF metadata (which now contains the full text)
-        let metadata;
+        // Get PDF metadata and content
+        let metadata, fullText, pageContents;
+        
         if (loadedPdfs.has(pdfId)) {
-          metadata = loadedPdfs.get(pdfId).metadata;
+          const cached = loadedPdfs.get(pdfId);
+          metadata = cached.metadata;
+          fullText = metadata.fullText;
+          pageContents = metadata.pageContents;
         } else {
           metadata = await storage.getMetadata(pdfId);
+          if (!metadata) {
+            return { error: 'PDF not found' };
+          }
+          
+          const fullTextContent = await storage.getContent(pdfId, 'fullText');
+          const pageContentsContent = await storage.getContent(pdfId, 'pageContents');
+          
+          fullText = fullTextContent ? fullTextContent.data : '';
+          pageContents = pageContentsContent ? pageContentsContent.data : [];
         }
 
-        if (!metadata || !metadata.fullText) {
-          return { error: 'PDF not found or has no content' };
+        if (!fullText) {
+          return { error: 'PDF has no content' };
         }
 
-        let result = metadata.fullText;
+        let result = fullText;
 
         // If we need to include images or page numbers, format the text appropriately
-        if (includeImages || includePageNumbers) {
-          const pageContents = metadata.pageContents || [];
+        if ((includeImages || includePageNumbers) && pageContents && pageContents.length > 0) {
           let formattedText = '';
           
           for (let i = 0; i < pageContents.length; i++) {
@@ -1018,14 +1440,106 @@ function createPdfLoaderModule(client) {
             pages: metadata.numPages,
             chunks: metadata.totalChunks,
             estimatedTokens: metadata.estimatedTokens || Math.ceil(result.length / 4),
-            processedAt: metadata.processedAt
+            processedAt: metadata.processedAt,
+            optimizedStorage: true
           }
         };
 
       } catch (error) {
         return { error: `Failed to get full text: ${error.message}` };
       }
-    }
+    },
+
+    async _processTextChunk(chunkId, textChunk, pages, options) {
+      const { pageNums, content } = textChunk;
+      
+      try {
+        // Generate embedding for the chunk
+        this._safeProgressCallback(options.currentProgress, `Generating embedding for chunk ${options.chunkCounter}/${options.totalChunks}`);
+        
+        // Start progress pulse before potentially slow embedding operation
+        startProgressPulse(options.currentProgress, `Generating embedding for chunk ${options.chunkCounter}/${options.totalChunks}`);
+        
+        const embedding = await this._generateEmbedding(content, options.embeddingModel);
+        
+        // Stop progress pulse as we've completed this embedding
+        stopProgressPulse();
+        
+        // Store the content first to get its ID
+        const contentId = await this._storeContent(content, 'text');
+        
+        // Store the chunk with a reference to the content
+        const chunkData = {
+          id: chunkId,
+          contentId,
+          type: 'text',
+          pages: pageNums,
+          metadata: {
+            pageNums,
+            source: options.source || 'pdf',
+            title: options.title || 'Untitled PDF',
+          },
+          embedding
+        };
+
+        // Store the chunk data
+        await this._storeChunk(chunkData);
+        
+        // Update the progress with a small increment
+        options.currentProgress += options.progressIncrement;
+        this._safeProgressCallback(options.currentProgress, `Processed chunk ${options.chunkCounter}/${options.totalChunks}`);
+        options.chunkCounter++;
+        
+      } catch (error) {
+        console.error('Error processing text chunk:', error);
+        throw error;
+      }
+    },
+
+    async _processImageChunk(chunkId, image, pageNum, options) {
+      try {
+        // Generate embedding for the image description
+        const description = `Image on page ${pageNum}`;
+        this._safeProgressCallback(options.currentProgress, `Generating embedding for image on page ${pageNum}`);
+        
+        // Start progress pulse before potentially slow embedding operation
+        startProgressPulse(options.currentProgress, `Generating embedding for image on page ${pageNum}`);
+        
+        const embedding = await this._generateEmbedding(description, options.embeddingModel);
+        
+        // Stop progress pulse as we've completed this embedding
+        stopProgressPulse();
+        
+        // Store the image content first
+        const contentId = await this._storeContent(image, 'image');
+        
+        // Store the chunk with reference to the content
+        const chunkData = {
+          id: chunkId,
+          contentId,
+          type: 'image',
+          pages: [pageNum],
+          metadata: {
+            pageNum,
+            source: options.source || 'pdf',
+            title: options.title || 'Untitled PDF',
+          },
+          embedding
+        };
+
+        // Store the chunk in IndexedDB
+        await this._storeChunk(chunkData);
+        
+        // Update progress
+        options.currentProgress += options.progressIncrement;
+        this._safeProgressCallback(options.currentProgress, `Processed image on page ${pageNum}`);
+        options.chunkCounter++;
+        
+      } catch (error) {
+        console.error('Error processing image chunk:', error);
+        throw error;
+      }
+    },
   };
 }
 
