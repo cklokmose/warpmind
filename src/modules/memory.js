@@ -525,6 +525,53 @@ function createMemoryModule(client) {
     },
 
     /**
+     * Export memories to a downloadable JSON file (browser only)
+     * @param {Object} options - Export options (same as exportMemories)
+     * @param {string} options.filename - Optional filename (default: 'warpmind-memories-YYYY-MM-DD.json')
+     * @returns {Promise<Object>} - Export stats and data
+     */
+    async exportMemoriesToFile(options = {}) {
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined' || typeof document === 'undefined') {
+        throw new Error('exportMemoriesToFile() is only available in browser environments. Use exportMemories() in Node.js.');
+      }
+
+      // Generate the export data
+      const exportData = await this.exportMemories(options);
+      
+      // Generate filename if not provided
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const filename = options.filename || `warpmind-memories-${dateStr}.json`;
+      
+      // Create and trigger download
+      const jsonString = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Create temporary download link
+      const downloadLink = document.createElement('a');
+      downloadLink.href = url;
+      downloadLink.download = filename;
+      downloadLink.style.display = 'none';
+      
+      // Trigger download
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      
+      // Clean up the object URL
+      URL.revokeObjectURL(url);
+      
+      return {
+        exported: exportData.count,
+        filename: filename,
+        size: new Blob([jsonString]).size,
+        data: exportData
+      };
+    },
+
+    /**
      * Import memories from a previously exported JSON format
      * @param {Object|string} data - The exported data object or JSON string
      * @param {Object} options - Optional parameters
@@ -622,6 +669,89 @@ function createMemoryModule(client) {
       }
 
       return stats;
+    },
+
+    /**
+     * Import memories from a file using browser file picker (browser only)
+     * @param {Object} options - Import options (same as importMemories)
+     * @returns {Promise<Object>} - Import statistics: { imported: number, skipped: number, errors: string[] }
+     */
+    async importMemoriesFromFile(options = {}) {
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined' || typeof document === 'undefined') {
+        throw new Error('importMemoriesFromFile() is only available in browser environments. Use importMemories() in Node.js.');
+      }
+
+      return new Promise((resolve, reject) => {
+        // Create file input element
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.json,application/json';
+        fileInput.style.display = 'none';
+        
+        // Handle file selection
+        fileInput.onchange = async (event) => {
+          try {
+            const file = event.target.files[0];
+            if (!file) {
+              reject(new Error('No file selected'));
+              return;
+            }
+            
+            // Validate file type
+            if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
+              reject(new Error('Please select a JSON file (.json)'));
+              return;
+            }
+            
+            // Read file content
+            const fileContent = await new Promise((fileResolve, fileReject) => {
+              const reader = new FileReader();
+              reader.onload = (e) => fileResolve(e.target.result);
+              reader.onerror = () => fileReject(new Error('Failed to read file'));
+              reader.readAsText(file);
+            });
+            
+            // Parse and import the JSON data
+            let importData;
+            try {
+              importData = JSON.parse(fileContent);
+            } catch (parseError) {
+              reject(new Error(`Invalid JSON file: ${parseError.message}`));
+              return;
+            }
+            
+            // Import the memories using existing importMemories method
+            const stats = await this.importMemories(importData, options);
+            
+            // Clean up file input
+            document.body.removeChild(fileInput);
+            
+            resolve({
+              ...stats,
+              filename: file.name,
+              fileSize: file.size
+            });
+            
+          } catch (error) {
+            // Clean up file input on error
+            if (document.body.contains(fileInput)) {
+              document.body.removeChild(fileInput);
+            }
+            reject(error);
+          }
+        };
+        
+        // Handle dialog cancellation
+        fileInput.oncancel = () => {
+          document.body.removeChild(fileInput);
+          reject(new Error('File selection cancelled'));
+        };
+        
+        // Trigger file picker
+        document.body.appendChild(fileInput);
+        fileInput.click();
+      });
     }
   };
 }

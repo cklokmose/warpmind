@@ -370,6 +370,20 @@ await mind.forget(memory.id);
 // Export/import memories for backup
 const exportData = await mind.exportMemories();
 const importStats = await mind.importMemories(exportData);
+
+// Export memories as downloadable file (browser only)
+const result = await mind.exportMemoriesToFile({ 
+    filename: 'my-memories.json',
+    includeEmbeddings: false 
+});
+console.log(`Downloaded ${result.filename} with ${result.exported} memories`);
+
+// Import memories from file picker (browser only)
+const importResult = await mind.importMemoriesFromFile({
+    merge: true,
+    skipDuplicates: true
+});
+console.log(`Imported ${importResult.imported} memories from ${importResult.filename}`);
 ```
 
 ### Memory Tool Integration
@@ -673,6 +687,13 @@ await mind.readPdf(file)          // Load PDF
 await mind.recall("pdf-id")       // Recall from storage
 await mind.listReadPdfs()         // List all PDFs
 await mind.forgetPdf("pdf-id")    // Remove from storage
+
+// Memory operations
+await mind.remember("I love pizza", { tags: ['food'] })  // Store memory
+const memories = await mind.recall("what do I like")     // Search memories
+await mind.exportMemoriesToFile()                        // Download memories as JSON
+await mind.importMemoriesFromFile()                      // Import memories from file picker
+await mind.forget(memoryId)                              // Delete memory
 
 // Register custom AI tools
 mind.registerTool({ name: "myTool", description: "...", parameters: {...}, handler: async (args) => {...} })

@@ -381,7 +381,6 @@
                 <button id="importBtn" class="btn btn-secondary">
                     <span class="emoji">📥</span>Import Memories
                 </button>
-                <input type="file" id="importFile" accept=".json" style="display: none;">
             </div>
 
             <!-- Add Memory Section -->
@@ -516,7 +515,6 @@
             const clearAllBtn = document.getElementById('clearAllBtn');
             const exportBtn = document.getElementById('exportBtn');
             const importBtn = document.getElementById('importBtn');
-            const importFile = document.getElementById('importFile');
             const addMemoryBtn = document.getElementById('addMemoryBtn');
             const searchBtn = document.getElementById('searchBtn');
             const chatBtn = document.getElementById('chatBtn');
@@ -527,8 +525,7 @@
             loadSamplesBtn.addEventListener('click', loadSampleMemories);
             clearAllBtn.addEventListener('click', clearAllMemories);
             exportBtn.addEventListener('click', exportMemories);
-            importBtn.addEventListener('click', () => importFile.click());
-            importFile.addEventListener('change', importMemories);
+            importBtn.addEventListener('click', importMemories);
             addMemoryBtn.addEventListener('click', addMemory);
             searchBtn.addEventListener('click', searchMemories);
             chatBtn.addEventListener('click', chatWithMemoryTool);
@@ -614,7 +611,7 @@
                 }
             }
 
-            // Export memories using the WarpMind API
+            // Export memories using the new exportMemoriesToFile method
             async function exportMemories() {
                 if (!warpMind) {
                     showStatus('Please initialize WarpMind first.', 'error');
@@ -623,26 +620,16 @@
 
                 try {
                     showStatus('Exporting memories...', 'info');
-                    const exportData = await warpMind.exportMemories({
+                    const result = await warpMind.exportMemoriesToFile({
                         includeEmbeddings: false // Don't include embeddings to keep file size smaller
                     });
 
-                    if (exportData.count === 0) {
+                    if (result.exported === 0) {
                         showStatus('No memories to export. Add some memories first.', 'info');
                         return;
                     }
 
-                    const dataStr = JSON.stringify(exportData, null, 2);
-                    const blob = new Blob([dataStr], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `warpmind_memories_${new Date().toISOString().split('T')[0]}.json`;
-                    a.click();
-
-                    URL.revokeObjectURL(url);
-                    showStatus(`Successfully exported ${exportData.count} memories!`, 'success');
+                    showStatus(`Successfully exported ${result.exported} memories to ${result.filename}!`, 'success');
                 } catch (error) {
                     showStatus(`Error exporting memories: ${error.message}`, 'error');
                 }
@@ -880,53 +867,37 @@
                 statusDiv.style.display = 'none';
             }
 
-            // Import memories from a JSON file
-            async function importMemories(event) {
+            // Import memories using the new importMemoriesFromFile method
+            async function importMemories() {
                 if (!warpMind) {
                     showStatus('Please initialize WarpMind first.', 'error');
                     return;
                 }
 
-                const file = event.target.files[0];
-                if (!file) {
-                    return;
-                }
-
-                // Reset the file input for future use
-                event.target.value = '';
-
-                if (!file.type === 'application/json' && !file.name.endsWith('.json')) {
-                    showStatus('Please select a valid JSON file.', 'error');
-                    return;
-                }
-
                 try {
-                    showStatus('Reading import file...', 'info');
-                    const fileContent = await new Promise((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onload = (e) => resolve(e.target.result);
-                        reader.onerror = () => reject(new Error('Failed to read file'));
-                        reader.readAsText(file);
-                    });
-
-                    showStatus('Importing memories...', 'info');
-                    const stats = await warpMind.importMemories(fileContent, {
+                    showStatus('Opening file picker...', 'info');
+                    const result = await warpMind.importMemoriesFromFile({
                         merge: true, // Merge with existing memories
                         skipDuplicates: true, // Skip duplicate content
                         regenerateEmbeddings: true // Generate new embeddings
                     });
 
                     // Show detailed import results
-                    let message = `Import completed! Imported: ${stats.imported}, Skipped: ${stats.skipped}`;
-                    if (stats.errors.length > 0) {
-                        message += `, Errors: ${stats.errors.length}`;
-                        console.warn('Import errors:', stats.errors);
+                    let message = `Import completed! Imported: ${result.imported}, Skipped: ${result.skipped}`;
+                    if (result.errors.length > 0) {
+                        message += `, Errors: ${result.errors.length}`;
+                        console.warn('Import errors:', result.errors);
                     }
+                    message += ` from ${result.filename}`;
 
-                    showStatus(message, stats.errors.length > 0 ? 'info' : 'success');
+                    showStatus(message, result.errors.length > 0 ? 'info' : 'success');
                     await loadAllMemories(); // Refresh the display
                 } catch (error) {
-                    showStatus(`Error importing memories: ${error.message}`, 'error');
+                    if (error.message === 'File selection cancelled') {
+                        showStatus('File selection cancelled.', 'info');
+                    } else {
+                        showStatus(`Error importing memories: ${error.message}`, 'error');
+                    }
                 }
             }
         });
