@@ -23,33 +23,31 @@
 </head>
 <body>
     <h1>🚀 Complete WarpMind Test Suite</h1>
-    <p>Testing all functionality with configurable proxy server settings</p>
-    
-    <!-- Configuration Section -->
-    <div class="test-section" style="background-color: #f8f9fa; border: 2px solid #007cba;">
-        <h2>⚙️ Configuration</h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-            <div>
-                <label for="serverURL" style="display: block; margin-bottom: 5px; font-weight: bold;">Proxy Server URL:</label>
-                <input type="text" id="serverURL" placeholder="http://localhost:8080 (auto-adds /v1)" 
-                       style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    <p>Testing all functionality with Warp CS AI API (https://warp.cs.au.dk/mind)</p>        <!-- Configuration Section -->
+        <div class="test-section" style="background-color: #f8f9fa; border: 2px solid #007cba;">
+            <h2>⚙️ Configuration</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label for="serverURL" style="display: block; margin-bottom: 5px; font-weight: bold;">Server URL:</label>
+                    <input type="text" id="serverURL" placeholder="https://warp.cs.au.dk/mind" 
+                           style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div>
+                    <label for="apiKeyInput" style="display: block; margin-bottom: 5px; font-weight: bold;">API Key (optional):</label>
+                    <input type="password" id="apiKeyInput" placeholder="Leave empty for automatic prompting" 
+                           style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
             </div>
-            <div>
-                <label for="apiKeyInput" style="display: block; margin-bottom: 5px; font-weight: bold;">Proxy Authentication Key:</label>
-                <input type="password" id="apiKeyInput" placeholder="Enter your proxy key" 
-                       style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <div style="text-align: center;">
+                <button onclick="updateConfiguration()" style="background-color: #007cba; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                    🔄 Update Configuration
+                </button>
+                <button onclick="resetConfiguration()" style="background-color: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                    🔄 Reset to Defaults
+                </button>
             </div>
+            <div id="configStatus" style="margin-top: 10px; padding: 10px; border-radius: 4px; text-align: center; display: none;"></div>
         </div>
-        <div style="text-align: center;">
-            <button onclick="updateConfiguration()" style="background-color: #007cba; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                🔄 Update Configuration
-            </button>
-            <button onclick="resetConfiguration()" style="background-color: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
-                🔄 Reset to Defaults
-            </button>
-        </div>
-        <div id="configStatus" style="margin-top: 10px; padding: 10px; border-radius: 4px; text-align: center; display: none;"></div>
-    </div>
     
     <div id="output">Initializing tests...</div>
 
@@ -141,8 +139,8 @@
     <script>
         // Configuration management
         const DEFAULT_CONFIG = {
-            baseURL: 'http://localhost:8080/v1',
-            apiKey: 'test-api-key-123'
+            baseURL: 'https://warp.cs.au.dk/mind',
+            // apiKey removed - will use automatic prompting
         };
 
         // Load configuration from localStorage or use defaults
@@ -175,15 +173,19 @@
             const serverURL = document.getElementById('serverURL').value.trim();
             const apiKey = document.getElementById('apiKeyInput').value.trim();
             
-            if (!serverURL || !apiKey) {
-                showConfigStatus('Please fill in both server URL and API key', 'error');
+            if (!serverURL) {
+                showConfigStatus('Please enter a server URL', 'error');
                 return;
             }
 
-            // Automatically append /v1 if not present
-            const formattedURL = serverURL.endsWith('/v1') ? serverURL : serverURL.replace(/\/$/, '') + '/v1';
+            // Build configuration object
+            const newConfig = { baseURL: serverURL };
+            if (apiKey) {
+                newConfig.apiKey = apiKey;
+            }
+            // If no API key is provided, WarpMind will automatically prompt for one
 
-            currentConfig = { baseURL: formattedURL, apiKey: apiKey };
+            currentConfig = newConfig;
             saveConfiguration(currentConfig);
             
             // Reinitialize WarpMind with new config
@@ -191,7 +193,12 @@
             
             showConfigStatus('Configuration updated successfully!', 'success');
             log('🔄 Configuration updated and saved to localStorage');
-            log(`🌐 Using server: ${formattedURL}`);
+            log(`🌐 Using server: ${serverURL}`);
+            if (apiKey) {
+                log(`🔑 Using provided API key`);
+            } else {
+                log(`🔑 No API key provided - will prompt automatically when needed`);
+            }
             
             // Test the new configuration
             testConnection();
@@ -202,12 +209,9 @@
             currentConfig = { ...DEFAULT_CONFIG };
             saveConfiguration(currentConfig);
             
-            // Update form inputs (show URL without /v1 for better UX)
-            const displayURL = currentConfig.baseURL.endsWith('/v1') 
-                ? currentConfig.baseURL.slice(0, -3) 
-                : currentConfig.baseURL;
-            document.getElementById('serverURL').value = displayURL;
-            document.getElementById('apiKeyInput').value = currentConfig.apiKey;
+            // Update form inputs
+            document.getElementById('serverURL').value = currentConfig.baseURL;
+            document.getElementById('apiKeyInput').value = currentConfig.apiKey || '';
             
             // Reinitialize WarpMind
             wm = new WarpMind(currentConfig);
@@ -234,12 +238,8 @@
 
         // Initialize form inputs with current configuration
         function initializeForm() {
-            // Show URL without /v1 in the form for better UX
-            const displayURL = currentConfig.baseURL.endsWith('/v1') 
-                ? currentConfig.baseURL.slice(0, -3) 
-                : currentConfig.baseURL;
-            document.getElementById('serverURL').value = displayURL;
-            document.getElementById('apiKeyInput').value = currentConfig.apiKey;
+            document.getElementById('serverURL').value = currentConfig.baseURL;
+            document.getElementById('apiKeyInput').value = currentConfig.apiKey || '';
         }
 
         const output = document.getElementById('output');
@@ -508,9 +508,13 @@
                 log(`You said: "${result.userMessage}"`, 'success');
                 log(`AI replied: "${result.aiResponse}"`, 'success');
                 
-                // Play AI response
-                await wm.playAudio(result.speechBlob);
-                log('AI response played', 'success');
+                // Play AI response - fix: use result.audioBlob instead of result.speechBlob
+                if (result.audioBlob) {
+                    await wm.playAudio(result.audioBlob);
+                    log('AI response played', 'success');
+                } else {
+                    log('No audio blob returned for AI response', 'error');
+                }
                 
             } catch (error) {
                 log(`Voice chat failed: ${error.message}`, 'error');
@@ -1001,7 +1005,11 @@
         async function initTests() {
             log('🚀 Initializing WarpMind test suite...');
             log(`Current server: ${currentConfig.baseURL}`);
-            log(`Using API key: ${currentConfig.apiKey.substring(0, 8)}...`);
+            if (currentConfig.apiKey) {
+                log(`Using API key: ${currentConfig.apiKey.substring(0, 8)}...`);
+            } else {
+                log('No API key configured - will prompt automatically when needed');
+            }
             
             // Initialize form with current config
             initializeForm();
