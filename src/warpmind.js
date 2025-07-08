@@ -113,6 +113,13 @@ class WarpMind extends BaseClient {
     // Initialize tool registry
     this._tools = [];
     
+    // Memory tool configuration
+    this._memoryToolConfig = {
+      enabled: config.memoryToolEnabled !== false, // Default to true if memory module is present
+      explicitOnly: config.memoryToolExplicitOnly !== false, // Default to true
+      maxResults: config.memoryToolMaxResults || 5
+    };
+    
     // Bind the parseSSE function to this instance for backward compatibility
     this.parseSSE = parseSSE.bind(this);
     

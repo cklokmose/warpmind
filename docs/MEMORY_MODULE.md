@@ -51,11 +51,11 @@ WarpMind Memory API
 - [x] Add import/export tests to test suite
 
 ### Phase 7: Memory Tool Integration
-- [ ] Implement memory tool for chat/process method integration
-- [ ] Add tool that allows AI to access memories via recall() when explicitly requested
-- [ ] Ensure tool is only used when user explicitly asks to remember/recall information
-- [ ] Add memory tool to default tool set with proper usage constraints
-- [ ] Document memory tool usage and limitations
+- [x] Implement memory tool for chat/process method integration
+- [x] Add tool that allows AI to access memories via recall() when explicitly requested
+- [x] Ensure tool is only used when user explicitly asks to remember/recall information
+- [x] Add memory tool to default tool set with proper usage constraints
+- [x] Document memory tool usage and limitations
 
 ### Technical Notes:
 - **Core Integration**: Memory module uses `this.embed()` method from core WarpMind class
@@ -363,6 +363,59 @@ async function recallMemory(args) {
 2. **Process Method**: Include memory tool in default tool set for process() calls  
 3. **Tool Filtering**: Ensure tool is only available when memory module is initialized
 4. **Context Awareness**: Tool should understand it's searching stored memories, not general knowledge
+
+### Memory Tool Usage
+
+The memory tool is automatically available when using the `chat()` or `process()` methods. It allows the AI to search through stored memories when users explicitly request memory-related operations.
+
+#### Automatic Activation
+
+The memory tool activates when users use phrases like:
+- "What do you remember about..."
+- "Can you recall..."
+- "Do you have any memories of..."
+- "What did I tell you about..."
+
+#### Example Usage
+
+```javascript
+const mind = new WarpMind({
+  baseURL: 'https://your-proxy-url',
+  memoryToolEnabled: true,        // Enable memory tool (default: true)
+  memoryToolExplicitOnly: true,   // Only use when explicitly requested (default: true)
+  memoryToolMaxResults: 5         // Max memories to retrieve (default: 5)
+});
+
+// Store some memories first
+await mind.remember("John likes blue and reads sci-fi", { tags: ['personal'] });
+await mind.remember("Project deadline is Friday", { tags: ['work'] });
+
+// Chat that will trigger memory tool
+const response = await mind.chat([
+  { role: 'user', content: 'What do you remember about John?' }
+]);
+// AI will automatically use the memory tool to search for relevant memories
+
+// Chat that will NOT trigger memory tool
+const response2 = await mind.chat([
+  { role: 'user', content: 'What is 2 + 2?' }
+]);
+// AI will answer directly without searching memories
+```
+
+### Configuration Options
+
+- `memoryToolEnabled`: Enable/disable the memory tool (default: `true`)
+- `memoryToolExplicitOnly`: Only use when explicitly requested (default: `true`)
+- `memoryToolMaxResults`: Default limit for memory searches (default: `5`)
+
+### Demo
+
+Try the memory tool functionality:
+- **Integrated Demo**: `examples/memory-demo.html` - Full memory management with chat section
+- **Standalone Demo**: `examples/memory-tool-demo.html` - Focused memory tool testing
+
+Both demos show how the AI automatically accesses memories when asked explicitly.
 
 ### Example Usage
 

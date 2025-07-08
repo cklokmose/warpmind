@@ -291,6 +291,63 @@ function keywordSearch(query, memories) {
 function createMemoryModule(client) {
   const memoryStore = new MemoryStore();
 
+  // Register the memory recall tool if the client supports tools and it's enabled
+  if (client.registerTool && typeof client.registerTool === 'function' && 
+      client._memoryToolConfig && client._memoryToolConfig.enabled) {
+    
+    const memoryTool = {
+      name: "recall_memory",
+      description: "Search for relevant memories when the user explicitly asks to remember or recall information. Only use this tool when the user specifically mentions remembering, recalling, or accessing stored information. Do not use for general knowledge questions or current conversation context.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The search query to find relevant memories"
+          },
+          limit: {
+            type: "number",
+            description: `Maximum number of memories to retrieve (default: ${client._memoryToolConfig.maxResults})`,
+            default: client._memoryToolConfig.maxResults
+          },
+          tags: {
+            type: "array",
+            items: { type: "string" },
+            description: "Optional tags to filter memories"
+          }
+        },
+        required: ["query"]
+      },
+      handler: async (args) => {
+        const { query, limit = client._memoryToolConfig.maxResults, tags } = args;
+        
+        try {
+          const memories = await client.recall(query, { limit, tags });
+          
+          if (memories.length === 0) {
+            return "No relevant memories found for the query.";
+          }
+          
+          return memories.map(memory => ({
+            content: memory.content,
+            tags: memory.tags || [],
+            timestamp: new Date(memory.timestamp).toLocaleString(),
+            relevanceScore: memory.relevanceScore
+          }));
+        } catch (error) {
+          return `Error accessing memories: ${error.message}`;
+        }
+      }
+    };
+
+    // Register the tool
+    try {
+      client.registerTool(memoryTool);
+    } catch (error) {
+      console.warn('Failed to register memory tool:', error.message);
+    }
+  }
+
   return {
     /**
      * Store a memory with optional tags

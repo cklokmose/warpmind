@@ -439,6 +439,60 @@
                 <div id="searchResults" class="search-results"></div>
             </div>
 
+            <!-- Memory Tool Chat Section -->
+            <div class="search-section">
+                <h2 class="section-title"><span class="emoji">🤖</span>Memory Tool Chat</h2>
+                <p style="margin-bottom: 15px; color: #6c757d; font-size: 14px;">
+                    Try chatting with the AI! When you explicitly ask it to remember or recall information, 
+                    it will automatically search your stored memories. Try phrases like "What do you remember about..." 
+                    or "Can you recall..." vs general questions.
+                </p>
+                
+                <div class="form-grid">
+                    <div>
+                        <div class="input-group">
+                            <label for="chatMessage">Chat Message:</label>
+                            <textarea id="chatMessage" rows="3" placeholder="Try: 'What do you remember about my work projects?' or 'What is the capital of France?'"></textarea>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: center;">
+                            <small style="color: #6c757d; font-size: 12px;">
+                                <strong>Memory tool examples:</strong> "What do you remember about...", "Can you recall...", "Do you have any memories of..."<br>
+                                <strong>Regular chat:</strong> General questions, current topics, knowledge queries
+                            </small>
+                            <div class="input-group" style="margin: 0;">
+                                <label for="maxTokens" style="font-size: 12px;">Max Tokens:</label>
+                                <select id="maxTokens" style="font-size: 12px; padding: 6px;">
+                                    <option value="100">100</option>
+                                    <option value="200" selected>200</option>
+                                    <option value="300">300</option>
+                                    <option value="500">500</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                            <button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById('chatMessage').value = 'What do you remember about my work projects?'">
+                                Try: Work Projects
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById('chatMessage').value = 'Can you recall any personal preferences I stored?'">
+                                Try: Personal Preferences
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById('chatMessage').value = 'What is the capital of France?'">
+                                Try: General Question
+                            </button>
+                        </div>
+                    </div>
+                    <button id="chatBtn" class="btn">
+                        <span class="emoji">💬</span>Chat
+                    </button>
+                </div>
+                
+                <div id="chatResponse" class="search-results" style="display: none;">
+                    <div class="result-item">
+                        <div id="chatResponseText"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- All Memories Section -->
             <div class="memory-section">
                 <h2 class="section-title"><span class="emoji">📝</span>All Memories</h2>
@@ -465,6 +519,7 @@
             const importFile = document.getElementById('importFile');
             const addMemoryBtn = document.getElementById('addMemoryBtn');
             const searchBtn = document.getElementById('searchBtn');
+            const chatBtn = document.getElementById('chatBtn');
             const memoriesContainer = document.getElementById('memoriesContainer');
 
             // --- Event Listeners ---
@@ -476,6 +531,7 @@
             importFile.addEventListener('change', importMemories);
             addMemoryBtn.addEventListener('click', addMemory);
             searchBtn.addEventListener('click', searchMemories);
+            chatBtn.addEventListener('click', chatWithMemoryTool);
 
             // Event delegation for delete buttons
             memoriesContainer.addEventListener('click', (event) => {
@@ -492,10 +548,15 @@
             async function initializeWarpMind() {
                 try {
                     warpMind = new WarpMind({
-                        baseURL: 'https://warp.cs.au.dk/mind/v1'
+                        baseURL: 'https://warp.cs.au.dk/mind/v1',
+                        model: 'gpt-3.5-turbo',
+                        temperature: 0.7,
+                        memoryToolEnabled: true,        // Enable memory tool
+                        memoryToolExplicitOnly: true,   // Only use when explicitly requested
+                        memoryToolMaxResults: 5         // Max memories per search
                     });
 
-                    showStatus('WarpMind initialized successfully! Ready to use memory features 🎉', 'success');
+                    showStatus('WarpMind initialized successfully! Memory tool enabled for chat 🤖🧠', 'success');
                     await loadAllMemories();
                 } catch (error) {
                     showStatus(`Failed to initialize WarpMind: ${error.message}`, 'error');
@@ -673,6 +734,48 @@
                     `;
                     container.appendChild(div);
                 });
+            }
+
+            // Chat with memory tool
+            async function chatWithMemoryTool() {
+                if (!warpMind) {
+                    showStatus('Please initialize WarpMind first.', 'error');
+                    return;
+                }
+
+                const message = document.getElementById('chatMessage').value.trim();
+                const maxTokens = parseInt(document.getElementById('maxTokens').value);
+
+                if (!message) {
+                    showStatus('Chat message is required.', 'error');
+                    return;
+                }
+
+                try {
+                    showStatus('Sending message to AI...', 'info');
+                    chatBtn.disabled = true;
+                    
+                    // Configure WarpMind for this chat request
+                    const originalMaxTokens = warpMind.maxTokens;
+                    warpMind.maxTokens = maxTokens;
+                    
+                    const response = await warpMind.chat([
+                        { role: 'user', content: message }
+                    ]);
+                    
+                    // Restore original maxTokens
+                    warpMind.maxTokens = originalMaxTokens;
+                    
+                    document.getElementById('chatResponseText').textContent = response;
+                    document.getElementById('chatResponse').style.display = 'block';
+                    showStatus('Chat response received!', 'success');
+                    
+                } catch (error) {
+                    showStatus(`Chat error: ${error.message}`, 'error');
+                    document.getElementById('chatResponse').style.display = 'none';
+                } finally {
+                    chatBtn.disabled = false;
+                }
             }
 
             // Load all memories

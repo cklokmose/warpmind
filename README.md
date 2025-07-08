@@ -150,6 +150,34 @@ const allMemories = await mind.getMemories();
 
 // Delete a memory
 await mind.forget(memory.id);
+
+// Export/import memories for backup
+const exportData = await mind.exportMemories();
+const importStats = await mind.importMemories(exportData);
+```
+
+### Memory Tool Integration
+
+The memory system includes an intelligent tool that automatically activates during conversations when you explicitly ask to remember or recall information:
+
+```javascript
+// The AI will automatically search your memories when you ask
+const response = await mind.chat("What do you remember about my food preferences?");
+
+// Or recall work-related information
+const workInfo = await mind.chat("Can you recall my project deadlines?");
+
+// General questions won't trigger memory search
+const general = await mind.chat("What is the capital of France?");
+```
+
+**Memory Tool Configuration:**
+```javascript
+const mind = new WarpMind({
+    memoryToolEnabled: true,        // Enable memory tool (default: true)
+    memoryToolExplicitOnly: true,   // Only use when explicitly requested
+    memoryToolMaxResults: 5         // Max memories per search
+});
 ```
 
 ### Memory Storage
@@ -163,7 +191,7 @@ The memory system automatically handles:
 
 ### Try the Interactive Demo
 
-Open `examples/memory-demo.html` in your browser to explore memory features with a full UI for managing memories, searching, and testing different scenarios.
+Open `examples/memory-demo.html` in your browser to explore memory features with a full UI for managing memories, searching, and testing the memory tool chat functionality with different scenarios.
 
 ## Multi-Modal Processing
 
@@ -603,7 +631,8 @@ tests/                  # Test suite (71 tests)
 
 The `examples/` directory contains interactive demonstrations:
 
-- **`memory-demo.html`** - Full memory system UI with storage, search, and management
+- **`memory-demo.html`** - Full memory system UI with storage, search, management, and memory tool chat
+- **`memory-tool-demo.html`** - Standalone interactive demo showing automatic memory tool activation
 - **`chat-interface.html`** - Complete chat interface with streaming responses  
 - **`pdf-reader-demo.html`** - PDF analysis and semantic search
 - **`basic-example.html`** - Simple getting started example

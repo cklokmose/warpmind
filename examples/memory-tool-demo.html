@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WarpMind Memory Tool Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 WarpMind Memory Tool Demo</h1>
+        <p>This demo shows how the memory tool automatically activates when you ask the AI to remember or recall information.</p>
+
+        <!-- Initialize Section -->
+        <div class="section">
+            <h3>1. Initialize WarpMind</h3>
+            <button id="initBtn">Initialize WarpMind with Memory Tool</button>
+            <div id="initStatus"></div>
+        </div>
+
+        <!-- Store Memory Section -->
+        <div class="section">
+            <h3>2. Store Some Memories</h3>
+            <textarea id="memoryContent" placeholder="Enter something to remember..." rows="3"></textarea>
+            <input type="text" id="memoryTags" placeholder="Tags (comma-separated)">
+            <button id="storeBtn" disabled>Store Memory</button>
+            <div id="storeStatus"></div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="section">
+            <h3>3. Chat with Memory Tool</h3>
+            <p><strong>Try these examples:</strong></p>
+            <ul>
+                <li>"What do you remember about [topic]?" - <em>Should use memory tool</em></li>
+                <li>"Can you recall what I told you about [topic]?" - <em>Should use memory tool</em></li>
+                <li>"What is the capital of France?" - <em>Should NOT use memory tool</em></li>
+            </ul>
+            <textarea id="userMessage" placeholder="Type your message..." rows="3"></textarea>
+            <button id="chatBtn" disabled>Send Message</button>
+            <div id="chatStatus"></div>
+            <div id="chatResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- Memories List -->
+        <div class="section">
+            <h3>4. Your Stored Memories</h3>
+            <button id="refreshBtn" disabled>Refresh Memories List</button>
+            <div id="memoriesList"></div>
+        </div>
+    </div>
+
+    <!-- Include WarpMind library -->
+    <script src="../dist/warpmind.js"></script>
+    <script>
+        let warpMind = null;
+
+        // DOM elements
+        const initBtn = document.getElementById('initBtn');
+        const storeBtn = document.getElementById('storeBtn');
+        const chatBtn = document.getElementById('chatBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        
+        // Initialize WarpMind
+        initBtn.addEventListener('click', async () => {
+            try {
+                warpMind = new WarpMind({
+                    baseURL: 'https://warp.cs.au.dk/mind/v1',
+                    memoryToolEnabled: true,
+                    memoryToolExplicitOnly: true,
+                    memoryToolMaxResults: 5
+                });
+
+                showStatus('initStatus', 'WarpMind initialized successfully with memory tool enabled!', 'success');
+                
+                // Enable other buttons
+                storeBtn.disabled = false;
+                chatBtn.disabled = false;
+                refreshBtn.disabled = false;
+                
+                // Load existing memories
+                await refreshMemories();
+                
+            } catch (error) {
+                showStatus('initStatus', `Failed to initialize: ${error.message}`, 'error');
+            }
+        });
+
+        // Store memory
+        storeBtn.addEventListener('click', async () => {
+            const content = document.getElementById('memoryContent').value.trim();
+            const tags = document.getElementById('memoryTags').value.trim().split(',').map(t => t.trim()).filter(t => t);
+            
+            if (!content) {
+                showStatus('storeStatus', 'Please enter some content to remember.', 'error');
+                return;
+            }
+
+            try {
+                await warpMind.remember(content, { tags });
+                showStatus('storeStatus', 'Memory stored successfully!', 'success');
+                
+                // Clear inputs
+                document.getElementById('memoryContent').value = '';
+                document.getElementById('memoryTags').value = '';
+                
+                // Refresh memories list
+                await refreshMemories();
+                
+            } catch (error) {
+                showStatus('storeStatus', `Failed to store memory: ${error.message}`, 'error');
+            }
+        });
+
+        // Send chat message
+        chatBtn.addEventListener('click', async () => {
+            const message = document.getElementById('userMessage').value.trim();
+            
+            if (!message) {
+                showStatus('chatStatus', 'Please enter a message.', 'error');
+                return;
+            }
+
+            try {
+                showStatus('chatStatus', 'Sending message...', 'success');
+                chatBtn.disabled = true;
+                
+                const response = await warpMind.chat([
+                    { role: 'user', content: message }
+                ]);
+                
+                document.getElementById('chatResponse').textContent = response;
+                document.getElementById('chatResponse').style.display = 'block';
+                showStatus('chatStatus', 'Response received!', 'success');
+                
+            } catch (error) {
+                showStatus('chatStatus', `Chat failed: ${error.message}`, 'error');
+            } finally {
+                chatBtn.disabled = false;
+            }
+        });
+
+        // Refresh memories
+        refreshBtn.addEventListener('click', refreshMemories);
+
+        async function refreshMemories() {
+            try {
+                const memories = await warpMind.getMemories();
+                const container = document.getElementById('memoriesList');
+                
+                if (memories.length === 0) {
+                    container.innerHTML = '<p>No memories stored yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = memories.map(memory => `
+                    <div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 4px;">
+                        <strong>Content:</strong> ${memory.content}<br>
+                        <strong>Tags:</strong> ${memory.tags ? memory.tags.join(', ') : 'None'}<br>
+                        <strong>Created:</strong> ${new Date(memory.timestamp).toLocaleString()}
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Failed to refresh memories:', error);
+            }
+        }
+
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
