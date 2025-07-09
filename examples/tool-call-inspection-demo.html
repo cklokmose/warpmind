@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Call Inspection Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .tool-monitor {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .tool-call {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .tool-result {
+            background: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .tool-error {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #1976d2;
+        }
+        .response {
+            background: #fff3e0;
+            border: 1px solid #ffb74d;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .metadata {
+            background: #f3e5f5;
+            border: 1px solid #ba68c8;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin: 10px 0;
+        }
+        .stat {
+            background: #e1f5fe;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            flex: 1;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0277bd;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Tool Call Inspection Demo</h1>
+        <p>This demo shows how to monitor AI tool calls in real-time using WarpMind's inspection features.</p>
+
+        <!-- Configuration Section -->
+        <div class="section" style="background-color: #f8f9fa; border: 2px solid #007cba; margin-bottom: 20px;">
+            <h3>⚙️ Configuration</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label for="serverURL" style="display: block; margin-bottom: 5px; font-weight: bold;">Server URL:</label>
+                    <input type="text" id="serverURL" placeholder="https://warp.cs.au.dk/mind" 
+                           style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div>
+                    <label for="apiKeyInput" style="display: block; margin-bottom: 5px; font-weight: bold;">API Key (optional):</label>
+                    <input type="password" id="apiKeyInput" placeholder="Leave empty for automatic prompting" 
+                           style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+            </div>
+            <div style="text-align: center;">
+                <button onclick="updateConfiguration()" style="background-color: #007cba; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                    🔄 Update Configuration
+                </button>
+                <button onclick="resetConfiguration()" style="background-color: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                    🔄 Reset to Defaults
+                </button>
+            </div>
+            <div id="configStatus" style="margin-top: 10px; padding: 10px; border-radius: 4px; text-align: center; display: none;"></div>
+        </div>
+
+        <!-- Demo Controls -->
+        <div style="margin-bottom: 20px;">
+            <h3>Quick Demos:</h3>
+            <button class="button" onclick="demoCalculator()">Calculator Tool</button>
+            <button class="button" onclick="demoTextAnalyzer()">Text Analyzer</button>
+            <button class="button" onclick="demoMultipleTools()">Multiple Tools</button>
+            <button class="button" onclick="demoErrorHandling()">Error Handling</button>
+            <button class="button" onclick="clearMonitor()">Clear Monitor</button>
+        </div>
+
+        <!-- Custom Query -->
+        <div style="margin-bottom: 20px;">
+            <h3>Custom Query:</h3>
+            <textarea id="customQuery" placeholder="Enter your own query to test tool calling...">Calculate the square root of 144 and then analyze the sentiment of the result</textarea>
+            <button class="button" onclick="runCustomQuery()">Run Query</button>
+            <label>
+                <input type="checkbox" id="includeMetadata" checked> Include detailed metadata
+            </label>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="totalCalls">0</div>
+                <div class="stat-label">Total Calls</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="avgDuration">0ms</div>
+                <div class="stat-label">Avg Duration</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="successRate">100%</div>
+                <div class="stat-label">Success Rate</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="totalErrors">0</div>
+                <div class="stat-label">Errors</div>
+            </div>
+        </div>
+
+        <!-- Tool Call Monitor -->
+        <h3>🔍 Tool Call Monitor:</h3>
+        <div class="tool-monitor" id="toolMonitor">
+            <p style="color: #666; text-align: center;">Tool calls will appear here...</p>
+        </div>
+
+        <!-- Response Area -->
+        <h3>💬 AI Response:</h3>
+        <div class="response" id="response">
+            Response will appear here...
+        </div>
+
+        <!-- Metadata Display -->
+        <div id="metadataContainer" style="display: none;">
+            <h3>📊 Detailed Metadata:</h3>
+            <div class="metadata" id="metadata"></div>
+        </div>
+    </div>
+
+    <!-- Include WarpMind Library -->
+    <script src="../dist/warpmind.js"></script>
+    
+    <script>
+        let mind = null;
+        let toolStats = {
+            totalCalls: 0,
+            totalDuration: 0,
+            successfulCalls: 0,
+            errors: 0
+        };
+
+        // Default configuration
+        const DEFAULT_CONFIG = {
+            baseURL: 'https://warp.cs.au.dk/mind'
+            // No default API key - will prompt automatically
+        };
+
+        // Load configuration from localStorage
+        function loadConfiguration() {
+            const savedConfig = localStorage.getItem('warpMind-inspection-config');
+            if (savedConfig) {
+                try {
+                    return JSON.parse(savedConfig);
+                } catch (e) {
+                    console.warn('Failed to parse saved config, using defaults');
+                    return DEFAULT_CONFIG;
+                }
+            }
+            return DEFAULT_CONFIG;
+        }
+
+        // Save configuration to localStorage
+        function saveConfiguration(config) {
+            localStorage.setItem('warpMind-inspection-config', JSON.stringify(config));
+        }
+
+        // Initialize configuration
+        let currentConfig = loadConfiguration();
+        
+        // Initialize WarpMind with current configuration
+        mind = new WarpMind({
+            ...currentConfig,
+            memoryToolEnabled: false // Disable for cleaner demo
+        });
+
+        // Update configuration from form inputs
+        function updateConfiguration() {
+            const serverURL = document.getElementById('serverURL').value.trim();
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            
+            if (!serverURL) {
+                showConfigStatus('Please enter a server URL', 'error');
+                return;
+            }
+
+            // Build configuration object
+            const newConfig = { baseURL: serverURL };
+            if (apiKey) {
+                newConfig.apiKey = apiKey;
+            }
+            // If no API key is provided, WarpMind will automatically prompt for one
+
+            currentConfig = newConfig;
+            saveConfiguration(currentConfig);
+            
+            // Reinitialize WarpMind with new config
+            mind = new WarpMind({
+                ...newConfig,
+                memoryToolEnabled: false // Disable for cleaner demo
+            });
+            
+            showConfigStatus('Configuration updated successfully!', 'success');
+            addToMonitor('🔄 Configuration updated and saved');
+            
+            // Setup tools again
+            setupTools();
+        }
+
+        // Reset configuration to defaults
+        function resetConfiguration() {
+            currentConfig = { ...DEFAULT_CONFIG };
+            saveConfiguration(currentConfig);
+            
+            // Update form inputs
+            document.getElementById('serverURL').value = currentConfig.baseURL;
+            document.getElementById('apiKeyInput').value = currentConfig.apiKey || '';
+            
+            // Reinitialize WarpMind
+            mind = new WarpMind({
+                ...currentConfig,
+                memoryToolEnabled: false // Disable for cleaner demo
+            });
+            
+            showConfigStatus('Configuration reset to defaults', 'info');
+            addToMonitor('🔄 Configuration reset to defaults');
+            
+            // Setup tools again
+            setupTools();
+        }
+
+        // Show configuration status message
+        function showConfigStatus(message, type) {
+            const statusDiv = document.getElementById('configStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.textContent = message;
+            
+            // Apply CSS classes for styling
+            statusDiv.className = '';
+            if (type === 'success') {
+                statusDiv.style.backgroundColor = '#d4edda';
+                statusDiv.style.color = '#155724';
+                statusDiv.style.border = '1px solid #c3e6cb';
+            } else if (type === 'error') {
+                statusDiv.style.backgroundColor = '#f8d7da';
+                statusDiv.style.color = '#721c24';
+                statusDiv.style.border = '1px solid #f5c6cb';
+            } else if (type === 'info') {
+                statusDiv.style.backgroundColor = '#d1ecf1';
+                statusDiv.style.color = '#0c5460';
+                statusDiv.style.border = '1px solid #bee5eb';
+            }
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize form inputs with current configuration
+        function initializeForm() {
+            document.getElementById('serverURL').value = currentConfig.baseURL;
+            document.getElementById('apiKeyInput').value = currentConfig.apiKey || '';
+        }
+
+        // Initialize WarpMind when page loads
+        function initializeWarpMind() {
+            // Configuration is already loaded and WarpMind is initialized above
+            setupTools();
+        }
+
+        function setupTools() {
+            // Calculator tool
+            mind.registerTool({
+                name: 'calculator',
+                description: 'Perform mathematical calculations',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        expression: { type: 'string', description: 'Mathematical expression to evaluate' },
+                        operation: { type: 'string', enum: ['add', 'subtract', 'multiply', 'divide', 'sqrt', 'power'] },
+                        a: { type: 'number' },
+                        b: { type: 'number' }
+                    }
+                },
+                handler: async (args) => {
+                    let result;
+                    if (args.expression) {
+                        // Simple expression evaluation (be careful in production!)
+                        try {
+                            result = eval(args.expression.replace(/[^0-9+\-*/.() ]/g, ''));
+                        } catch (e) {
+                            result = 'Error: Invalid expression';
+                        }
+                    } else if (args.operation && args.a !== undefined) {
+                        switch (args.operation) {
+                            case 'add': result = args.a + (args.b || 0); break;
+                            case 'subtract': result = args.a - (args.b || 0); break;
+                            case 'multiply': result = args.a * (args.b || 1); break;
+                            case 'divide': result = args.b !== 0 ? args.a / args.b : 'Error: Division by zero'; break;
+                            case 'sqrt': result = Math.sqrt(args.a); break;
+                            case 'power': result = Math.pow(args.a, args.b || 2); break;
+                            default: result = 'Error: Unknown operation';
+                        }
+                    } else {
+                        result = 'Error: Missing parameters';
+                    }
+                    
+                    return { result, operation: args.operation, inputs: args };
+                }
+            });
+
+            // Text analyzer tool
+            mind.registerTool({
+                name: 'text_analyzer',
+                description: 'Analyze text for various metrics and properties',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        text: { type: 'string' },
+                        analysis_type: { 
+                            type: 'string', 
+                            enum: ['word_count', 'sentiment', 'length', 'readability'] 
+                        }
+                    },
+                    required: ['text']
+                },
+                handler: async (args) => {
+                    const text = args.text;
+                    const analysisType = args.analysis_type || 'word_count';
+                    
+                    switch (analysisType) {
+                        case 'word_count':
+                            return { 
+                                word_count: text.split(/\s+/).filter(w => w.length > 0).length,
+                                character_count: text.length
+                            };
+                        case 'sentiment':
+                            // Simple sentiment analysis
+                            const positiveWords = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'love', 'happy'];
+                            const negativeWords = ['bad', 'terrible', 'awful', 'hate', 'sad', 'angry', 'worst'];
+                            const words = text.toLowerCase().split(/\s+/);
+                            const positive = words.filter(w => positiveWords.includes(w)).length;
+                            const negative = words.filter(w => negativeWords.includes(w)).length;
+                            const sentiment = positive > negative ? 'positive' : negative > positive ? 'negative' : 'neutral';
+                            return { sentiment, positive_words: positive, negative_words: negative };
+                        case 'length':
+                            return { 
+                                character_count: text.length,
+                                word_count: text.split(/\s+/).length,
+                                sentence_count: text.split(/[.!?]+/).filter(s => s.trim().length > 0).length
+                            };
+                        case 'readability':
+                            const avgWordsPerSentence = text.split(/[.!?]+/).length > 0 ? 
+                                text.split(/\s+/).length / text.split(/[.!?]+/).length : 0;
+                            const complexity = avgWordsPerSentence > 20 ? 'complex' : 
+                                              avgWordsPerSentence > 10 ? 'moderate' : 'simple';
+                            return { 
+                                avg_words_per_sentence: Math.round(avgWordsPerSentence * 10) / 10,
+                                complexity_level: complexity
+                            };
+                        default:
+                            return { error: 'Unknown analysis type' };
+                    }
+                }
+            });
+
+            // Failing tool for error demonstration
+            mind.registerTool({
+                name: 'unreliable_tool',
+                description: 'A tool that sometimes fails for demonstration purposes',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        action: { type: 'string' },
+                        should_fail: { type: 'boolean' }
+                    },
+                    required: ['action']
+                },
+                handler: async (args) => {
+                    if (args.should_fail || Math.random() < 0.3) {
+                        throw new Error(`Action '${args.action}' failed randomly for demo purposes`);
+                    }
+                    return { 
+                        success: true, 
+                        action: args.action, 
+                        timestamp: new Date().toISOString() 
+                    };
+                }
+            });
+        }
+
+        function addToMonitor(content, type = 'info') {
+            const monitor = document.getElementById('toolMonitor');
+            if (monitor.innerHTML.includes('Tool calls will appear here')) {
+                monitor.innerHTML = '';
+            }
+            
+            const div = document.createElement('div');
+            div.className = `tool-${type}`;
+            div.innerHTML = content;
+            monitor.appendChild(div);
+            monitor.scrollTop = monitor.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('totalCalls').textContent = toolStats.totalCalls;
+            document.getElementById('totalErrors').textContent = toolStats.errors;
+            
+            const avgDuration = toolStats.totalCalls > 0 ? 
+                Math.round(toolStats.totalDuration / toolStats.totalCalls) : 0;
+            document.getElementById('avgDuration').textContent = avgDuration + 'ms';
+            
+            const successRate = toolStats.totalCalls > 0 ? 
+                Math.round((toolStats.successfulCalls / toolStats.totalCalls) * 100) : 100;
+            document.getElementById('successRate').textContent = successRate + '%';
+        }
+
+        async function runQuery(query, includeMetadata = false) {
+            document.getElementById('response').textContent = 'Processing...';
+            
+            try {
+                const options = {
+                    returnMetadata: includeMetadata,
+                    onToolCall: (call) => {
+                        toolStats.totalCalls++;
+                        addToMonitor(
+                            `🔧 <strong>${call.name}</strong> called<br>` +
+                            `<small>Parameters: ${JSON.stringify(call.parameters, null, 2)}</small>`,
+                            'call'
+                        );
+                        updateStats();
+                    },
+                    onToolResult: (result) => {
+                        toolStats.successfulCalls++;
+                        toolStats.totalDuration += result.duration;
+                        addToMonitor(
+                            `✅ <strong>${result.name}</strong> completed (${result.duration}ms)<br>` +
+                            `<small>Result: ${JSON.stringify(result.result, null, 2)}</small>`,
+                            'result'
+                        );
+                        updateStats();
+                    },
+                    onToolError: (error) => {
+                        toolStats.errors++;
+                        toolStats.totalDuration += error.duration;
+                        addToMonitor(
+                            `❌ <strong>${error.name}</strong> failed (${error.duration}ms)<br>` +
+                            `<small>Error: ${error.error}</small>`,
+                            'error'
+                        );
+                        updateStats();
+                    }
+                };
+
+                const result = await mind.chat(query, options);
+                
+                if (includeMetadata && result.response) {
+                    document.getElementById('response').textContent = result.response;
+                    document.getElementById('metadata').textContent = JSON.stringify(result.metadata, null, 2);
+                    document.getElementById('metadataContainer').style.display = 'block';
+                } else {
+                    document.getElementById('response').textContent = result;
+                    document.getElementById('metadataContainer').style.display = 'none';
+                }
+                
+            } catch (error) {
+                document.getElementById('response').textContent = `Error: ${error.message}`;
+                addToMonitor(`❌ <strong>Request Failed</strong><br><small>${error.message}</small>`, 'error');
+            }
+        }
+
+        // Demo functions
+        async function demoCalculator() {
+            await runQuery("Calculate the square root of 256 and then multiply it by 3", true);
+        }
+
+        async function demoTextAnalyzer() {
+            await runQuery("Analyze the sentiment and word count of this text: 'I love this amazing tool! It works great.'", true);
+        }
+
+        async function demoMultipleTools() {
+            await runQuery("Calculate 15 * 8, then analyze the word count of the phrase 'artificial intelligence revolution'", true);
+        }
+
+        async function demoErrorHandling() {
+            await runQuery("Try to use the unreliable tool with action 'test' that might fail", true);
+        }
+
+        async function runCustomQuery() {
+            const query = document.getElementById('customQuery').value;
+            const includeMetadata = document.getElementById('includeMetadata').checked;
+            if (query.trim()) {
+                await runQuery(query, includeMetadata);
+            }
+        }
+
+        function clearMonitor() {
+            document.getElementById('toolMonitor').innerHTML = '<p style="color: #666; text-align: center;">Tool calls will appear here...</p>';
+            document.getElementById('response').textContent = 'Response will appear here...';
+            document.getElementById('metadataContainer').style.display = 'none';
+            toolStats = { totalCalls: 0, totalDuration: 0, successfulCalls: 0, errors: 0 };
+            updateStats();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize form with current configuration
+            initializeForm();
+            
+            // Initialize WarpMind and setup tools
+            initializeWarpMind();
+            
+            // Add enter key support for custom query
+            document.getElementById('customQuery').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    runCustomQuery();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

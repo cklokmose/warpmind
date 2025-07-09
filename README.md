@@ -11,6 +11,7 @@ JavaScript library for AI integration in web browsers. Single-file import, works
 - [PDF Processing](#pdf-processing)
 - [Memory System](#memory-system)
 - [Custom Tool Integration](#custom-tool-integration)
+  - [Tool Call Inspection](#tool-call-inspection)
 - [Structured Data Processing](#structured-data-processing)
 - [Error Handling](#error-handling)
 - [API Key Management](#api-key-management)
@@ -496,6 +497,73 @@ mind.registerTool({
 // AI automatically uses tools when relevant
 const response = await mind.chat("What's the weather in Tokyo?");
 ```
+
+### Tool Call Inspection
+
+Monitor and debug tool execution with callback-based inspection:
+
+#### Basic Monitoring
+
+```javascript
+const response = await mind.chat("What's the weather in Tokyo?", {
+    onToolCall: (call) => {
+        console.log(`🔧 Tool called: ${call.name}`);
+        console.log(`Parameters:`, call.parameters);
+    },
+    onToolResult: (result) => {
+        console.log(`✅ Tool completed: ${result.name} (${result.duration}ms)`);
+        console.log(`Result:`, result.result);
+    },
+    onToolError: (error) => {
+        console.log(`❌ Tool failed: ${error.name} - ${error.error}`);
+    }
+});
+```
+
+#### Enhanced Return Objects
+
+Get detailed metadata about tool calls:
+
+```javascript
+const result = await mind.chat("Analyze this data", {
+    returnMetadata: true
+});
+
+console.log('Response:', result.response);
+console.log('Metadata:');
+console.log(`- Total Duration: ${result.metadata.totalDuration}ms`);
+console.log(`- Tokens Used: ${result.metadata.tokensUsed}`);
+console.log(`- Tools Called: ${result.metadata.toolCalls.length}`);
+
+result.metadata.toolCalls.forEach(call => {
+    console.log(`  - ${call.name}: ${call.success ? 'success' : 'failed'} (${call.duration}ms)`);
+});
+```
+
+#### Streaming with Tool Monitoring
+
+Monitor tools during streaming responses:
+
+```javascript
+await mind.streamChat("Process this request", 
+    (chunk) => console.log(chunk.content),
+    {
+        onToolCall: (call) => console.log(`Tool: ${call.name} started`),
+        onToolResult: (result) => console.log(`Tool: ${result.name} completed`)
+    }
+);
+```
+
+#### Method Support
+
+| Method | Callbacks | Enhanced Returns |
+|--------|-----------|------------------|
+| `chat()` | ✅ | ✅ |
+| `streamChat()` | ✅ | ❌ |
+| `process()` | ✅ | ✅ |
+| `complete()` | ❌ | ❌ |
+
+*Note: `streamChat()` doesn't support `returnMetadata` due to its streaming nature, and `complete()` doesn't use the tool calling system.*
 
 ### Implementation Examples
 

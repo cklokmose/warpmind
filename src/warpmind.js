@@ -27,6 +27,9 @@ let createPdfLoaderModule;
 // Import memory module factory
 let createMemoryModule;
 
+// Import tool call tracker
+let ToolCallTracker;
+
 if (typeof module !== 'undefined' && module.exports) {
   // Node.js environment
   const utils = require('./util.js');
@@ -51,6 +54,9 @@ if (typeof module !== 'undefined' && module.exports) {
   
   // Import memory module in Node.js
   createMemoryModule = require('./modules/memory.js');
+  
+  // Import tool call tracker in Node.js
+  ToolCallTracker = require('./modules/tool-call-tracker.js');
   
   // Import PDF loader module in Node.js
   createPdfLoaderModule = require('./modules/pdf-loader.js');
@@ -82,6 +88,9 @@ if (typeof module !== 'undefined' && module.exports) {
     
     // Import PDF loader module in browser
     createPdfLoaderModule = require('./modules/pdf-loader.js');
+    
+    // Import tool call tracker in browser
+    ToolCallTracker = require('./modules/tool-call-tracker.js');
   } catch (error) {
     throw new Error('Utility functions are required. Please ensure util.js is bundled with your application.');
   }
@@ -112,6 +121,9 @@ class WarpMind extends BaseClient {
     
     // Initialize tool registry
     this._tools = [];
+    
+    // Initialize tool call tracker
+    this._toolCallTracker = new ToolCallTracker();
     
     // Memory tool configuration
     this._memoryToolConfig = {
@@ -222,6 +234,10 @@ class WarpMind extends BaseClient {
   async _chatWithTools(messages, options = {}, depth = 0) {
     const MAX_TOOL_CALL_DEPTH = 2;
     
+    // Track tool calls for metadata if requested
+    const toolCallsMetadata = [];
+    const startTime = performance.now();
+    
     const requestData = {
       model: options.model || this.model,
       messages: messages,
@@ -239,6 +255,10 @@ class WarpMind extends BaseClient {
     delete filteredOptions.model;
     delete filteredOptions.temperature;
     delete filteredOptions.timeoutMs;
+    delete filteredOptions.onToolCall;
+    delete filteredOptions.onToolResult;
+    delete filteredOptions.onToolError;
+    delete filteredOptions.returnMetadata;
     
     Object.assign(requestData, filteredOptions);
 
@@ -264,8 +284,52 @@ class WarpMind extends BaseClient {
 
       // Execute each tool call
       for (const toolCall of message.tool_calls) {
+        let toolCallMetadata = null;
+        
         try {
-          const result = await this._executeTool(toolCall);
+          const result = await this._executeTool(toolCall, {
+            onToolCall: (callData) => {
+              // Store metadata for returnMetadata option
+              if (options.returnMetadata) {
+                toolCallMetadata = {
+                  id: callData.callId,
+                  name: callData.name,
+                  parameters: callData.parameters,
+                  timestamp: callData.timestamp
+                };
+              }
+              // Call user callback
+              if (options.onToolCall) {
+                options.onToolCall(callData);
+              }
+            },
+            onToolResult: (resultData) => {
+              // Update metadata for returnMetadata option
+              if (options.returnMetadata && toolCallMetadata) {
+                toolCallMetadata.result = resultData.result;
+                toolCallMetadata.duration = resultData.duration;
+                toolCallMetadata.success = true;
+                toolCallsMetadata.push(toolCallMetadata);
+              }
+              // Call user callback
+              if (options.onToolResult) {
+                options.onToolResult(resultData);
+              }
+            },
+            onToolError: (errorData) => {
+              // Update metadata for returnMetadata option
+              if (options.returnMetadata && toolCallMetadata) {
+                toolCallMetadata.error = errorData.error;
+                toolCallMetadata.duration = errorData.duration;
+                toolCallMetadata.success = false;
+                toolCallsMetadata.push(toolCallMetadata);
+              }
+              // Call user callback
+              if (options.onToolError) {
+                options.onToolError(errorData);
+              }
+            }
+          });
           
           // Add tool result to messages
           newMessages.push({
@@ -284,11 +348,41 @@ class WarpMind extends BaseClient {
       }
 
       // Recursively call chat to let the model respond to tool results
-      return await this._chatWithTools(newMessages, options, depth + 1);
+      const recursiveResult = await this._chatWithTools(newMessages, options, depth + 1);
+      
+      // If returnMetadata is requested and this is the top-level call, wrap the result
+      if (options.returnMetadata && depth === 0) {
+        const totalDuration = Math.round(performance.now() - startTime);
+        return {
+          response: recursiveResult,
+          metadata: {
+            toolCalls: toolCallsMetadata,
+            totalDuration,
+            tokensUsed: response.usage?.total_tokens || null
+          }
+        };
+      }
+      
+      return recursiveResult;
     }
 
     // No tool calls or max depth reached, return the content
-    return message.content || '';
+    const finalResponse = message.content || '';
+    
+    // If returnMetadata is requested and this is the top-level call, wrap the result
+    if (options.returnMetadata && depth === 0) {
+      const totalDuration = Math.round(performance.now() - startTime);
+      return {
+        response: finalResponse,
+        metadata: {
+          toolCalls: toolCallsMetadata,
+          totalDuration,
+          tokensUsed: response.usage?.total_tokens || null
+        }
+      };
+    }
+    
+    return finalResponse;
   }
 
   /**
@@ -380,6 +474,9 @@ class WarpMind extends BaseClient {
     delete filteredOptions.temperature;
     delete filteredOptions.stream;
     delete filteredOptions.timeoutMs;
+    delete filteredOptions.onToolCall;
+    delete filteredOptions.onToolResult;
+    delete filteredOptions.onToolError;
     
     Object.assign(requestData, filteredOptions);
 
@@ -449,7 +546,11 @@ class WarpMind extends BaseClient {
         // Execute each tool call
         for (const toolCall of currentMessage.tool_calls) {
           try {
-            const result = await this._executeTool(toolCall);
+            const result = await this._executeTool(toolCall, {
+              onToolCall: options.onToolCall,
+              onToolResult: options.onToolResult,
+              onToolError: options.onToolError
+            });
             
             // Add tool result to messages
             newMessages.push({
@@ -535,23 +636,78 @@ class WarpMind extends BaseClient {
    * @param {Object} toolCall - Tool call from OpenAI response
    * @returns {Promise<any>} - Result from tool execution
    */
-  async _executeTool(toolCall) {
+  async _executeTool(toolCall, callbacks = {}) {
     const tool = this._tools.find(t => t.schema.function.name === toolCall.function.name);
     
     if (!tool) {
       throw new Error(`Tool '${toolCall.function.name}' not found`);
     }
     
+    let trackedCall = null;
+    
     try {
       // Parse the arguments from JSON
       const args = JSON.parse(toolCall.function.arguments);
       
+      // Start tracking the tool call
+      trackedCall = this._toolCallTracker.startCall(toolCall.function.name, args);
+      
+      // Call onToolCall callback if provided
+      this._safeCallCallback(callbacks.onToolCall, {
+        callId: trackedCall.callId,
+        name: trackedCall.name,
+        parameters: trackedCall.parameters,
+        timestamp: trackedCall.timestamp
+      });
+      
       // Execute the tool handler
       const result = await tool.handler(args);
       
+      // Complete the tracked call
+      const completedCall = this._toolCallTracker.completeCall(trackedCall.callId, result);
+      
+      // Call onToolResult callback if provided
+      this._safeCallCallback(callbacks.onToolResult, {
+        callId: completedCall.callId,
+        name: completedCall.name,
+        result: completedCall.result,
+        duration: completedCall.duration,
+        timestamp: new Date().toISOString()
+      });
+      
       return result;
     } catch (error) {
+      // Mark call as failed if it was started
+      if (trackedCall) {
+        const errorCall = this._toolCallTracker.errorCall(trackedCall.callId, error);
+        
+        // Call onToolError callback if provided
+        this._safeCallCallback(callbacks.onToolError, {
+          callId: errorCall.callId,
+          name: errorCall.name,
+          error: errorCall.error,
+          duration: errorCall.duration,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       throw new Error(`Tool execution failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Safely execute a callback function, catching any errors to prevent disruption
+   * @private
+   * @param {Function} callback - The callback function to execute
+   * @param {*} data - Data to pass to the callback
+   */
+  _safeCallCallback(callback, data) {
+    if (typeof callback === 'function') {
+      try {
+        callback(data);
+      } catch (error) {
+        console.warn('Error in tool call callback:', error);
+      }
     }
   }
 
