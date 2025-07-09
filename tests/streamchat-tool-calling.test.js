@@ -10,7 +10,8 @@ describe('Warpmind streamChat with Tool Calling', () => {
   beforeEach(() => {
     warpmind = new Warpmind({
       baseURL: 'http://localhost:8080/v1',
-      apiKey: 'test-key'
+      apiKey: 'test-key',
+      memoryToolEnabled: false // Disable auto-registration of memory tool for clean testing
     });
   });
 

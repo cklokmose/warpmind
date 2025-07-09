@@ -8,7 +8,10 @@ describe('WarpMind Tool Calling System', () => {
   let mind;
 
   beforeEach(() => {
-    mind = new WarpMind({ apiKey: 'test-key' });
+    mind = new WarpMind({ 
+      apiKey: 'test-key',
+      memoryToolEnabled: false // Disable auto-registration of memory tool for clean testing
+    });
     
     // Mock the makeRequest method to simulate tool calling responses
     mind.makeRequest = jest.fn();
