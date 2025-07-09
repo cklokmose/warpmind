@@ -512,26 +512,61 @@ class WarpMind extends BaseClient {
       // Use the new SSE parser with enhanced event callback
       await this.parseSSE(reader, (event) => {
         // Handle different types of streaming events
-        if (event.delta !== undefined) { // Check for undefined instead of truthy to allow empty strings
-          fullResponse += event.delta;
-          currentMessage.content += event.delta;
+        if (event.delta !== undefined && event.delta !== null) { // Check for both undefined and null
+          const deltaContent = event.delta || ''; // Ensure it's a string
+          fullResponse += deltaContent;
+          currentMessage.content += deltaContent;
           
           // Emit chunk in the new enhanced format immediately to callback
           if (onChunk) {
             onChunk({
               type: "chunk",
-              content: event.delta
+              content: deltaContent
             });
           }
         }
         
-        // Check for tool calls in the event
+        // Handle tool calls delta - merge into existing tool calls
         if (event.tool_calls) {
           hasToolCalls = true;
           if (!currentMessage.tool_calls) {
             currentMessage.tool_calls = [];
           }
-          currentMessage.tool_calls.push(...event.tool_calls);
+          
+          // Merge tool call deltas properly
+          for (const delta of event.tool_calls) {
+            const index = delta.index !== undefined ? delta.index : 0; // Default to 0 if no index
+            
+            // Initialize tool call at this index if it doesn't exist
+            if (!currentMessage.tool_calls[index]) {
+              currentMessage.tool_calls[index] = {
+                id: '',
+                type: 'function',
+                function: {
+                  name: '',
+                  arguments: ''
+                }
+              };
+            }
+            
+            const toolCall = currentMessage.tool_calls[index];
+            
+            // Merge the delta
+            if (delta.id) {
+              toolCall.id = delta.id;
+            }
+            if (delta.type) {
+              toolCall.type = delta.type;
+            }
+            if (delta.function) {
+              if (delta.function.name) {
+                toolCall.function.name += delta.function.name;
+              }
+              if (delta.function.arguments) {
+                toolCall.function.arguments += delta.function.arguments;
+              }
+            }
+          }
         }
       });
 
@@ -540,11 +575,28 @@ class WarpMind extends BaseClient {
       
       // Check if we need to handle tool calls
       if (hasToolCalls && currentMessage.tool_calls && currentMessage.tool_calls.length > 0 && depth < MAX_TOOL_CALL_DEPTH) {
+        // Filter out incomplete tool calls and validate
+        const validToolCalls = currentMessage.tool_calls.filter(toolCall => {
+          return toolCall && 
+                 toolCall.id && 
+                 toolCall.function && 
+                 toolCall.function.name &&
+                 toolCall.function.arguments !== undefined;
+        });
+        
+        if (validToolCalls.length === 0) {
+          // No valid tool calls, return current response
+          return fullResponse;
+        }
+        
+        // Update the message with only valid tool calls
+        currentMessage.tool_calls = validToolCalls;
+        
         // Add the assistant's message to the conversation
         const newMessages = [...messages, currentMessage];
 
-        // Execute each tool call
-        for (const toolCall of currentMessage.tool_calls) {
+        // Execute each valid tool call
+        for (const toolCall of validToolCalls) {
           try {
             const result = await this._executeTool(toolCall, {
               onToolCall: options.onToolCall,

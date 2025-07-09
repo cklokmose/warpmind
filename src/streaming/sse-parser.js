@@ -51,7 +51,7 @@ async function parseSSE(reader, onEvent) {
           };
           
           // Handle content delta
-          if (delta.content !== undefined) {
+          if (delta.content !== undefined && delta.content !== null) {
             eventData.delta = delta.content;
             fullResponse += delta.content;
           }

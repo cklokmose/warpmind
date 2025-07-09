@@ -119,9 +119,20 @@
             <button onclick="testMultipleTools()">Test Multiple Tools</button>
             <button onclick="testToolErrors()">Test Error Handling</button>
             <button onclick="clearTools()">Clear All Tools</button>
+            <div style="margin: 10px 0; border-top: 1px solid #ddd; padding-top: 10px;">
+                <strong>🔧 Tool Call Inspection:</strong><br>
+                <button onclick="testToolCallbacks()">Test Tool Callbacks</button>
+                <button onclick="testMetadataReturn()">Test Metadata Return</button>
+                <button onclick="testStreamingWithCallbacks()">Test Streaming + Callbacks</button>
+                <button onclick="clearToolMonitor()">Clear Monitor</button>
+            </div>
             <div id="registeredTools" style="background: #e7f3ff; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; font-size: 12px; display: none;">
                 <strong>Registered Tools:</strong>
                 <div id="toolsList"></div>
+            </div>
+            <div id="toolCallMonitor" style="background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; display: none;">
+                <strong>Tool Call Monitor:</strong>
+                <div id="toolCallLog"></div>
             </div>
             <textarea id="toolPrompt" placeholder="Ask something that requires tools...">What's the weather in Paris and what's 15% tip on a $47.50 bill?</textarea>
         </div>
@@ -999,6 +1010,168 @@
             } catch (error) {
                 log(`Edge cases test failed: ${error.message}`, 'error');
             }
+        }
+
+        // Tool Call Inspection Tests
+        async function testToolCallbacks() {
+            try {
+                log('🔧 Testing tool call callbacks...');
+                
+                // Ensure tools are registered
+                if (!wm._tools || wm._tools.length === 0) {
+                    registerTestTools();
+                }
+                
+                // Show the monitor
+                const monitorDiv = document.getElementById('toolCallMonitor');
+                monitorDiv.style.display = 'block';
+                
+                const logDiv = document.getElementById('toolCallLog');
+                logDiv.innerHTML = '<div style="color: #666;">Monitoring tool calls...</div>';
+                
+                let toolCallCount = 0;
+                
+                const response = await wm.chat("What's the weather in Tokyo and calculate 20% of 500?", {
+                    onToolCall: (call) => {
+                        toolCallCount++;
+                        const entry = document.createElement('div');
+                        entry.style.color = '#0066cc';
+                        entry.innerHTML = `🔧 Tool ${toolCallCount}: <strong>${call.name}</strong><br>
+                            <small>Parameters: ${JSON.stringify(call.parameters)}<br>
+                            Time: ${new Date(call.timestamp).toLocaleTimeString()}</small>`;
+                        logDiv.appendChild(entry);
+                        log(`Tool called: ${call.name}`, 'info');
+                    },
+                    onToolResult: (result) => {
+                        const entry = document.createElement('div');
+                        entry.style.color = '#00aa00';
+                        entry.innerHTML = `✅ <strong>${result.name}</strong> completed (${result.duration}ms)<br>
+                            <small>Result: ${JSON.stringify(result.result).substring(0, 100)}...</small>`;
+                        logDiv.appendChild(entry);
+                        log(`Tool completed: ${result.name} in ${result.duration}ms`, 'success');
+                    },
+                    onToolError: (error) => {
+                        const entry = document.createElement('div');
+                        entry.style.color = '#cc0000';
+                        entry.innerHTML = `❌ <strong>${error.name}</strong> failed (${error.duration}ms)<br>
+                            <small>Error: ${error.error}</small>`;
+                        logDiv.appendChild(entry);
+                        log(`Tool failed: ${error.name} - ${error.error}`, 'error');
+                    }
+                });
+                
+                log(`✅ Tool callbacks test completed. Response: "${response}"`, 'success');
+                log(`Total tool calls monitored: ${toolCallCount}`, 'info');
+                
+            } catch (error) {
+                log(`❌ Tool callbacks test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testMetadataReturn() {
+            try {
+                log('📊 Testing metadata return feature...');
+                
+                // Ensure tools are registered
+                if (!wm._tools || wm._tools.length === 0) {
+                    registerTestTools();
+                }
+                
+                const result = await wm.chat("What's the weather in London and calculate 15% of 200?", {
+                    returnMetadata: true
+                });
+                
+                log('✅ Metadata return test completed:', 'success');
+                log(`Response: "${result.response}"`, 'success');
+                log('Metadata:', 'info');
+                log(`- Total Duration: ${result.metadata.totalDuration}ms`, 'info');
+                log(`- Tokens Used: ${result.metadata.tokensUsed || 'N/A'}`, 'info');
+                log(`- Tool Calls: ${result.metadata.toolCalls.length}`, 'info');
+                
+                result.metadata.toolCalls.forEach((call, index) => {
+                    log(`  ${index + 1}. ${call.name}: ${call.success ? 'success' : 'failed'} (${call.duration}ms)`, 'info');
+                    if (call.parameters) {
+                        log(`     Parameters: ${JSON.stringify(call.parameters)}`, 'info');
+                    }
+                });
+                
+            } catch (error) {
+                log(`❌ Metadata return test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testStreamingWithCallbacks() {
+            try {
+                log('🌊 Testing streaming with tool call callbacks...');
+                
+                // Ensure tools are registered
+                if (!wm._tools || wm._tools.length === 0) {
+                    registerTestTools();
+                }
+                
+                // Show the monitor
+                const monitorDiv = document.getElementById('toolCallMonitor');
+                monitorDiv.style.display = 'block';
+                
+                const logDiv = document.getElementById('toolCallLog');
+                logDiv.innerHTML = '<div style="color: #666;">Monitoring streaming with tools...</div>';
+                
+                let chunks = [];
+                let toolCalls = 0;
+                
+                const response = await wm.streamChat(
+                    "Stream the weather for Madrid and calculate 25% of 300",
+                    (chunk) => {
+                        chunks.push(chunk.content);
+                        // Don't log every chunk to avoid spam, just update count
+                    },
+                    {
+                        onToolCall: (call) => {
+                            toolCalls++;
+                            const entry = document.createElement('div');
+                            entry.style.color = '#0066cc';
+                            entry.innerHTML = `🔧 [Stream] Tool: <strong>${call.name}</strong><br>
+                                <small>Parameters: ${JSON.stringify(call.parameters)}</small>`;
+                            logDiv.appendChild(entry);
+                            log(`Streaming tool called: ${call.name}`, 'info');
+                        },
+                        onToolResult: (result) => {
+                            const entry = document.createElement('div');
+                            entry.style.color = '#00aa00';
+                            entry.innerHTML = `✅ [Stream] <strong>${result.name}</strong> completed (${result.duration}ms)`;
+                            logDiv.appendChild(entry);
+                            log(`Streaming tool completed: ${result.name}`, 'success');
+                        },
+                        onToolError: (error) => {
+                            const entry = document.createElement('div');
+                            entry.style.color = '#cc0000';
+                            entry.innerHTML = `❌ [Stream] <strong>${error.name}</strong> failed: ${error.error}`;
+                            logDiv.appendChild(entry);
+                            log(`Streaming tool failed: ${error.name}`, 'error');
+                        }
+                    }
+                );
+                
+                log(`✅ Streaming with callbacks completed`, 'success');
+                log(`Total chunks received: ${chunks.length}`, 'info');
+                log(`Tools called during streaming: ${toolCalls}`, 'info');
+                log(`Final response: "${response}"`, 'success');
+                
+            } catch (error) {
+                log(`❌ Streaming with callbacks test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function clearToolMonitor() {
+            const logDiv = document.getElementById('toolCallLog');
+            const monitorDiv = document.getElementById('toolCallMonitor');
+            
+            logDiv.innerHTML = '<div style="color: #666;">Tool call monitor cleared</div>';
+            setTimeout(() => {
+                monitorDiv.style.display = 'none';
+            }, 1000);
+            
+            log('🗑️ Tool call monitor cleared', 'success');
         }
 
         // Initialize and run basic connectivity test
