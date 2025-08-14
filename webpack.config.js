@@ -13,6 +13,7 @@ module.exports = {
   optimization: {
     usedExports: false,
     sideEffects: false,
+    minimize: true
   },
   devServer: {
     static: {
@@ -25,7 +26,11 @@ module.exports = {
     fallback: {
       "fs": false,
       "path": false,
-      "os": false
+      "os": false,
+      "pdfjs-dist/legacy/build/pdf.js": false
     }
+  },
+  externals: {
+    'pdfjs-dist/legacy/build/pdf.js': 'pdfjsLib'
   }
 };

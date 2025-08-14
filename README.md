@@ -11,7 +11,6 @@ JavaScript library for AI integration in web browsers. Single-file import, works
 - [PDF Processing](#pdf-processing)
 - [Memory System](#memory-system)
 - [Custom Tool Integration](#custom-tool-integration)
-  - [Tool Call Inspection](#tool-call-inspection)
 - [Structured Data Processing](#structured-data-processing)
 - [Error Handling](#error-handling)
 - [API Key Management](#api-key-management)
@@ -26,7 +25,12 @@ Include the library and initialize:
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Integration Example</title>
+    <title>AI // Register custom AI tools
+mind.registerTool({ name: "myTool", description: "...", parameters: {...}, handler: async (args) => {...} })
+mind.unregisterTool("myTool")                            // Remove specific tool
+mind.isToolRegistered("myTool")                          // Check if tool exists
+mind.getRegisteredTools()                                // List all tool names  
+mind.clearAllTools()                                     // Remove all toolsation Example</title>
 </head>
 <body>
     <button onclick="askAI()">Test AI</button>
@@ -468,9 +472,9 @@ Open `examples/memory-demo.html` in your browser to explore memory features with
 
 Connect AI to custom functions. The AI automatically decides when to use your tools.
 
-### `registerTool(toolConfig)` → void
+### Basic Tool Registration
 
-Basic tool registration:
+Register custom functions that the AI can call:
 
 ```javascript
 mind.registerTool({
@@ -498,11 +502,28 @@ mind.registerTool({
 const response = await mind.chat("What's the weather in Tokyo?");
 ```
 
-### Tool Call Inspection
+### Tool Management
 
-Monitor and debug tool execution with callback-based inspection:
+Control registered tools dynamically:
 
-#### Basic Monitoring
+```javascript
+// Check if a tool is registered
+const isRegistered = mind.isToolRegistered('getWeather');
+
+// Get all registered tool names
+const toolNames = mind.getRegisteredTools();
+console.log(toolNames); // ['getWeather', 'saveNote', ...]
+
+// Unregister a specific tool
+const wasRemoved = mind.unregisterTool('getWeather');
+
+// Clear all registered tools
+mind.clearAllTools();
+```
+
+### Tool Call Monitoring
+
+Monitor and debug tool execution:
 
 ```javascript
 const response = await mind.chat("What's the weather in Tokyo?", {
@@ -518,52 +539,14 @@ const response = await mind.chat("What's the weather in Tokyo?", {
         console.log(`❌ Tool failed: ${error.name} - ${error.error}`);
     }
 });
-```
 
-#### Enhanced Return Objects
-
-Get detailed metadata about tool calls:
-
-```javascript
+// Get detailed metadata about tool calls
 const result = await mind.chat("Analyze this data", {
     returnMetadata: true
 });
-
 console.log('Response:', result.response);
-console.log('Metadata:');
-console.log(`- Total Duration: ${result.metadata.totalDuration}ms`);
-console.log(`- Tokens Used: ${result.metadata.tokensUsed}`);
-console.log(`- Tools Called: ${result.metadata.toolCalls.length}`);
-
-result.metadata.toolCalls.forEach(call => {
-    console.log(`  - ${call.name}: ${call.success ? 'success' : 'failed'} (${call.duration}ms)`);
-});
+console.log('Tools called:', result.metadata.toolCalls.length);
 ```
-
-#### Streaming with Tool Monitoring
-
-Monitor tools during streaming responses:
-
-```javascript
-await mind.streamChat("Process this request", 
-    (chunk) => console.log(chunk.content),
-    {
-        onToolCall: (call) => console.log(`Tool: ${call.name} started`),
-        onToolResult: (result) => console.log(`Tool: ${result.name} completed`)
-    }
-);
-```
-
-#### Method Support
-
-| Method | Callbacks | Enhanced Returns |
-|--------|-----------|------------------|
-| `chat()` | ✅ | ✅ |
-| `streamChat()` | ✅ | ❌ |
-| `process()` | ✅ | ✅ |
-| `complete()` | ❌ | ❌ |
-
-*Note: `streamChat()` doesn't support `returnMetadata` due to its streaming nature, and `complete()` doesn't use the tool calling system.*
 
 ### Implementation Examples
 
@@ -604,10 +587,7 @@ mind.registerTool({
 });
 ```
 
-### Method Compatibility
-
-**Supports tools**: `chat()`, `analyzeImage()`, `process()`
-**No tool support**: `streamChat()`, `complete()`, audio methods
+**Method Compatibility**: Tools work with `chat()`, `analyzeImage()`, and `process()`. Not supported in `streamChat()`, `complete()`, or audio methods.
 
 ## Structured Data Processing
 
@@ -809,6 +789,10 @@ await mind.forget(memoryId)                              // Delete memory
 
 // Register custom AI tools
 mind.registerTool({ name: "myTool", description: "...", parameters: {...}, handler: async (args) => {...} })
+mind.unregisterTool("myTool")                            // Remove specific tool
+mind.isToolRegistered("myTool")                          // Check if tool exists
+mind.getRegisteredTools()                                // List all tool names
+mind.clearAllTools()                                     // Remove all tools
 ```
 
 ### Common Options:

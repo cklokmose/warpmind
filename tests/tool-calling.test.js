@@ -94,6 +94,105 @@ describe('WarpMind Tool Calling System', () => {
     });
   });
 
+  describe('Tool Management', () => {
+    beforeEach(() => {
+      // Register some test tools
+      mind.registerTool({
+        name: 'calculator',
+        description: 'Perform calculations',
+        parameters: { type: 'object', properties: { expr: { type: 'string' } } },
+        handler: async (args) => eval(args.expr)
+      });
+      
+      mind.registerTool({
+        name: 'timer',
+        description: 'Set a timer',
+        parameters: { type: 'object', properties: { seconds: { type: 'number' } } },
+        handler: async (args) => `Timer set for ${args.seconds} seconds`
+      });
+    });
+
+    describe('unregisterTool()', () => {
+      it('should remove an existing tool', () => {
+        expect(mind.isToolRegistered('calculator')).toBe(true);
+        const result = mind.unregisterTool('calculator');
+        expect(result).toBe(true);
+        expect(mind.isToolRegistered('calculator')).toBe(false);
+      });
+
+      it('should return false for non-existent tool', () => {
+        const result = mind.unregisterTool('nonexistent');
+        expect(result).toBe(false);
+      });
+
+      it('should throw error for invalid tool name', () => {
+        expect(() => mind.unregisterTool('')).toThrow('Tool name must be a non-empty string');
+        expect(() => mind.unregisterTool(null)).toThrow('Tool name must be a non-empty string');
+      });
+    });
+
+    describe('getRegisteredTools()', () => {
+      it('should return array of tool names', () => {
+        const tools = mind.getRegisteredTools();
+        expect(tools).toEqual(['calculator', 'timer']);
+      });
+
+      it('should return empty array when no tools registered', () => {
+        mind.clearAllTools();
+        expect(mind.getRegisteredTools()).toEqual([]);
+      });
+    });
+
+    describe('isToolRegistered()', () => {
+      it('should return true for registered tools', () => {
+        expect(mind.isToolRegistered('calculator')).toBe(true);
+        expect(mind.isToolRegistered('timer')).toBe(true);
+      });
+
+      it('should return false for unregistered tools', () => {
+        expect(mind.isToolRegistered('nonexistent')).toBe(false);
+      });
+
+      it('should return false for invalid input', () => {
+        expect(mind.isToolRegistered('')).toBe(false);
+        expect(mind.isToolRegistered(null)).toBe(false);
+        expect(mind.isToolRegistered(undefined)).toBe(false);
+      });
+    });
+
+    describe('clearAllTools()', () => {
+      it('should remove all registered tools', () => {
+        expect(mind.getRegisteredTools().length).toBe(2);
+        mind.clearAllTools();
+        expect(mind.getRegisteredTools()).toEqual([]);
+      });
+    });
+
+    describe('tool management integration', () => {
+      it('should handle dynamic tool registration/unregistration', () => {
+        // Start with 2 tools
+        expect(mind.getRegisteredTools().length).toBe(2);
+        
+        // Add another
+        mind.registerTool({
+          name: 'converter',
+          description: 'Convert units',
+          parameters: { type: 'object', properties: {} },
+          handler: async () => 'converted'
+        });
+        expect(mind.getRegisteredTools().length).toBe(3);
+        
+        // Remove one
+        mind.unregisterTool('timer');
+        expect(mind.getRegisteredTools()).toEqual(['calculator', 'converter']);
+        
+        // Clear all
+        mind.clearAllTools();
+        expect(mind.getRegisteredTools()).toEqual([]);
+      });
+    });
+  });
+
   describe('chat() with tools', () => {
     beforeEach(() => {
       // Register a test tool

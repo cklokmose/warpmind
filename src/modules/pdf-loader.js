@@ -29,8 +29,15 @@ if (typeof window !== 'undefined') {
       pdfjsLib = null;
       pdfLoadingPromise = null; // Will be set when needed
     } else {
-      pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
-      pdfLoadingPromise = Promise.resolve();
+      // Try to require PDF.js, but handle module not found gracefully
+      try {
+        pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+        pdfLoadingPromise = Promise.resolve();
+      } catch (requireError) {
+        console.warn('PDF.js package not found - PDF features will be loaded dynamically in browser');
+        pdfjsLib = null;
+        pdfLoadingPromise = null;
+      }
     }
   } catch (error) {
     console.warn('PDF.js not available in Node.js environment');

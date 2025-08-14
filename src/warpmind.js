@@ -683,6 +683,51 @@ class WarpMind extends BaseClient {
   }
 
   /**
+   * Unregister a tool by name
+   * @param {string} toolName - Name of the tool to unregister
+   * @returns {boolean} - True if tool was found and removed, false otherwise
+   */
+  unregisterTool(toolName) {
+    if (!toolName || typeof toolName !== 'string') {
+      throw new Error('Tool name must be a non-empty string');
+    }
+
+    const toolIndex = this._tools.findIndex(t => t.schema.function.name === toolName);
+    if (toolIndex !== -1) {
+      this._tools.splice(toolIndex, 1);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if a tool is registered
+   * @param {string} toolName - Name of the tool to check
+   * @returns {boolean} - True if tool is registered, false otherwise
+   */
+  isToolRegistered(toolName) {
+    if (!toolName || typeof toolName !== 'string') {
+      return false;
+    }
+    return this._tools.some(t => t.schema.function.name === toolName);
+  }
+
+  /**
+   * Get array of all registered tool names
+   * @returns {Array<string>} - Array of tool names
+   */
+  getRegisteredTools() {
+    return this._tools.map(t => t.schema.function.name);
+  }
+
+  /**
+   * Clear all registered tools
+   */
+  clearAllTools() {
+    this._tools = [];
+  }
+
+  /**
    * Execute a tool call
    * @private
    * @param {Object} toolCall - Tool call from OpenAI response
