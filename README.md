@@ -158,6 +158,31 @@ Text completion:
 const response = await mind.complete("The three laws of robotics are");
 ```
 
+### `embed(text, options)` → number[]
+
+Generate embeddings for text using semantic vector models:
+
+```javascript
+// Basic embedding generation
+const embedding = await mind.embed("Machine learning is fascinating");
+
+// With custom model
+const embedding = await mind.embed("Text to embed", { 
+    model: 'text-embedding-3-large' 
+});
+
+// With timeout
+const embedding = await mind.embed("Text", { 
+    timeoutMs: 10000 
+});
+```
+
+Options:
+- `model`: Embedding model to use (default: 'text-embedding-3-small')
+- `timeoutMs`: Request timeout in milliseconds
+
+Returns a normalized vector array for semantic similarity calculations. Used internally by the memory and PDF systems.
+
 ## Multi-Modal Processing
 
 ### Image Analysis
@@ -757,6 +782,12 @@ tests/                  # Test suite (71 tests)
 ```javascript
 // Basic chat
 await mind.chat("Hello world")
+
+// Text completion
+await mind.complete("The three laws of robotics are")
+
+// Generate embeddings
+const embedding = await mind.embed("Text to embed")
 
 // Image analysis  
 await mind.analyzeImage(imageFile, "What's in this image?")
