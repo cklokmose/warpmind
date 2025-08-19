@@ -81,7 +81,7 @@ Create a new WarpMind instance with these configuration options:
 |--------|------|---------|-------------|-------------|
 | `baseURL` | string | Required | API endpoint URL | - |
 | `apiKey` | string | Optional | Authentication key (prompted if missing) | - |
-| `model` | string | `'gpt-4o'` | AI model to use | - |
+| `model` | string | `'gpt-5-mini'` | AI model to use | - |
 | `temperature` | number | `0.7` | Response creativity (0-2) | - |
 | `timeoutMs` | number | `30000` | Request timeout in milliseconds | - |
 | `memoryToolEnabled` | boolean | `true` | Enable automatic memory tool | - |
@@ -92,7 +92,7 @@ Create a new WarpMind instance with these configuration options:
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',  // API endpoint
     apiKey: 'your-auth-key',                 // Authentication
-    model: 'gpt-4o',                         // Model selection
+    model: 'gpt-5-mini',                     // Model selection
     temperature: 0.7,                        // Response creativity (0-2)
     timeoutMs: 30000                         // Request timeout
 });
@@ -100,7 +100,7 @@ const mind = new WarpMind({
 // Runtime configuration changes
 mind.setApiKey('new-auth-key');
 mind.setBaseURL('https://warp.cs.au.dk/mind/');
-mind.setModel('gpt-4o');
+mind.setModel('gpt-5-mini');
 ```
 
 ### Token Usage Tracking
@@ -709,7 +709,7 @@ Key prompting and storage for browser applications:
 // No API key needed - will prompt automatically
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',
-    model: 'gpt-4o'
+    model: 'gpt-5-mini'
 });
 
 // First use prompts for key, subsequent visits load from localStorage
@@ -838,7 +838,7 @@ mind.clearAllTools()                                     // Remove all tools
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/v1',  // Warp CS API endpoint
     apiKey: 'your-key',                        // Your API key
-    model: 'gpt-4o',                           // AI model
+    model: 'gpt-5-mini',                       // AI model
     temperature: 0.7,                          // Creativity level
     timeoutMs: 30000                           // Default timeout
 });

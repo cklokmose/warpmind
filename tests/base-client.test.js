@@ -48,7 +48,7 @@ describe('BaseClient Additional Coverage Tests', () => {
       
       expect(clientEmpty.apiKey).toBe('');
       expect(clientEmpty.baseURL).toBe('https://api.openai.com');
-      expect(clientEmpty.model).toBe('gpt-5');
+      expect(clientEmpty.model).toBe('gpt-5-mini');
       expect(clientEmpty.temperature).toBe(1.0);
     });
 
