@@ -394,7 +394,7 @@ class WarpMind extends BaseClient {
    */
   async complete(prompt, options = {}) {
     const requestData = {
-      model: options.model || 'gpt-3.5-turbo-instruct',
+      model: options.model || this.model,
       prompt: prompt,
       temperature: options.temperature !== undefined ? options.temperature : this.temperature
     };

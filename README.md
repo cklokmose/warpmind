@@ -82,7 +82,7 @@ Create a new WarpMind instance with these configuration options:
 | `baseURL` | string | Required | API endpoint URL | - |
 | `apiKey` | string | Optional | Authentication key (prompted if missing) | - |
 | `model` | string | `'gpt-5-mini'` | AI model to use | - |
-| `temperature` | number | `0.7` | Response creativity (0-2) | - |
+| `temperature` | number | `1.0` | Response creativity (0-2) | - |
 | `timeoutMs` | number | `30000` | Request timeout in milliseconds | - |
 | `memoryToolEnabled` | boolean | `true` | Enable automatic memory tool | - |
 | `memoryToolExplicitOnly` | boolean | `true` | Only use memory when explicitly requested | - |
@@ -93,7 +93,7 @@ const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',  // API endpoint
     apiKey: 'your-auth-key',                 // Authentication
     model: 'gpt-5-mini',                     // Model selection
-    temperature: 0.7,                        // Response creativity (0-2)
+    temperature: 1.0,                        // Response creativity (0-2)
     timeoutMs: 30000                         // Request timeout
 });
 
@@ -839,7 +839,7 @@ const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/v1',  // Warp CS API endpoint
     apiKey: 'your-key',                        // Your API key
     model: 'gpt-5-mini',                       // AI model
-    temperature: 0.7,                          // Creativity level
+    temperature: 1.0,                          // Creativity level
     timeoutMs: 30000                           // Default timeout
 });
 ```
