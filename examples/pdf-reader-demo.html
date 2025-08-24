@@ -281,6 +281,32 @@
             font-size: 12px;
             padding: 6px 12px;
         }
+        .page-range-input {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        .page-range-input input {
+            width: 70px !important;
+            text-align: center;
+        }
+        .page-range-help {
+            color: #666;
+            font-size: 11px;
+            margin-top: 3px;
+        }
+        .limit-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-size: 13px;
+        }
+        .limit-warning strong {
+            color: #b7950b;
+        }
     </style>
 </head>
 <body>
@@ -290,6 +316,7 @@
         <div class="section">
             <h2>📄 Load PDF Document</h2>
             <p>Upload a PDF file or provide a URL to get started. The PDF will be processed to extract text and indexed for semantic search.</p>
+            <p><strong>New:</strong> PDFs are limited to 100 pages maximum. For larger documents, use the page range option to process specific sections.</p>
             
             <div class="file-input">
                 <input type="file" id="pdfFile" accept=".pdf" />
@@ -312,10 +339,31 @@
                         <option value="text-embedding-ada-002">text-embedding-ada-002</option>
                     </select>
                 </div>
+                <div class="option-group">
+                    <label for="pageRangeStart">Page Range (optional):</label>
+                    <div class="page-range-input">
+                        <input type="number" id="pageRangeStart" placeholder="Start" min="1" />
+                        <span>to</span>
+                        <input type="number" id="pageRangeEnd" placeholder="End" min="1" />
+                    </div>
+                    <div class="page-range-help">
+                        Max 100 pages total. Leave empty to process full document.<br>
+                        <button class="button" onclick="setPageRange(1, 10)" style="font-size: 10px; padding: 2px 6px; margin: 2px;">1-10</button>
+                        <button class="button" onclick="setPageRange(1, 25)" style="font-size: 10px; padding: 2px 6px; margin: 2px;">1-25</button>
+                        <button class="button" onclick="setPageRange(1, 50)" style="font-size: 10px; padding: 2px 6px; margin: 2px;">1-50</button>
+                        <button class="button" onclick="setPageRange(1, 100)" style="font-size: 10px; padding: 2px 6px; margin: 2px;">1-100</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="limit-warning">
+                ⚠️ <strong>Page Limit:</strong> PDFs are limited to 100 pages maximum to prevent excessive processing costs. 
+                For larger documents, specify a page range above to process only the needed sections.
             </div>
             
             <button class="button" id="loadPdf">Load PDF</button>
             <button class="button" id="loadExamplePdf">Load Example PDF</button>
+            <button class="button" id="clearRange" style="background: #95a5a6;">Clear Range</button>
             
             <div class="progress-container" id="progressBar" style="display: none;">
                 <div class="progress-bar" id="progressFill"></div>
@@ -426,8 +474,7 @@
                 mind = new WarpMind({
                     // API key will be prompted automatically for real OpenAI API
                     // For demo, you can also set baseURL to a different endpoint
-                    baseURL: 'https://warp.cs.au.dk/mind',
-                    model: 'gpt-4o'
+                    baseURL: 'https://warp.cs.au.dk/mind'
                 });
                 
                 showMessage('WarpMind initialized successfully', 'success');
@@ -500,6 +547,18 @@
                 embedModel: document.getElementById('embedModel').value,
                 onProgress: (progress, description) => updateProgress(progress, description)
             };
+            
+            // Add page range if specified
+            const startPage = parseInt(document.getElementById('pageRangeStart').value);
+            const endPage = parseInt(document.getElementById('pageRangeEnd').value);
+            
+            if (startPage && endPage) {
+                options.pageRange = [startPage, endPage];
+                showMessage(`Loading pages ${startPage}-${endPage}...`, 'system');
+            } else if (startPage || endPage) {
+                showMessage('Please specify both start and end page, or leave both empty for full document', 'error');
+                return;
+            }
             
             try {
                 showMessage('Loading PDF...', 'system');
@@ -628,10 +687,18 @@
                     
                     const pdfInfo = document.createElement('div');
                     pdfInfo.className = 'pdf-info';
+                    
+                    let pageInfo = `${pdf.numPages} total pages`;
+                    if (pdf.pageRange) {
+                        pageInfo += ` • Processed: ${pdf.pageRange.start}-${pdf.pageRange.end} (${pdf.pagesProcessed} pages)`;
+                    } else {
+                        pageInfo += ` • ${pdf.pagesProcessed || pdf.numPages} processed`;
+                    }
+                    
                     pdfInfo.innerHTML = `
                         <div class="pdf-title">${pdf.title} ${isSelected ? '(Current)' : ''}</div>
                         <div class="pdf-meta">
-                            ${pdf.numPages} pages • ${pdf.totalChunks} chunks • 
+                            ${pageInfo} • ${pdf.totalChunks} chunks • 
                             Processed: ${new Date(pdf.processedAt).toLocaleDateString()}
                         </div>
                     `;
@@ -942,6 +1009,42 @@
             extractButton.disabled = !currentPdfId;
         }
         
+        // Clear page range inputs
+        function clearPageRange() {
+            document.getElementById('pageRangeStart').value = '';
+            document.getElementById('pageRangeEnd').value = '';
+        }
+        
+        // Set page range preset
+        function setPageRange(start, end) {
+            document.getElementById('pageRangeStart').value = start;
+            document.getElementById('pageRangeEnd').value = end;
+            validatePageRange();
+        }
+        
+        // Validate page range inputs
+        function validatePageRange() {
+            const startPage = parseInt(document.getElementById('pageRangeStart').value);
+            const endPage = parseInt(document.getElementById('pageRangeEnd').value);
+            
+            if ((startPage && !endPage) || (!startPage && endPage)) {
+                showMessage('Please specify both start and end page, or leave both empty', 'warning');
+                return false;
+            }
+            
+            if (startPage && endPage && startPage > endPage) {
+                showMessage('Start page must be less than or equal to end page', 'warning');
+                return false;
+            }
+            
+            if (startPage && endPage && (endPage - startPage + 1) > 100) {
+                showMessage('Page range cannot exceed 100 pages', 'warning');
+                return false;
+            }
+            
+            return true;
+        }
+        
         // Event listeners
         document.getElementById('loadPdf').addEventListener('click', () => {
             const fileInput = document.getElementById('pdfFile');
@@ -960,6 +1063,11 @@
             loadPdf('examples/instrumental_interaction.pdf');
         });
         
+        document.getElementById('clearRange').addEventListener('click', () => {
+            clearPageRange();
+            showMessage('Page range cleared - will process full document', 'system');
+        });
+        
         document.getElementById('sendMessage').addEventListener('click', sendMessage);
         
         document.getElementById('chatInput').addEventListener('keypress', (e) => {
@@ -975,6 +1083,10 @@
         document.getElementById('showStorage').addEventListener('click', showStorageInfo);
         
         document.getElementById('extractData').addEventListener('click', extractStructuredData);
+        
+        // Page range validation on input
+        document.getElementById('pageRangeStart').addEventListener('input', validatePageRange);
+        document.getElementById('pageRangeEnd').addEventListener('input', validatePageRange);
         
         // Initialize on page load
         window.addEventListener('load', initWarpMind);

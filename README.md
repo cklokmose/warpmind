@@ -299,6 +299,7 @@ const pdfId = await mind.readPdf(pdfFile, {
     id: 'research-paper',                     // Optional custom ID
     chunkTokens: 400,                        // Text chunk size
     embedModel: 'text-embedding-3-small',    // Embedding model
+    pageRange: [1, 50],                      // Process specific pages (optional)
     onProgress: (progress) => console.log(`${Math.round(progress * 100)}%`)
 });
 
@@ -309,7 +310,14 @@ const pdfId = await mind.readPdf('https://example.com/document.pdf');
 const pdfId = await mind.readPdf('documents/research-paper.pdf');
 const pdfId = await mind.readPdf('./instrumental_interaction.pdf');
 const pdfId = await mind.readPdf('/static/pdfs/document.pdf');
+
+// Process specific page range to stay within limits
+const pdfId = await mind.readPdf('large-document.pdf', {
+    pageRange: { start: 10, end: 60 }        // Object format also supported
+});
 ```
+
+**Page Limits**: PDFs are limited to a maximum of 100 pages to prevent excessive API usage. For larger documents, specify a `pageRange` to process only the needed sections.
 
 The library supports File objects from input elements and HTTP URLs (both absolute and relative to your web server).
 
@@ -319,8 +327,20 @@ The library supports File objects from input elements and HTTP URLs (both absolu
 // Check status
 const isLoaded = await mind.isPdfRead('research-paper');
 
-// List all PDFs
+// List all PDFs with page information
 const pdfList = await mind.listReadPdfs();
+console.log(pdfList);
+// [
+//   {
+//     id: 'research-paper',
+//     title: 'research-paper', 
+//     numPages: 150,
+//     pagesProcessed: 50,
+//     pageRange: { start: 1, end: 50 },
+//     totalChunks: 25,
+//     processedAt: '2025-08-22T10:30:00.000Z'
+//   }
+// ]
 
 // Storage information
 const storageInfo = await mind.getPdfStorageInfo();

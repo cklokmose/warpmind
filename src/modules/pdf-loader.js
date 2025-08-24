@@ -625,8 +625,12 @@ function createPdfLoaderModule(client) {
         id = null,
         chunkTokens = 400,
         embedModel = 'text-embedding-3-small',
-        onProgress = null
+        onProgress = null,
+        pageRange = null  // [startPage, endPage] or { start: number, end: number }
       } = options;
+      
+      // Fixed maximum pages limit to prevent excessive API usage
+      const MAX_PAGES = 100;
       
       // Safe progress update function that won't throw errors
       const safeProgress = (progress) => {
@@ -743,9 +747,42 @@ function createPdfLoaderModule(client) {
           throw new Error(`Failed to load PDF document: ${error.message}`);
         }
 
-        // Extract text from all pages
+        // Validate and calculate page range
+        let startPage = 1;
+        let endPage = numPages;
+        
+        if (pageRange) {
+          // Handle both array [start, end] and object { start, end } formats
+          if (Array.isArray(pageRange)) {
+            [startPage, endPage] = pageRange;
+          } else if (typeof pageRange === 'object' && pageRange.start && pageRange.end) {
+            startPage = pageRange.start;
+            endPage = pageRange.end;
+          } else {
+            throw new Error('pageRange must be an array [startPage, endPage] or object { start: number, end: number }');
+          }
+          
+          // Validate page range
+          if (startPage < 1 || endPage > numPages || startPage > endPage) {
+            throw new Error(`Invalid page range [${startPage}, ${endPage}]. PDF has ${numPages} pages.`);
+          }
+        }
+        
+        // Calculate actual pages to process
+        const pagesToProcess = endPage - startPage + 1;
+        
+        // Enforce maximum pages limit
+        if (pagesToProcess > MAX_PAGES) {
+          if (pageRange) {
+            throw new Error(`Page range [${startPage}, ${endPage}] contains ${pagesToProcess} pages, which exceeds the maximum limit of ${MAX_PAGES} pages. Please specify a smaller range.`);
+          } else {
+            throw new Error(`PDF has ${numPages} pages, which exceeds the maximum limit of ${MAX_PAGES} pages. Please specify a pageRange to process a subset of pages (e.g., { pageRange: [1, ${MAX_PAGES}] }).`);
+          }
+        }
+
+        // Extract text from specified page range
         const pageContents = [];
-        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+        for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
           const page = await pdfDoc.getPage(pageNum);
           
           // Extract text
@@ -758,7 +795,9 @@ function createPdfLoaderModule(client) {
             text: pageText
           });
 
-          safeProgress(0.1 + (pageNum / numPages) * 0.4);
+          // Update progress based on pages processed within the range
+          const pagesProcessed = pageNum - startPage + 1;
+          safeProgress(0.1 + (pagesProcessed / pagesToProcess) * 0.4);
         }
 
         // Combine all text and create chunks
@@ -852,6 +891,8 @@ function createPdfLoaderModule(client) {
         const metadata = {
           title: pdfId,
           numPages,
+          pagesProcessed: pagesToProcess,
+          pageRange: pageRange ? { start: startPage, end: endPage } : null,
           totalChunks: chunksWithEmbeddings.length,
           chunkTokens,
           embedModel,
@@ -961,6 +1002,8 @@ function createPdfLoaderModule(client) {
         id: meta.id,
         title: meta.title,
         numPages: meta.numPages,
+        pagesProcessed: meta.pagesProcessed || meta.numPages, // Backward compatibility
+        pageRange: meta.pageRange || null,
         totalChunks: meta.totalChunks,
         processedAt: meta.processedAt
       }));
