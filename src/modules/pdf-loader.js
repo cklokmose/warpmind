@@ -1201,42 +1201,43 @@ function createPdfLoaderModule(client) {
       const searchToolName = `search_pdf_${pdfId.replace(/[^a-zA-Z0-9]/g, '_')}`;
       const fullTextToolName = `get_full_text_${pdfId.replace(/[^a-zA-Z0-9]/g, '_')}`;
       
-      try {      // Register semantic search tool (for large PDFs or specific queries)
-      client.registerTool({
-        name: searchToolName,
-        description: `Search and retrieve relevant chunks from the PDF "${title}". Returns up to 8 most relevant chunks (default: 4). Use this for finding specific information in large PDFs. For comprehensive analysis, summaries, or lists, consider using the full text tool instead.`,
-        parameters: {
-          type: 'object',
-          properties: {
-            query: {
-              type: 'string',
-              description: 'The search query to find relevant information in the PDF'
+      try {
+        // Register semantic search tool (for large PDFs or specific queries)
+        client.registerTool({
+          name: searchToolName,
+          description: `Searches the PDF "${title}" to find relevant passages about specific topics, concepts, or quotes. Returns the most relevant text chunks that match the search query.`,
+          parameters: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'The search terms or concept to find in the PDF'
+              },
+              topResults: {
+                type: 'number',
+                description: 'Number of relevant passages to return (1-8)',
+                default: 4,
+                maximum: 8
+              }
             },
-            topResults: {
-              type: 'number',
-              description: 'Number of most relevant chunks to return (default: 4, max: 8)',
-              default: 4,
-              maximum: 8
-            }
+            required: ['query']
           },
-          required: ['query']
-        },
-        handler: async (args) => {
-          const numResults = Math.min(args.topResults || 4, 8);
-          return await this._searchPdf(pdfId, args.query, numResults);
-        }
-      });
+          handler: async (args) => {
+            const numResults = Math.min(args.topResults || 4, 8);
+            return await this._searchPdf(pdfId, args.query, numResults);
+          }
+        });
 
         // Register full text tool (for smaller PDFs or comprehensive analysis)
         client.registerTool({
           name: fullTextToolName,
-          description: `Get the complete full text of the PDF "${title}". Use this for comprehensive analysis, summaries, creating lists, or when you need to see the entire document. For specific queries or large PDFs, use the search tool instead.`,
+          description: `Retrieves the complete text content of the PDF "${title}". Useful for comprehensive analysis, summaries, or when examining the entire document structure.`,
           parameters: {
             type: 'object',
             properties: {
               includePageNumbers: {
                 type: 'boolean', 
-                description: 'Whether to include page number markers in the text (default: true)',
+                description: 'Include page numbers in the text',
                 default: true
               }
             },
