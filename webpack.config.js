@@ -13,7 +13,7 @@ module.exports = {
   optimization: {
     usedExports: false,
     sideEffects: false,
-    minimize: true
+    minimize: false
   },
   devServer: {
     static: {
