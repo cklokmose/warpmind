@@ -25,12 +25,7 @@ Include the library and initialize:
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI // Register custom AI tools
-mind.registerTool({ name: "myTool", description: "...", parameters: {...}, handler: async (args) => {...} })
-mind.unregisterTool("myTool")                            // Remove specific tool
-mind.isToolRegistered("myTool")                          // Check if tool exists
-mind.getRegisteredTools()                                // List all tool names  
-mind.clearAllTools()                                     // Remove all toolsation Example</title>
+    <title>WarpMind Integration Example</title>
 </head>
 <body>
     <button onclick="askAI()">Test AI</button>
@@ -42,8 +37,7 @@ mind.clearAllTools()                                     // Remove all toolsatio
     
     <script>
         const mind = new WarpMind({
-            baseURL: 'https://warp.cs.au.dk/mind/',
-            apiKey: 'your-auth-key'
+            baseURL: 'https://warp.cs.au.dk/mind/'
         });
 
         async function askAI() {
