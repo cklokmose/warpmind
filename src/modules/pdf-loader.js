@@ -25,7 +25,7 @@ if (typeof window !== 'undefined') {
     if (typeof process !== 'undefined' && 
         (process.env.NODE_ENV === 'test' || typeof DOMMatrix === 'undefined')) {
       // In Jest test environment or when DOM APIs aren't available, skip PDF.js loading
-      console.log('PDF.js not available in Node.js environment');
+      console.log('WarpMind loaded without PDF support (Node.js environment)');
       pdfjsLib = null;
       pdfLoadingPromise = null; // Will be set when needed
     } else {
@@ -34,13 +34,13 @@ if (typeof window !== 'undefined') {
         pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
         pdfLoadingPromise = Promise.resolve();
       } catch (requireError) {
-        console.warn('PDF.js package not found - PDF features will be loaded dynamically in browser');
+        console.log('WarpMind loaded without PDF support (PDF.js package not found)');
         pdfjsLib = null;
         pdfLoadingPromise = null;
       }
     }
   } catch (error) {
-    console.warn('PDF.js not available in Node.js environment');
+    console.log('WarpMind loaded without PDF support (Node.js environment)');
     pdfjsLib = null;
     pdfLoadingPromise = null; // Will be set when needed
   }
@@ -158,18 +158,26 @@ async function ensurePdfJsLoaded() {
   // Check if we're in a Jest test environment or Node.js without browser APIs
   if (typeof process !== 'undefined' && 
       (process.env.NODE_ENV === 'test' || typeof DOMMatrix === 'undefined')) {
-    throw new Error('PDF.js not available in Node.js environment');
+    console.log('WarpMind loaded without PDF support (Node.js environment)');
+    return null;
   }
   
   if (pdfLoadingPromise) {
-    await pdfLoadingPromise;
+    try {
+      await pdfLoadingPromise;
+    } catch (error) {
+      console.log('WarpMind loaded without PDF support (PDF.js loading failed)');
+      return null;
+    }
   } else if (!pdfjsLib) {
     // pdfLoadingPromise is null, which means we're in Node.js without PDF.js support
-    throw new Error('PDF.js is not available in Node.js environment. Please use in a browser.');
+    console.log('WarpMind loaded without PDF support (PDF.js not available)');
+    return null;
   }
   
   if (!pdfjsLib) {
-    throw new Error('PDF.js is not available. Please ensure PDF.js is loaded before using PDF features.');
+    console.log('WarpMind loaded without PDF support (PDF.js library not loaded)');
+    return null;
   }
   return pdfjsLib;
 }
@@ -691,7 +699,10 @@ function createPdfLoaderModule(client) {
 
       try {
         // Ensure PDF.js is loaded before proceeding
-        await ensurePdfJsLoaded();
+        const pdfLib = await ensurePdfJsLoaded();
+        if (!pdfLib) {
+          throw new Error('PDF functionality is not available. WarpMind was loaded without PDF support. This may be due to the environment not supporting PDF.js or a loading failure.');
+        }
 
         // Handle different input types
         if (typeof src === 'string') {
