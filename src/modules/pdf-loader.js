@@ -15,8 +15,13 @@ if (typeof window !== 'undefined') {
     configureWorker();
     pdfLoadingPromise = Promise.resolve();
   } else {
-    // PDF.js not loaded - set up loading promise
-    pdfLoadingPromise = loadPdfJs();
+    // PDF.js not loaded - set up loading promise with error handling
+    pdfLoadingPromise = loadPdfJs().catch(error => {
+      console.log('WarpMind loaded without PDF support.');
+      pdfjsLib = null;
+      // Don't re-throw the error to avoid uncaught promise rejection
+      return null;
+    });
   }
 } else {
   // Node.js environment - try to require PDF.js carefully
