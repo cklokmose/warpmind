@@ -579,27 +579,6 @@ Exported ZIP files contain:
 - `embeddings.json` - Text chunks with embeddings
 - `content.json` - Full text and page contents
 
-#### Educational Use Cases
-
-**For Teachers:**
-```javascript
-// Process PDF once
-await mind.readPdf('course-material.pdf');
-
-// Export for distribution
-const exportResult = await mind.exportPdf('course-material');
-// Share the ZIP file with students
-```
-
-**For Students:**
-```javascript
-// Import teacher-prepared PDF
-const importResult = await mind.importPdf(teacherZipFile);
-
-// Immediately start querying without processing delay
-const summary = await mind.chat("Summarize the main concepts");
-```
-
 ### `recallPdf(pdfId)` → void
 
 Load previously processed PDF into memory:
