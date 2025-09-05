@@ -307,11 +307,56 @@
         .limit-warning strong {
             color: #b7950b;
         }
+        
+        /* Configuration status styles */
+        .config-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .config-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .config-info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🧠 WarpMind PDF Reader Demo</h1>
+        
+        <!-- API Configuration Section -->
+        <div class="section">
+            <h2>🔑 API Configuration</h2>
+            <div class="option-group">
+                <label for="serverURL">Server Endpoint:</label>
+                <input type="url" id="serverURL" placeholder="https://warp.cs.au.dk/mind" value="https://warp.cs.au.dk/mind" />
+                <small style="color: #6c757d; font-size: 12px; margin-top: 5px; display: block;">
+                    Enter the base URL for your WarpMind-compatible API endpoint
+                </small>
+            </div>
+            <div class="option-group">
+                <label for="apiKey">API Key (Optional):</label>
+                <input type="password" id="apiKey" placeholder="Enter your API key (leave empty for automatic prompting)" />
+                <small style="color: #6c757d; font-size: 12px; margin-top: 5px; display: block;">
+                    If no API key is provided, you will be prompted automatically when needed
+                </small>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button id="initializeBtn" class="button">
+                    🚀 Initialize WarpMind
+                </button>
+                <button id="resetConfigBtn" class="button" style="background: #6c757d;">
+                    🔄 Reset to Defaults
+                </button>
+            </div>
+            <div id="configStatus" style="margin-top: 10px; padding: 10px; border-radius: 6px; display: none;"></div>
+        </div>
         
         <div class="section">
             <h2>📄 Load PDF Document</h2>
@@ -468,16 +513,98 @@
         let mind;
         let currentPdfId = null;
         
-        // Initialize WarpMind
+        // Configuration management
+        const DEFAULT_CONFIG = {
+            baseURL: 'https://warp.cs.au.dk/mind',
+            model: 'gpt-5-mini'
+        };
+
+        // Load configuration from localStorage or use defaults
+        function loadConfiguration() {
+            const savedConfig = localStorage.getItem('warpMind-pdf-demo-config');
+            if (savedConfig) {
+                try {
+                    return JSON.parse(savedConfig);
+                } catch (e) {
+                    console.warn('Failed to parse saved config, using defaults');
+                    return DEFAULT_CONFIG;
+                }
+            }
+            return DEFAULT_CONFIG;
+        }
+
+        // Save configuration to localStorage
+        function saveConfiguration(config) {
+            localStorage.setItem('warpMind-pdf-demo-config', JSON.stringify(config));
+        }
+
+        // Show configuration status message
+        function showConfigStatus(message, type) {
+            const statusDiv = document.getElementById('configStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.className = `config-${type}`;
+            statusDiv.textContent = message;
+            
+            // Hide after 3 seconds unless it's an error
+            if (type !== 'error') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // Initialize configuration form
+        function initializeForm() {
+            const savedConfig = loadConfiguration();
+            document.getElementById('serverURL').value = savedConfig.baseURL || DEFAULT_CONFIG.baseURL;
+            document.getElementById('apiKey').value = savedConfig.apiKey || '';
+        }
+
+        // Reset configuration to defaults
+        function resetConfiguration() {
+            document.getElementById('serverURL').value = DEFAULT_CONFIG.baseURL;
+            document.getElementById('apiKey').value = '';
+            
+            saveConfiguration(DEFAULT_CONFIG);
+            showConfigStatus('Configuration reset to defaults', 'info');
+        }
+        
+        // Initialize WarpMind with configuration
         async function initWarpMind() {
             try {
-                mind = new WarpMind({
-                    // API key will be prompted automatically for real OpenAI API
-                    // For demo, you can also set baseURL to a different endpoint
-                    baseURL: 'https://warp.cs.au.dk/mind'
-                });
+                const serverURL = document.getElementById('serverURL').value.trim();
+                const apiKey = document.getElementById('apiKey').value.trim();
                 
+                if (!serverURL) {
+                    showConfigStatus('Please enter a server URL', 'error');
+                    return;
+                }
+
+                // Build configuration object
+                const config = {
+                    ...DEFAULT_CONFIG,
+                    baseURL: serverURL
+                };
+                
+                if (apiKey) {
+                    config.apiKey = apiKey;
+                }
+
+                // Save configuration
+                saveConfiguration(config);
+                
+                // Initialize WarpMind
+                mind = new WarpMind(config);
+
+                showConfigStatus('WarpMind initialized successfully!', 'success');
                 showMessage('WarpMind initialized successfully', 'success');
+                
+                if (apiKey) {
+                    showMessage(`Using server: ${serverURL} with provided API key`, 'info');
+                } else {
+                    showMessage(`Using server: ${serverURL} - will prompt for API key when needed`, 'info');
+                }
+                
                 updatePdfLibrary();
                 updateExtractButton();
                 
@@ -1088,8 +1215,12 @@
         document.getElementById('pageRangeStart').addEventListener('input', validatePageRange);
         document.getElementById('pageRangeEnd').addEventListener('input', validatePageRange);
         
-        // Initialize on page load
-        window.addEventListener('load', initWarpMind);
+        // Configuration button event listeners
+        document.getElementById('initializeBtn').addEventListener('click', initWarpMind);
+        document.getElementById('resetConfigBtn').addEventListener('click', resetConfiguration);
+        
+        // Initialize configuration form on page load
+        window.addEventListener('load', initializeForm);
     </script>
 </body>
 </html>
