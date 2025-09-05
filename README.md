@@ -5,16 +5,21 @@ JavaScript library for easy AI integration in web browsers. Designed to work wit
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [Examples](#examples)
 - [Configuration Options](#configuration-options)
 - [Core Methods](#core-methods)
 - [Multi-Modal Processing](#multi-modal-processing)
-- [PDF Processing](#pdf-processing)
-- [Memory System](#memory-system)
-- [Custom Tool Integration](#custom-tool-integration)
 - [Structured Data Processing](#structured-data-processing)
+- [Memory System](#memory-system)
+- [PDF Processing](#pdf-processing)
+- [Custom Tool Integration](#custom-tool-integration)
 - [Error Handling](#error-handling)
 - [API Key Management](#api-key-management)
+- [Core Capabilities](#core-capabilities)
+- [Architecture](#architecture)
 - [Development](#development)
+- [Quick Reference](#quick-reference)
+- [Acknowledgement](#acknowledgement)
 - [License](#license)
 
 ## Quick Start
