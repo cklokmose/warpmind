@@ -65,8 +65,8 @@ The `examples/` directory contains interactive demonstrations:
 To run examples with a local server (required for CORS):
 
 ```bash
-npm run serve
-# Then open http://localhost:8080/examples/memory-demo.html
+python3 -m http.server 3000
+# Then open http://localhost:3000/examples/memory-demo.html
 ```
 
 ## Configuration Options
