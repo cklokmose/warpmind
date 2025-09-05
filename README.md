@@ -858,8 +858,10 @@ const mind = new WarpMind({
 });
 ```
 
+## Acknowledgement
+
+This proxy was developed with the assistance of AI (GitHub Copilot, using GPT-4.1 and Claude Sonnet 4).
+
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
-
----
