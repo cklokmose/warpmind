@@ -123,6 +123,44 @@
             </div>
         </div>
 
+        <!-- Memory System Tests -->
+        <div class="test-section">
+            <h2>🧠 Memory System Tests</h2>
+            <div style="margin-bottom: 15px;">
+                <button onclick="testMemoryInit()">Initialize Memory System</button>
+                <button onclick="testLoadSampleMemories()">Load Sample Memories</button>
+                <button onclick="testMemorySearch()">Memory Search</button>
+                <button onclick="testMemoryTool()">Memory Tool Chat</button>
+                <button onclick="testMemoryExport()">Export/Import Test</button>
+                <button onclick="clearTestMemories()">Clear Test Memories</button>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <textarea id="memoryTestInput" placeholder="Enter content to remember..." style="width: 60%; margin-right: 10px; padding: 8px;">I love programming in JavaScript and learning about AI technologies</textarea>
+                <input type="text" id="memoryTagsInput" placeholder="Tags: programming, ai" style="width: 35%; padding: 8px;">
+                <button onclick="addTestMemory()" style="margin-top: 5px;">Remember This</button>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <input type="text" id="memorySearchInput" placeholder="Search memories..." style="width: 50%; margin-right: 10px; padding: 8px;" value="What programming languages do I prefer and why do I like them?">
+                <select id="memorySearchType" style="width: 20%; margin-right: 10px; padding: 8px;">
+                    <option value="semantic">Semantic Search</option>
+                    <option value="keyword">Keyword Search</option>
+                </select>
+                <select id="memorySearchLimit" style="width: 15%; padding: 8px;">
+                    <option value="5">5 results</option>
+                    <option value="10" selected>10 results</option>
+                    <option value="20">20 results</option>
+                </select>
+            </div>
+            <div id="memoryStatus" style="background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 4px; font-weight: bold; display: none;">
+            </div>
+            <div id="memoryResults" style="background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; display: none;">
+            </div>
+            <div id="memoryStats" style="background: #e7f3ff; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; font-size: 12px; display: none;">
+            </div>
+            <div id="memoryCards" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; margin: 10px 0;">
+            </div>
+        </div>
+
         <!-- Tool Calling System -->
         <div class="test-section">
             <h2>🛠️ Tool Calling System</h2>
@@ -571,6 +609,516 @@
             if (voiceChat) {
                 voiceChat.clearConversation();
                 log('Voice chat history cleared', 'success');
+            }
+        }
+
+        // Memory System Tests
+        async function testMemoryBasic() {
+            try {
+                log('Testing basic memory operations...');
+                showMemoryResults('Basic Memory Operations', 'Testing memory storage and retrieval...');
+                
+                const content = document.getElementById('memoryTestInput').value.trim();
+                const tagsInput = document.getElementById('memoryTagsInput').value.trim();
+                const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()) : ['test'];
+                
+                if (!content) {
+                    log('Please enter content to remember', 'error');
+                    return;
+                }
+                
+                // Test memory storage using remember()
+                log('Storing memory...');
+                const memory = await wm.remember(content, { tags: tags });
+                log(`✅ Memory stored with ID: ${memory.id}`, 'success');
+                
+                // Test memory search using recall()
+                log('Searching for stored memory...');
+                const specificQuery = `What do you remember about: ${content.substring(0, 50)}`;
+                const searchResults = await wm.recall(specificQuery, { limit: 5 });
+                log(`✅ Memory search found ${searchResults.length} results`, 'success');
+                
+                // Test listing all memories
+                log('Listing all memories...');
+                const allMemories = await wm.getMemories();
+                log(`✅ Total memories: ${allMemories.length}`, 'success');
+                
+                // Test memory deletion using forget()
+                log('Testing memory deletion...');
+                await wm.forget(memory.id);
+                log(`✅ Memory deleted`, 'success');
+                
+                // Verify deletion
+                const remainingMemories = await wm.getMemories();
+                log(`✅ Memories after deletion: ${remainingMemories.length}`, 'success');
+                
+                showMemoryResults('Basic Memory Operations', `
+                    Original content: "${content}"
+                    Tags: [${tags.join(', ')}]
+                    Memory ID: ${memory.id}
+                    Search results: ${searchResults.length}
+                    Total memories before deletion: ${allMemories.length}
+                    Total memories after deletion: ${remainingMemories.length}
+                `);
+                
+                updateMemoryStats();
+                
+            } catch (error) {
+                log(`Basic memory test failed: ${error.message}`, 'error');
+                showMemoryResults('Basic Memory Operations', `Error: ${error.message}`);
+            }
+        }
+
+        async function testMemorySearch() {
+            try {
+                log('Testing memory search functionality...');
+                
+                const query = document.getElementById('memorySearchInput').value.trim();
+                const searchType = document.getElementById('memorySearchType').value;
+                
+                if (!query) {
+                    log('Please enter a search query', 'error');
+                    return;
+                }
+                
+                showMemoryResults('Memory Search', `Searching for: "${query}" (${searchType})...`);
+                
+                // Test semantic search (default)
+                if (searchType === 'semantic') {
+                    log('Performing semantic search...');
+                    const results = await wm.recall(query, { limit: 10 });
+                    log(`✅ Semantic search found ${results.length} results`, 'success');
+                    
+                    showMemoryResults('Memory Search - Semantic', `
+                        Query: "${query}"
+                        Results found: ${results.length}
+                        
+                        ${results.map((result, i) => `
+                        ${i + 1}. [Score: ${result.score ? result.score.toFixed(4) : 'N/A'}] "${result.content.substring(0, 100)}..."
+                           Tags: [${result.tags ? result.tags.join(', ') : 'none'}]
+                           ID: ${result.id}
+                        `).join('\n')}
+                    `);
+                } else {
+                    // Test keyword search
+                    log('Performing keyword search...');
+                    const results = await wm.recall(query, { useKeywordSearch: true, limit: 10 });
+                    log(`✅ Keyword search found ${results.length} results`, 'success');
+                    
+                    showMemoryResults('Memory Search - Keyword', `
+                        Query: "${query}"
+                        Results found: ${results.length}
+                        
+                        ${results.map((result, i) => `
+                        ${i + 1}. "${result.content.substring(0, 100)}..."
+                           Tags: [${result.tags ? result.tags.join(', ') : 'none'}]
+                           ID: ${result.id}
+                        `).join('\n')}
+                    `);
+                }
+                
+                updateMemoryStats();
+                
+            } catch (error) {
+                log(`Memory search test failed: ${error.message}`, 'error');
+                showMemoryResults('Memory Search', `Error: ${error.message}`);
+            }
+        }
+
+        async function testMemoryTool() {
+            try {
+                log('Testing memory tool integration...');
+                
+                const query = document.getElementById('memorySearchInput').value.trim() || 
+                    'What do you remember about my programming preferences, especially JavaScript and web development?';
+                
+                showMemoryResults('Memory Tool Chat', `Testing memory tool with query: "${query}"...`);
+                
+                // Ensure memory tool is enabled
+                log('Configuring memory tool...');
+                // Note: WarpMind constructor handles memory tool configuration
+                
+                // Test memory tool activation with explicit memory query
+                log('Sending memory-related query...');
+                const response = await wm.chat(query);
+                log(`✅ Memory tool response received`, 'success');
+                
+                // Test more specific memory queries
+                log('Testing specific memory recall...');
+                const specificQueries = [
+                    'What are my favorite technologies and tools?',
+                    'What do you remember about my work preferences and career?',
+                    'Tell me about my personal interests and hobbies'
+                ];
+                
+                const responses = {};
+                for (const specificQuery of specificQueries) {
+                    try {
+                        const specificResponse = await wm.chat(specificQuery);
+                        responses[specificQuery] = specificResponse;
+                        log(`✅ Specific query "${specificQuery.substring(0, 30)}..." completed`, 'success');
+                    } catch (err) {
+                        responses[specificQuery] = `Error: ${err.message}`;
+                        log(`❌ Specific query failed: ${err.message}`, 'error');
+                    }
+                }
+                
+                // Test regular chat (should not use memory tool)
+                log('Testing regular chat (no memory)...');
+                const regularResponse = await wm.chat('What is the capital of France?');
+                log(`✅ Regular chat response received`, 'success');
+                
+                showMemoryResults('Memory Tool Chat', `
+                    Main Memory Query: "${query}"
+                    Response: "${response}"
+                    
+                    Specific Memory Queries:
+                    ${Object.entries(responses).map(([q, r]) => `
+                    Q: "${q}"
+                    A: "${r.substring(0, 200)}${r.length > 200 ? '...' : ''}"`).join('\n')}
+                    
+                    Regular Query: "What is the capital of France?"
+                    Response: "${regularResponse}"
+                    
+                    Note: Memory tool should only activate for memory-related queries.
+                `);
+                
+            } catch (error) {
+                log(`Memory tool test failed: ${error.message}`, 'error');
+                showMemoryResults('Memory Tool Chat', `Error: ${error.message}`);
+            }
+        }
+
+        async function testMemoryBatch() {
+            try {
+                log('Testing batch memory operations...');
+                showMemoryResults('Batch Operations', 'Running batch memory tests...');
+                
+                // Prepare test data
+                const testMemories = [
+                    { content: 'I enjoy reading science fiction books', tags: ['personal', 'books', 'scifi'] },
+                    { content: 'My favorite programming language is JavaScript', tags: ['programming', 'javascript'] },
+                    { content: 'I work as a software engineer at TechCorp', tags: ['work', 'career'] },
+                    { content: 'I like to travel to mountains and beaches', tags: ['travel', 'mountains', 'beaches'] },
+                    { content: 'My birthday is in December', tags: ['personal', 'birthday'] }
+                ];
+                
+                const startTime = Date.now();
+                const storedMemories = [];
+                
+                // Batch store memories using remember()
+                log('Storing batch memories...');
+                for (let i = 0; i < testMemories.length; i++) {
+                    const memoryData = testMemories[i];
+                    const memory = await wm.remember(memoryData.content, { tags: memoryData.tags });
+                    storedMemories.push(memory);
+                    log(`Stored memory ${i + 1}/${testMemories.length}: ${memory.id}`);
+                }
+                
+                const storeTime = Date.now() - startTime;
+                log(`✅ Batch storage completed in ${storeTime}ms`, 'success');
+                
+                // Batch search test using recall()
+                log('Testing batch searches...');
+                const searchQueries = [
+                    'Tell me about my programming skills and favorite languages like JavaScript',
+                    'What do you remember about my personal reading habits and book preferences?',
+                    'What information do you have about my work experience and career?',
+                    'What are my travel interests and preferred destinations like mountains?'
+                ];
+                
+                const searchResults = {};
+                for (const query of searchQueries) {
+                    const results = await wm.recall(query, { limit: 5 });
+                    searchResults[query] = results.length;
+                    log(`Search "${query.substring(0, 30)}...": ${results.length} results`);
+                }
+                
+                const totalTime = Date.now() - startTime;
+                
+                // Get final stats
+                const allMemories = await wm.getMemories();
+                
+                showMemoryResults('Batch Operations', `
+                    Batch Memory Storage:
+                    - Stored: ${testMemories.length} memories
+                    - Storage time: ${storeTime}ms
+                    - Average per memory: ${(storeTime / testMemories.length).toFixed(1)}ms
+                    
+                    Batch Search Results:
+                    ${Object.entries(searchResults).map(([query, count]) => `
+                    - "${query}": ${count} results`).join('')}
+                    
+                    System Stats:
+                    - Total memories: ${allMemories.length}
+                    - Total operation time: ${totalTime}ms
+                    - Memory IDs: ${storedMemories.map(m => m.id).join(', ')}
+                `);
+                
+                updateMemoryStats();
+                
+            } catch (error) {
+                log(`Batch memory test failed: ${error.message}`, 'error');
+                showMemoryResults('Batch Operations', `Error: ${error.message}`);
+            }
+        }
+
+        async function clearTestMemories() {
+            try {
+                log('Clearing test memories...');
+                
+                // Get all memories using getMemories()
+                const allMemories = await wm.getMemories();
+                log(`Found ${allMemories.length} memories to potentially clear`);
+                
+                // Filter for test memories (containing 'test' tag or test content)
+                const testMemories = allMemories.filter(memory => 
+                    (memory.tags && memory.tags.some(tag => 
+                        tag.includes('test') || 
+                        tag.includes('updated') ||
+                        tag.includes('programming') ||
+                        tag.includes('personal') ||
+                        tag.includes('work') ||
+                        tag.includes('travel')
+                    )) ||
+                    memory.content.includes('(updated)') ||
+                    memory.content.includes('science fiction') ||
+                    memory.content.includes('JavaScript') ||
+                    memory.content.includes('TechCorp')
+                );
+                
+                log(`Identified ${testMemories.length} test memories for removal`);
+                
+                // Delete test memories using forget()
+                for (const memory of testMemories) {
+                    await wm.forget(memory.id);
+                    log(`Deleted memory: ${memory.id}`);
+                }
+                
+                const remainingMemories = await wm.getMemories();
+                
+                log(`✅ Cleared ${testMemories.length} test memories`, 'success');
+                log(`Remaining memories: ${remainingMemories.length}`, 'info');
+                
+                showMemoryResults('Clear Test Memories', `
+                    Cleared: ${testMemories.length} test memories
+                    Remaining: ${remainingMemories.length} memories
+                    
+                    Cleared memories included those with:
+                    - 'test', 'programming', 'personal', 'work', 'travel' tags
+                    - Content containing test phrases
+                `);
+                
+                updateMemoryStats();
+                
+            } catch (error) {
+                log(`Clear test memories failed: ${error.message}`, 'error');
+                showMemoryResults('Clear Test Memories', `Error: ${error.message}`);
+            }
+        }
+
+        function showMemoryResults(testName, content) {
+            const resultsDiv = document.getElementById('memoryResults');
+            resultsDiv.innerHTML = `
+                <strong>${testName}</strong><br>
+                <pre style="white-space: pre-wrap; margin: 5px 0;">${content}</pre>
+            `;
+            resultsDiv.style.display = 'block';
+        }
+
+        async function updateMemoryStats() {
+            try {
+                const allMemories = await wm.getMemories();
+                const statsDiv = document.getElementById('memoryStats');
+                
+                // Calculate stats
+                const totalMemories = allMemories.length;
+                const uniqueTags = [...new Set(allMemories.flatMap(m => m.tags || []))];
+                const avgContentLength = totalMemories > 0 ? 
+                    Math.round(allMemories.reduce((sum, m) => sum + (m.content || '').length, 0) / totalMemories) : 0;
+                const recentMemories = allMemories.filter(m => {
+                    const memoryDate = new Date(m.timestamp || m.created_at || Date.now());
+                    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                    return memoryDate > oneHourAgo;
+                }).length;
+                
+                statsDiv.innerHTML = `
+                    <strong>📊 Memory System Statistics</strong><br>
+                    Total memories: ${totalMemories}<br>
+                    Unique tags: ${uniqueTags.length} (${uniqueTags.slice(0, 5).join(', ')}${uniqueTags.length > 5 ? '...' : ''})<br>
+                    Average content length: ${avgContentLength} characters<br>
+                    Recent memories (1h): ${recentMemories}<br>
+                    Last updated: ${new Date().toLocaleTimeString()}
+                `;
+                statsDiv.style.display = 'block';
+                
+            } catch (error) {
+                console.warn('Failed to update memory stats:', error);
+            }
+        }
+
+        // Enhanced Memory Functions (like memory-demo.html)
+        function showMemoryStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('memoryStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.style.background = type === 'error' ? '#fee' : type === 'success' ? '#efe' : '#f8f9fa';
+            statusDiv.style.color = type === 'error' ? '#c00' : type === 'success' ? '#060' : '#333';
+            statusDiv.textContent = message;
+            
+            if (type !== 'error') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function displayMemoryCards(memories) {
+            const cardsDiv = document.getElementById('memoryCards');
+            if (!memories || memories.length === 0) {
+                cardsDiv.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1/-1;">No memories to display</p>';
+                return;
+            }
+
+            cardsDiv.innerHTML = memories.map(memory => `
+                <div style="background: white; border: 1px solid #ddd; border-radius: 6px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-size: 11px; color: #666; margin-bottom: 6px;">ID: ${memory.id}</div>
+                    <div style="margin-bottom: 8px; line-height: 1.4;">${memory.content}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 11px; color: #888;">
+                            ${memory.tags && memory.tags.length > 0 ? memory.tags.map(tag => `<span style="background: #e7f3ff; padding: 2px 6px; border-radius: 10px; margin-right: 4px;">${tag}</span>`).join('') : 'No tags'}
+                        </div>
+                        <button onclick="deleteMemory('${memory.id}')" style="background: #ff4444; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-size: 11px; cursor: pointer;">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function testMemoryInit() {
+            showMemoryStatus('Initializing memory system...', 'info');
+            
+            try {
+                const memories = await wm.getMemories();
+                showMemoryStatus('Memory system initialized successfully!', 'success');
+                updateMemoryStats();
+                displayMemoryCards(memories);
+                showMemoryResults('Memory Initialization', `Memory system ready. Found ${memories.length} existing memories.`);
+            } catch (error) {
+                showMemoryStatus(`Initialization failed: ${error.message}`, 'error');
+                showMemoryResults('Memory Initialization', `❌ Error initializing memory system: ${error.message}`);
+            }
+        }
+
+        async function testLoadSampleMemories() {
+            showMemoryStatus('Loading sample memories...', 'info');
+            
+            const sampleMemories = [
+                { content: 'I love programming in JavaScript and building web applications', tags: ['programming', 'javascript', 'web'] },
+                { content: 'My favorite AI model is Claude because of its helpful and detailed responses', tags: ['ai', 'claude', 'preference'] },
+                { content: 'I prefer dark mode interfaces and clean, minimalist designs', tags: ['ui', 'preference', 'design'] },
+                { content: 'I am learning about machine learning and neural networks', tags: ['learning', 'ml', 'ai'] },
+                { content: 'Coffee is my favorite drink, especially in the morning', tags: ['personal', 'coffee', 'routine'] }
+            ];
+            
+            try {
+                for (const memData of sampleMemories) {
+                    await wm.remember(memData.content, { tags: memData.tags });
+                }
+                
+                showMemoryStatus('Sample memories loaded successfully!', 'success');
+                const allMemories = await wm.getMemories();
+                updateMemoryStats();
+                displayMemoryCards(allMemories);
+                showMemoryResults('Sample Memory Loading', `✅ Loaded ${sampleMemories.length} sample memories. Total memories: ${allMemories.length}`);
+            } catch (error) {
+                showMemoryStatus(`Failed to load sample memories: ${error.message}`, 'error');
+                showMemoryResults('Sample Memory Loading', `❌ Error loading sample memories: ${error.message}`);
+            }
+        }
+
+        async function addTestMemory() {
+            const content = document.getElementById('memoryTestInput').value.trim();
+            const tagsInput = document.getElementById('memoryTagsInput').value.trim();
+            
+            if (!content) {
+                showMemoryStatus('Please enter content to remember', 'error');
+                return;
+            }
+            
+            showMemoryStatus('Storing memory...', 'info');
+            
+            try {
+                const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : [];
+                const memory = await wm.remember(content, { tags });
+                
+                showMemoryStatus('Memory stored successfully!', 'success');
+                document.getElementById('memoryTestInput').value = '';
+                document.getElementById('memoryTagsInput').value = '';
+                
+                const allMemories = await wm.getMemories();
+                updateMemoryStats();
+                displayMemoryCards(allMemories);
+                showMemoryResults('Add Memory', `✅ Memory stored with ID: ${memory.id}`);
+            } catch (error) {
+                showMemoryStatus(`Failed to store memory: ${error.message}`, 'error');
+                showMemoryResults('Add Memory', `❌ Error storing memory: ${error.message}`);
+            }
+        }
+
+        async function testMemoryExport() {
+            showMemoryStatus('Testing memory export/import...', 'info');
+            
+            try {
+                const memories = await wm.getMemories();
+                const exportData = JSON.stringify(memories, null, 2);
+                
+                showMemoryResults('Memory Export', `
+                    Exported ${memories.length} memories
+                    
+                    <button onclick="downloadMemoryExport()" style="background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 10px 0;">Download Export</button>
+                    
+                    <textarea readonly style="width: 100%; height: 200px; font-family: monospace; font-size: 11px; margin-top: 10px;">${exportData}</textarea>
+                `);
+                
+                // Store export data temporarily
+                window.memoryExportData = exportData;
+                
+                showMemoryStatus('Memory export completed!', 'success');
+            } catch (error) {
+                showMemoryStatus(`Export failed: ${error.message}`, 'error');
+                showMemoryResults('Memory Export', `❌ Error exporting memories: ${error.message}`);
+            }
+        }
+
+        function downloadMemoryExport() {
+            if (window.memoryExportData) {
+                const blob = new Blob([window.memoryExportData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `memory-export-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        async function deleteMemory(memoryId) {
+            if (!confirm('Are you sure you want to delete this memory?')) return;
+            
+            showMemoryStatus('Deleting memory...', 'info');
+            
+            try {
+                await wm.forget(memoryId);
+                showMemoryStatus('Memory deleted successfully!', 'success');
+                
+                const allMemories = await wm.getMemories();
+                updateMemoryStats();
+                displayMemoryCards(allMemories);
+                showMemoryResults('Delete Memory', `✅ Memory ${memoryId} deleted. Remaining memories: ${allMemories.length}`);
+            } catch (error) {
+                showMemoryStatus(`Failed to delete memory: ${error.message}`, 'error');
+                showMemoryResults('Delete Memory', `❌ Error deleting memory: ${error.message}`);
             }
         }
 
