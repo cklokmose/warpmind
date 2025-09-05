@@ -58,7 +58,7 @@ The `examples/` directory contains interactive demonstrations:
 - **`memory-demo.html`** - Full memory system UI with storage, search, management, and memory tool chat
 - **`memory-tool-demo.html`** - Standalone demo showing automatic memory-tool activation
 - **`chat-interface.html`** - Complete chat interface with streaming responses  
-- **`pdf-reader-demo.html`** - PDF analysis and semantic search
+- **`pdf-reader-demo.html`** - PDF analysis, semantic search, and export/import functionality
 - **`basic-example.html`** - Simple getting started example
 - **`complete-test-suite.html`** - Comprehensive feature testing
 
@@ -491,6 +491,115 @@ const storageInfo = await mind.getPdfStorageInfo();
 await mind.forgetPdf('research-paper');
 ```
 
+### PDF Export/Import
+
+#### `exportPdf(pdfId, options)` → Promise\<ExportResult\>
+
+Export a processed PDF with all embeddings and metadata as a downloadable ZIP file:
+
+```javascript
+// Export a processed PDF
+const exportResult = await mind.exportPdf('research-paper');
+
+// Create download link automatically
+const url = URL.createObjectURL(exportResult.blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = exportResult.fileName; // e.g., "research_paper_warpmind_export.zip"
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(url);
+
+console.log(`Exported: ${exportResult.fileName}`);
+console.log(`Size: ${(exportResult.size / 1024 / 1024).toFixed(2)} MB`);
+console.log(`Contains: ${exportResult.chunks} chunks`);
+```
+
+**Export Result Object:**
+```javascript
+{
+    blob: Blob,              // ZIP file as blob
+    fileName: string,        // Suggested filename
+    size: number,           // File size in bytes
+    pdfId: string,          // Original PDF ID
+    title: string,          // PDF title
+    chunks: number,         // Number of text chunks
+    exportedAt: string      // ISO timestamp
+}
+```
+
+#### `importPdf(zipFile, options)` → Promise\<ImportResult\>
+
+Import a previously exported PDF ZIP file to instantly restore all processing data:
+
+```javascript
+// From file input
+const fileInput = document.getElementById('importFile');
+const zipFile = fileInput.files[0];
+
+const importResult = await mind.importPdf(zipFile, {
+    overwrite: false,           // Whether to overwrite existing PDFs
+    onProgress: (progress, message) => {
+        console.log(`${progress}%: ${message}`);
+    }
+});
+
+console.log(`Imported: ${importResult.title}`);
+console.log(`${importResult.chunks} chunks, ${importResult.pages} pages`);
+
+// PDF is immediately available for use
+const answer = await mind.chat("What is this document about?");
+```
+
+**Import Options:**
+- `overwrite` (boolean): Replace existing PDF with same ID (default: false)
+- `onProgress` (function): Progress callback with percentage and status message
+
+**Import Result Object:**
+```javascript
+{
+    pdfId: string,              // PDF identifier
+    title: string,              // Document title
+    chunks: number,             // Number of text chunks
+    pages: number,              // Number of pages
+    importedAt: string,         // Import timestamp
+    originalExport: {           // Original export metadata
+        exportedAt: string,
+        version: string
+    }
+}
+```
+
+#### ZIP File Structure
+
+Exported ZIP files contain:
+- `manifest.json` - Export metadata and version info
+- `metadata.json` - PDF metadata (title, pages, processing info)
+- `embeddings.json` - Text chunks with embeddings
+- `content.json` - Full text and page contents
+
+#### Educational Use Cases
+
+**For Teachers:**
+```javascript
+// Process PDF once
+await mind.readPdf('course-material.pdf');
+
+// Export for distribution
+const exportResult = await mind.exportPdf('course-material');
+// Share the ZIP file with students
+```
+
+**For Students:**
+```javascript
+// Import teacher-prepared PDF
+const importResult = await mind.importPdf(teacherZipFile);
+
+// Immediately start querying without processing delay
+const summary = await mind.chat("Summarize the main concepts");
+```
+
 ### `recallPdf(pdfId)` → void
 
 Load previously processed PDF into memory:
@@ -756,10 +865,10 @@ const key = await WarpMind.promptForApiKey(); // Force new prompt
 
 ## Architecture
 
-- **Size**: 368 KiB total, modular design
-- **Dependencies**: None (works directly in browsers)
+- **Size**: 250 KiB total (including JSZip for PDF export/import), modular design
+- **Dependencies**: JSZip (bundled) for PDF export/import functionality
 - **API**: RESTful integration with OpenAI-compatible endpoints
-- **Storage**: IndexedDB for PDF caching
+- **Storage**: IndexedDB for PDF caching and export/import data
 - **Networking**: Built-in retry logic and error handling
 
 ## Development

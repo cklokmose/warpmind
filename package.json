@@ -23,6 +23,7 @@
   "license": "MIT",
   "dependencies": {
     "eventsource-parser": "^1.1.2",
+    "jszip": "^3.10.1",
     "ml-distance": "^4.0.1",
     "openai": "^4.28.0",
     "pdfjs-dist": "^5.3.31"

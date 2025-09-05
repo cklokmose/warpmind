@@ -1074,6 +1074,199 @@ function createPdfLoaderModule(client) {
       return await storage.getStorageInfo();
     },
 
+    async exportPdf(pdfId, options = {}) {
+      try {
+        // Check if JSZip is available
+        let JSZip;
+        try {
+          JSZip = require('jszip');
+        } catch (e) {
+          throw new Error('JSZip is required for PDF export functionality. Please install it with: npm install jszip');
+        }
+
+        // Check if PDF exists
+        const metadata = await storage.getMetadata(pdfId);
+        if (!metadata) {
+          throw new Error(`PDF with ID "${pdfId}" not found. Use readPdf() to process it first.`);
+        }
+
+        // Get all PDF data
+        const chunks = await storage.getReconstructedChunks(pdfId);
+        const fullTextContent = await storage.getContent(pdfId, 'fullText');
+        const pageContentsContent = await storage.getContent(pdfId, 'pageContents');
+
+        if (!chunks || chunks.length === 0) {
+          throw new Error(`PDF "${pdfId}" has no content chunks to export.`);
+        }
+
+        // Create ZIP file
+        const zip = new JSZip();
+
+        // Create manifest with export information
+        const manifest = {
+          exportedAt: new Date().toISOString(),
+          pdfId: pdfId,
+          version: '1.0',
+          warpmindVersion: '0.1.0',
+          description: `WarpMind PDF export for: ${metadata.title}`,
+          files: ['metadata.json', 'embeddings.json', 'content.json']
+        };
+
+        // Add files to ZIP
+        zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+        zip.file('metadata.json', JSON.stringify(metadata, null, 2));
+        zip.file('embeddings.json', JSON.stringify(chunks, null, 2));
+        
+        // Add content files
+        const contentData = {
+          fullText: fullTextContent ? fullTextContent.data : '',
+          pageContents: pageContentsContent ? pageContentsContent.data : []
+        };
+        zip.file('content.json', JSON.stringify(contentData, null, 2));
+
+        // Generate ZIP blob
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+        // Return download information
+        const fileName = `${pdfId.replace(/[^a-zA-Z0-9]/g, '_')}_warpmind_export.zip`;
+        
+        return {
+          blob: zipBlob,
+          fileName: fileName,
+          size: zipBlob.size,
+          pdfId: pdfId,
+          title: metadata.title,
+          chunks: chunks.length,
+          exportedAt: manifest.exportedAt
+        };
+
+      } catch (error) {
+        throw new Error(`PDF export failed: ${error.message}`);
+      }
+    },
+
+    async importPdf(zipFile, options = {}) {
+      try {
+        // Check if JSZip is available
+        let JSZip;
+        try {
+          JSZip = require('jszip');
+        } catch (e) {
+          throw new Error('JSZip is required for PDF import functionality. Please install it with: npm install jszip');
+        }
+
+        const { overwrite = false, onProgress = null } = options;
+
+        // Load ZIP file
+        const zip = await JSZip.loadAsync(zipFile);
+
+        // Verify manifest
+        const manifestFile = zip.file('manifest.json');
+        if (!manifestFile) {
+          throw new Error('Invalid WarpMind PDF export: missing manifest.json');
+        }
+
+        const manifest = JSON.parse(await manifestFile.async('string'));
+        if (!manifest.pdfId || !manifest.version) {
+          throw new Error('Invalid WarpMind PDF export: invalid manifest format');
+        }
+
+        // Check if PDF already exists
+        const existingMetadata = await storage.getMetadata(manifest.pdfId);
+        if (existingMetadata && !overwrite) {
+          throw new Error(`PDF with ID "${manifest.pdfId}" already exists. Use overwrite option to replace it.`);
+        }
+
+        // Progress tracking
+        const totalSteps = 4;
+        let currentStep = 0;
+        const updateProgress = (step, message) => {
+          if (typeof onProgress === 'function') {
+            onProgress((step / totalSteps) * 100, message);
+          }
+        };
+
+        updateProgress(++currentStep, 'Loading metadata...');
+
+        // Load metadata
+        const metadataFile = zip.file('metadata.json');
+        if (!metadataFile) {
+          throw new Error('Invalid WarpMind PDF export: missing metadata.json');
+        }
+        const metadata = JSON.parse(await metadataFile.async('string'));
+
+        updateProgress(++currentStep, 'Loading content...');
+
+        // Load content
+        const contentFile = zip.file('content.json');
+        if (!contentFile) {
+          throw new Error('Invalid WarpMind PDF export: missing content.json');
+        }
+        const contentData = JSON.parse(await contentFile.async('string'));
+
+        updateProgress(++currentStep, 'Loading embeddings...');
+
+        // Load embeddings/chunks
+        const embeddingsFile = zip.file('embeddings.json');
+        if (!embeddingsFile) {
+          throw new Error('Invalid WarpMind PDF export: missing embeddings.json');
+        }
+        const chunks = JSON.parse(await embeddingsFile.async('string'));
+
+        updateProgress(++currentStep, 'Storing data...');
+
+        // Store the data (clean up existing data first if overwriting)
+        if (existingMetadata && overwrite) {
+          await storage.deletePdf(manifest.pdfId);
+          loadedPdfs.delete(manifest.pdfId);
+        }
+
+        // Store metadata
+        await storage.storeMetadata(manifest.pdfId, metadata);
+
+        // Store content
+        if (contentData.fullText) {
+          await storage.storeContent(manifest.pdfId, 'fullText', contentData.fullText);
+        }
+        if (contentData.pageContents) {
+          await storage.storeContent(manifest.pdfId, 'pageContents', contentData.pageContents);
+        }
+
+        // Store chunks
+        for (const chunk of chunks) {
+          await storage.storeChunk(manifest.pdfId, chunk.chunkIndex, chunk);
+        }
+
+        // Load into memory cache for immediate use
+        const enrichedMetadata = {
+          ...metadata,
+          fullText: contentData.fullText || '',
+          pageContents: contentData.pageContents || []
+        };
+        loadedPdfs.set(manifest.pdfId, { metadata: enrichedMetadata, chunks });
+
+        // Register retrieval tools
+        this._registerPdfRetrievalTool(manifest.pdfId, metadata.title);
+
+        updateProgress(totalSteps, 'Import complete');
+
+        return {
+          pdfId: manifest.pdfId,
+          title: metadata.title,
+          chunks: chunks.length,
+          pages: metadata.numPages,
+          importedAt: new Date().toISOString(),
+          originalExport: {
+            exportedAt: manifest.exportedAt,
+            version: manifest.version
+          }
+        };
+
+      } catch (error) {
+        throw new Error(`PDF import failed: ${error.message}`);
+      }
+    },
+
     async _generateEmbedding(text, model) {
       // Use the client's embed method
       try {
