@@ -1,6 +1,6 @@
 {
   "name": "warpmind",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A simple library for easy use of the OpenAI API for students",
   "main": "dist/warpmind.js",
   "files": [
@@ -10,10 +10,8 @@
   "scripts": {
     "build": "webpack --mode=production",
     "dev": "webpack --mode=development --watch",
-    "serve": "webpack serve --mode=development --open",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:backoff": "jest tests/exponential-backoff.test.js"
   },
   "keywords": [
     "openai",
@@ -21,7 +19,7 @@
     "students",
     "education"
   ],
-  "author": "",
+  "author": "Clemens Nylandsted Klokmose, Aarhus University",
   "license": "MIT",
   "dependencies": {
     "eventsource-parser": "^1.1.2",
