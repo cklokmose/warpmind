@@ -337,15 +337,28 @@
             <div class="setup-section">
                 <h3><span class="emoji">🔑</span>API Configuration</h3>
                 <div class="input-group">
-                    <label for="apiKey">API Key:</label>
-                    <input type="password" id="apiKey" placeholder="Enter your API key (for proxy or OpenAI-compatible service)" style="display:none;">
+                    <label for="serverURL">Server Endpoint:</label>
+                    <input type="text" id="serverURL" placeholder="https://warp.cs.au.dk/mind/v1" value="https://warp.cs.au.dk/mind/v1">
                     <small style="color: #6c757d; font-size: 12px; margin-top: 5px; display: block;">
-                        You will be prompted for your API key when needed. Endpoint is fixed to https://warp.cs.au.dk/mind
+                        Enter the base URL for your WarpMind-compatible API endpoint
                     </small>
                 </div>
-                <button id="initializeBtn" class="btn">
-                    <span class="emoji">🚀</span>Initialize WarpMind
-                </button>
+                <div class="input-group">
+                    <label for="apiKey">API Key (Optional):</label>
+                    <input type="password" id="apiKey" placeholder="Enter your API key (leave empty for automatic prompting)">
+                    <small style="color: #6c757d; font-size: 12px; margin-top: 5px; display: block;">
+                        If no API key is provided, you will be prompted automatically when needed
+                    </small>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button id="initializeBtn" class="btn">
+                        <span class="emoji">🚀</span>Initialize WarpMind
+                    </button>
+                    <button id="resetConfigBtn" class="btn" style="background: #6c757d;">
+                        <span class="emoji">🔄</span>Reset to Defaults
+                    </button>
+                </div>
+                <div id="configStatus" class="status" style="margin-top: 10px; display: none;"></div>
             </div>
 
             <!-- Status Messages -->
@@ -511,6 +524,7 @@
 
             // --- DOM Element References ---
             const initializeBtn = document.getElementById('initializeBtn');
+            const resetConfigBtn = document.getElementById('resetConfigBtn');
             const loadSamplesBtn = document.getElementById('loadSamplesBtn');
             const clearAllBtn = document.getElementById('clearAllBtn');
             const exportBtn = document.getElementById('exportBtn');
@@ -522,6 +536,7 @@
 
             // --- Event Listeners ---
             initializeBtn.addEventListener('click', initializeWarpMind);
+            resetConfigBtn.addEventListener('click', resetConfiguration);
             loadSamplesBtn.addEventListener('click', loadSampleMemories);
             clearAllBtn.addEventListener('click', clearAllMemories);
             exportBtn.addEventListener('click', exportMemories);
@@ -541,21 +556,104 @@
                 }
             });
 
-            // Initialize WarpMind with built-in API key prompting
+                        // Configuration management
+            const DEFAULT_CONFIG = {
+                baseURL: 'https://warp.cs.au.dk/mind/v1',
+                model: 'gpt-5-mini',
+                memoryToolEnabled: true,
+                memoryToolExplicitOnly: true,
+                memoryToolMaxResults: 5
+            };
+
+            // Load configuration from localStorage or use defaults
+            function loadConfiguration() {
+                const savedConfig = localStorage.getItem('warpMind-memory-demo-config');
+                if (savedConfig) {
+                    try {
+                        return JSON.parse(savedConfig);
+                    } catch (e) {
+                        console.warn('Failed to parse saved config, using defaults');
+                        return DEFAULT_CONFIG;
+                    }
+                }
+                return DEFAULT_CONFIG;
+            }
+
+            // Save configuration to localStorage
+            function saveConfiguration(config) {
+                localStorage.setItem('warpMind-memory-demo-config', JSON.stringify(config));
+            }
+
+            // Show configuration status message
+            function showConfigStatus(message, type) {
+                const statusDiv = document.getElementById('configStatus');
+                statusDiv.style.display = 'block';
+                statusDiv.className = `status ${type}`;
+                statusDiv.textContent = message;
+                
+                // Hide after 3 seconds unless it's an error
+                if (type !== 'error') {
+                    setTimeout(() => {
+                        statusDiv.style.display = 'none';
+                    }, 3000);
+                }
+            }
+
+            // Initialize configuration form
+            function initializeForm() {
+                const savedConfig = loadConfiguration();
+                document.getElementById('serverURL').value = savedConfig.baseURL || DEFAULT_CONFIG.baseURL;
+                document.getElementById('apiKey').value = savedConfig.apiKey || '';
+            }
+
+            // Reset configuration to defaults
+            function resetConfiguration() {
+                document.getElementById('serverURL').value = DEFAULT_CONFIG.baseURL;
+                document.getElementById('apiKey').value = '';
+                
+                saveConfiguration(DEFAULT_CONFIG);
+                showConfigStatus('Configuration reset to defaults', 'info');
+            }
+
+            // Initialize WarpMind with configuration
             async function initializeWarpMind() {
                 try {
-                    warpMind = new WarpMind({
-                        baseURL: 'https://warp.cs.au.dk/mind/v1',
-                        model: 'gpt-3.5-turbo',
-                        temperature: 0.7,
-                        memoryToolEnabled: true,        // Enable memory tool
-                        memoryToolExplicitOnly: true,   // Only use when explicitly requested
-                        memoryToolMaxResults: 5         // Max memories per search
-                    });
+                    const serverURL = document.getElementById('serverURL').value.trim();
+                    const apiKey = document.getElementById('apiKey').value.trim();
+                    
+                    if (!serverURL) {
+                        showConfigStatus('Please enter a server URL', 'error');
+                        return;
+                    }
 
+                    // Build configuration object
+                    const config = {
+                        ...DEFAULT_CONFIG,
+                        baseURL: serverURL
+                    };
+                    
+                    if (apiKey) {
+                        config.apiKey = apiKey;
+                    }
+
+                    // Save configuration
+                    saveConfiguration(config);
+                    
+                    // Initialize WarpMind
+                    warpMind = new WarpMind(config);
+
+                    showConfigStatus('WarpMind initialized successfully!', 'success');
                     showStatus('WarpMind initialized successfully! Memory tool enabled for chat 🤖🧠', 'success');
+                    
+                    if (apiKey) {
+                        showStatus(`Using server: ${serverURL} with provided API key`, 'info');
+                    } else {
+                        showStatus(`Using server: ${serverURL} - will prompt for API key when needed`, 'info');
+                    }
+                    
                     await loadAllMemories();
                 } catch (error) {
+                    showConfigStatus(`Failed to initialize WarpMind: ${error.message}`, 'error');
                     showStatus(`Failed to initialize WarpMind: ${error.message}`, 'error');
                 }
             }
@@ -900,6 +998,9 @@
                     }
                 }
             }
+
+            // Initialize form with saved configuration after all functions are defined
+            initializeForm();
         });
     </script>
 </body>
