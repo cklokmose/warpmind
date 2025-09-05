@@ -96,6 +96,19 @@
             <textarea id="systemPrompt" placeholder="System prompt...">You are a helpful assistant. Keep responses brief.</textarea>
         </div>
 
+        <!-- Embedding Tests -->
+        <div class="test-section">
+            <h2>🧠 Embedding Tests</h2>
+            <textarea id="embedText" placeholder="Enter text to generate embeddings for..." style="width: 100%; margin: 10px 0; padding: 8px;">Machine learning is a fascinating field of artificial intelligence.</textarea>
+            <button onclick="testBasicEmbed()">Basic Embed Test</button>
+            <button onclick="testEmbedModels()">Test Different Models</button>
+            <button onclick="testSimilaritySearch()">Similarity Search</button>
+            <button onclick="testEmbedBatch()">Batch Embeddings</button>
+            <button onclick="testEmbedPDFStyle()">PDF-Style Search</button>
+            <div id="embedResults" style="background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; display: none;">
+            </div>
+        </div>
+
         <!-- Structured Data Processing -->
         <div class="test-section">
             <h2>🔧 Structured Data Processing</h2>
@@ -1020,6 +1033,278 @@
             } catch (error) {
                 log(`❌ Large file test failed: ${error.message}`, 'error');
             }
+        }
+
+        // Embedding Tests
+        async function testBasicEmbed() {
+            try {
+                log('Testing basic embed method...');
+                const text = document.getElementById('embedText').value.trim();
+                if (!text) {
+                    log('Please enter some text to embed', 'error');
+                    return;
+                }
+                
+                showEmbedResults('Basic Embed Test', 'Running...');
+                
+                const embedding = await wm.embed(text);
+                
+                log(`✅ Embedding generated successfully!`, 'success');
+                log(`Dimensions: ${embedding.length}`, 'info');
+                log(`First 5 values: [${embedding.slice(0, 5).map(x => x.toFixed(4)).join(', ')}, ...]`, 'info');
+                
+                showEmbedResults('Basic Embed Test', `
+                    Text: "${text}"
+                    Dimensions: ${embedding.length}
+                    First 5 values: [${embedding.slice(0, 5).map(x => x.toFixed(4)).join(', ')}, ...]
+                    Vector magnitude: ${Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0)).toFixed(4)}
+                `);
+                
+            } catch (error) {
+                log(`Basic embed test failed: ${error.message}`, 'error');
+                showEmbedResults('Basic Embed Test', `Error: ${error.message}`);
+            }
+        }
+
+        async function testEmbedModels() {
+            try {
+                log('Testing different embedding models...');
+                const text = document.getElementById('embedText').value.trim() || 'Test text for embeddings';
+                
+                showEmbedResults('Model Comparison', 'Testing different models...');
+                
+                const models = ['text-embedding-3-small', 'text-embedding-3-large'];
+                const results = {};
+                
+                for (const model of models) {
+                    log(`Testing model: ${model}...`);
+                    const embedding = await wm.embed(text, { model });
+                    results[model] = {
+                        dimensions: embedding.length,
+                        magnitude: Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0)),
+                        sample: embedding.slice(0, 3).map(x => x.toFixed(4))
+                    };
+                    log(`✅ ${model}: ${embedding.length} dimensions`, 'success');
+                }
+                
+                showEmbedResults('Model Comparison', `
+                    Text: "${text}"
+                    
+                    Results:
+                    ${Object.entries(results).map(([model, data]) => `
+                    ${model}:
+                      - Dimensions: ${data.dimensions}
+                      - Magnitude: ${data.magnitude.toFixed(4)}
+                      - Sample: [${data.sample.join(', ')}, ...]
+                    `).join('')}
+                `);
+                
+            } catch (error) {
+                log(`Model comparison test failed: ${error.message}`, 'error');
+                showEmbedResults('Model Comparison', `Error: ${error.message}`);
+            }
+        }
+
+        async function testSimilaritySearch() {
+            try {
+                log('Testing similarity search...');
+                const text = document.getElementById('embedText').value.trim() || 'Machine learning algorithms';
+                
+                showEmbedResults('Similarity Search', 'Testing similarity with variations...');
+                
+                // Test texts with varying similarity
+                const testTexts = [
+                    text, // Original
+                    text + ' are very powerful', // Similar
+                    'Artificial intelligence and neural networks', // Related
+                    'The weather today is sunny', // Unrelated
+                    text.replace(/machine learning/gi, 'AI') // Synonymous
+                ];
+                
+                log('Generating embeddings for similarity comparison...');
+                const embeddings = [];
+                for (let i = 0; i < testTexts.length; i++) {
+                    const embedding = await wm.embed(testTexts[i]);
+                    embeddings.push({ text: testTexts[i], embedding, index: i });
+                }
+                
+                // Calculate similarities against the original
+                const originalEmbedding = embeddings[0].embedding;
+                const similarities = embeddings.map(item => ({
+                    text: item.text,
+                    similarity: cosineSimilarity(originalEmbedding, item.embedding),
+                    index: item.index
+                }));
+                
+                // Sort by similarity
+                similarities.sort((a, b) => b.similarity - a.similarity);
+                
+                log(`✅ Similarity search completed`, 'success');
+                
+                showEmbedResults('Similarity Search', `
+                    Original: "${text}"
+                    
+                    Similarity Results (sorted by similarity):
+                    ${similarities.map((item, rank) => `
+                    ${rank + 1}. ${item.similarity.toFixed(4)} - "${item.text}"
+                    `).join('')}
+                `);
+                
+            } catch (error) {
+                log(`Similarity search test failed: ${error.message}`, 'error');
+                showEmbedResults('Similarity Search', `Error: ${error.message}`);
+            }
+        }
+
+        async function testEmbedBatch() {
+            try {
+                log('Testing batch embeddings...');
+                
+                showEmbedResults('Batch Embeddings', 'Processing batch of texts...');
+                
+                const batchTexts = [
+                    'Introduction to artificial intelligence',
+                    'Machine learning fundamentals',
+                    'Deep learning and neural networks',
+                    'Natural language processing',
+                    'Computer vision applications'
+                ];
+                
+                const startTime = Date.now();
+                const embeddings = [];
+                
+                for (let i = 0; i < batchTexts.length; i++) {
+                    log(`Processing text ${i + 1}/${batchTexts.length}...`);
+                    const embedding = await wm.embed(batchTexts[i]);
+                    embeddings.push({
+                        text: batchTexts[i],
+                        embedding,
+                        dimensions: embedding.length
+                    });
+                }
+                
+                const endTime = Date.now();
+                const totalTime = endTime - startTime;
+                
+                log(`✅ Batch processing completed in ${totalTime}ms`, 'success');
+                log(`Average time per embedding: ${(totalTime / batchTexts.length).toFixed(1)}ms`, 'info');
+                
+                showEmbedResults('Batch Embeddings', `
+                    Processed: ${batchTexts.length} texts
+                    Total time: ${totalTime}ms
+                    Average per embedding: ${(totalTime / batchTexts.length).toFixed(1)}ms
+                    
+                    Results:
+                    ${embeddings.map((item, i) => `
+                    ${i + 1}. "${item.text}" (${item.dimensions} dims)
+                    `).join('')}
+                `);
+                
+            } catch (error) {
+                log(`Batch embeddings test failed: ${error.message}`, 'error');
+                showEmbedResults('Batch Embeddings', `Error: ${error.message}`);
+            }
+        }
+
+        async function testEmbedPDFStyle() {
+            try {
+                log('Testing PDF-style semantic search...');
+                
+                showEmbedResults('PDF-Style Search', 'Simulating PDF semantic search...');
+                
+                // Simulate PDF chunks
+                const pdfChunks = [
+                    'Introduction to machine learning concepts and fundamental algorithms',
+                    'Data preprocessing techniques including normalization and feature scaling',
+                    'Supervised learning methods: regression and classification algorithms',
+                    'Unsupervised learning: clustering and dimensionality reduction',
+                    'Neural networks architecture and backpropagation training',
+                    'Deep learning applications in computer vision and NLP',
+                    'Model evaluation metrics and cross-validation techniques',
+                    'Overfitting prevention and regularization methods'
+                ];
+                
+                log('Generating embeddings for PDF chunks...');
+                const chunkEmbeddings = [];
+                for (let i = 0; i < pdfChunks.length; i++) {
+                    const embedding = await wm.embed(pdfChunks[i], { model: 'text-embedding-3-small' });
+                    chunkEmbeddings.push({ text: pdfChunks[i], embedding, chunkId: i + 1 });
+                }
+                
+                // Test semantic search queries
+                const queries = [
+                    'How do neural networks learn?',
+                    'What is data preprocessing?',
+                    'Methods to prevent overfitting'
+                ];
+                
+                const searchResults = [];
+                
+                for (const query of queries) {
+                    log(`Searching for: "${query}"`);
+                    const queryEmbedding = await wm.embed(query, { model: 'text-embedding-3-small' });
+                    
+                    // Calculate similarities
+                    const similarities = chunkEmbeddings.map(chunk => ({
+                        chunkId: chunk.chunkId,
+                        text: chunk.text,
+                        similarity: cosineSimilarity(queryEmbedding, chunk.embedding)
+                    }));
+                    
+                    // Sort and get top 3
+                    similarities.sort((a, b) => b.similarity - a.similarity);
+                    const topResults = similarities.slice(0, 3);
+                    
+                    searchResults.push({ query, results: topResults });
+                }
+                
+                log(`✅ PDF-style semantic search completed`, 'success');
+                
+                showEmbedResults('PDF-Style Search', `
+                    Document chunks: ${pdfChunks.length}
+                    Search queries: ${queries.length}
+                    
+                    Search Results:
+                    ${searchResults.map(search => `
+                    Query: "${search.query}"
+                    Top matches:
+                    ${search.results.map((result, i) => `
+                      ${i + 1}. [Chunk ${result.chunkId}] ${result.similarity.toFixed(4)} - "${result.text.substring(0, 60)}..."
+                    `).join('')}
+                    `).join('\n')}
+                `);
+                
+            } catch (error) {
+                log(`PDF-style search test failed: ${error.message}`, 'error');
+                showEmbedResults('PDF-Style Search', `Error: ${error.message}`);
+            }
+        }
+
+        function showEmbedResults(testName, content) {
+            const resultsDiv = document.getElementById('embedResults');
+            resultsDiv.innerHTML = `
+                <strong>${testName}</strong><br>
+                <pre style="white-space: pre-wrap; margin: 5px 0;">${content}</pre>
+            `;
+            resultsDiv.style.display = 'block';
+        }
+
+        // Simple cosine similarity implementation
+        function cosineSimilarity(a, b) {
+            if (a.length !== b.length) return 0;
+            
+            let dotProduct = 0;
+            let normA = 0;
+            let normB = 0;
+            
+            for (let i = 0; i < a.length; i++) {
+                dotProduct += a[i] * b[i];
+                normA += a[i] * a[i];
+                normB += b[i] * b[i];
+            }
+            
+            if (normA === 0 || normB === 0) return 0;
+            return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
         }
 
         // Process Method Tests
