@@ -1,6 +1,6 @@
 # WarpMind
 
-JavaScript library for AI integration in web browsers. Single-file import, works with https://warp.cs.au.dk/mind.
+JavaScript library for easy AI integration in web browsers. Designed to work with [OpenAI-Proxy](https://github.com/cklokmose/openai-proxy).
 
 ## Table of Contents
 
@@ -32,13 +32,10 @@ Include the library and initialize:
     <div id="response"></div>
 
     <!-- Include WarpMind library -->
-    <script src="https://warp.cs.au.dk/libs/warpmind.js"></script>
-    <!-- Or use local file: <script src="warpmind.js"></script> -->
+    <script src="warpmind.js"></script>
     
     <script>
-        const mind = new WarpMind({
-            baseURL: 'https://warp.cs.au.dk/mind/'
-        });
+        const mind = new WarpMind({baseURL: 'https://my-openai-proxy.com'});
 
         async function askAI() {
             const response = await mind.chat("Explain machine learning in one sentence.");
@@ -82,12 +79,13 @@ Create a new WarpMind instance with these configuration options:
 | `memoryToolExplicitOnly` | boolean | `true` | Only use memory when explicitly requested | - |
 | `memoryToolMaxResults` | number | `5` | Maximum memories per search | - |
 
+If an API key is not provided, it will be requested through a prompt.
+
 ```javascript
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',  // API endpoint
     apiKey: 'your-auth-key',                 // Authentication
     model: 'gpt-5-mini',                     // Model selection
-    temperature: 1.0,                        // Response creativity (0-2)
     timeoutMs: 30000                         // Request timeout
 });
 
@@ -276,143 +274,57 @@ document.getElementById('talkButton').onclick = async () => {
 };
 ```
 
-## PDF Processing
+## Structured Data Processing
 
-Load and analyze PDF documents with semantic search capabilities.
+### `process(prompt, source, schema, options)` → object
 
-### `readPdf(source, options)` → string
-
-Load and analyze PDF documents with semantic search capabilities:
+Extract and organize information using defined schemas:
 
 ```javascript
-// From file input
-const fileInput = document.getElementById('pdfFile');
-const pdfFile = fileInput.files[0];
-
-const pdfId = await mind.readPdf(pdfFile, {
-    id: 'research-paper',                     // Optional custom ID
-    chunkTokens: 400,                        // Text chunk size
-    embedModel: 'text-embedding-3-small',    // Embedding model
-    pageRange: [1, 50],                      // Process specific pages (optional)
-    onProgress: (progress) => console.log(`${Math.round(progress * 100)}%`)
-});
-
-// From URL (full URL)
-const pdfId = await mind.readPdf('https://example.com/document.pdf');
-
-// From relative URL (relative to your web page)
-const pdfId = await mind.readPdf('documents/research-paper.pdf');
-const pdfId = await mind.readPdf('./instrumental_interaction.pdf');
-const pdfId = await mind.readPdf('/static/pdfs/document.pdf');
-
-// Process specific page range to stay within limits
-const pdfId = await mind.readPdf('large-document.pdf', {
-    pageRange: { start: 10, end: 60 }        // Object format also supported
-});
-```
-
-**Page Limits**: PDFs are limited to a maximum of 100 pages to prevent excessive API usage. For larger documents, specify a `pageRange` to process only the needed sections.
-
-The library supports File objects from input elements and HTTP URLs (both absolute and relative to your web server).
-
-### PDF Management
-
-```javascript
-// Check status
-const isLoaded = await mind.isPdfRead('research-paper');
-
-// List all PDFs with page information
-const pdfList = await mind.listReadPdfs();
-console.log(pdfList);
-// [
-//   {
-//     id: 'research-paper',
-//     title: 'research-paper', 
-//     numPages: 150,
-//     pagesProcessed: 50,
-//     pageRange: { start: 1, end: 50 },
-//     totalChunks: 25,
-//     processedAt: '2025-08-22T10:30:00.000Z'
-//   }
-// ]
-
-// Storage information
-const storageInfo = await mind.getPdfStorageInfo();
-
-// Remove from storage
-await mind.forgetPdf('research-paper');
-```
-
-### `recallPdf(pdfId)` → void
-
-Load previously processed PDF into memory:
-
-```javascript
-// Load previously processed PDF into memory
-await mind.recallPdf('research-paper');
-
-// Now available for chat
-const answer = await mind.chat("What were the key findings?");
-```
-
-### Chat Integration
-
-Once loaded, PDFs automatically enable AI search tools:
-
-```javascript
-const answer = await mind.chat("What is the main conclusion?");
-const summary = await mind.chat("Summarize the methodology");
-```
-
-### Structured Data Extraction
-
-Extract structured information directly from loaded PDFs using the `process` method:
-
-```javascript
-// Load PDF first
-await mind.readPdf('research-paper.pdf');
-// or recall: await mind.recallPdf('paper-id');
-
-// Extract data using "pdf" shorthand
-const paperAnalysis = await mind.process(
-    "Extract key information from this research paper",
-    "pdf",
+// Text analysis
+const feedback = "The app is amazing but crashes sometimes. Love the new dark mode!";
+const analysis = await mind.process(
+    "Analyze this feedback",
+    feedback,
     {
-        title: "Paper title",
-        authors: "Array of author names",
-        methodology: "Research methodology used",
-        keyFindings: "Array of main findings",
-        conclusions: "Main conclusions"
+        sentiment: "positive, negative, or neutral",
+        issues: "array of problems mentioned",
+        praise: "array of things they liked",
+        confidence: "number from 0 to 1"
     }
 );
 
-// Focused extraction
-const methodology = await mind.process(
-    "Focus on the methodology section",
-    "pdf",
+// Contact extraction
+const contact = "Hi I'm Sarah Johnson, call me at 555-0123 or email sarah@university.edu";
+const info = await mind.process(
+    "Extract contact info",
+    contact,
     {
-        method: "What method was applied",
-        sampleSize: "Number of participants",
-        procedure: "Step-by-step procedure"
+        name: "person's full name",
+        phone: "phone number",
+        email: "email address"
     }
 );
+```
 
-// With usage tracking
+### Process Features
+
+- Schema validation and automatic retries
+- JSON object output
+- Usage tracking with `{ includeUsage: true }`
+- Error handling and graceful degradation
+- PDF processing with `"pdf"` shorthand (see PDF section)
+
+```javascript
 const result = await mind.process(
-    "Extract author information", 
-    "pdf", 
-    { authors: "Array of author names", institution: "Research institution" },
+    "Extract info", 
+    data, 
+    schema, 
     { includeUsage: true }
 );
 console.log('Data:', result.data);
 console.log('Cost:', result.usage);
 ```
-
-### Processing Pipeline
-
-- **Text Extraction**: PDF.js-based text extraction
-- **Semantic Chunking**: Embedding-based text segmentation
-- **Storage**: IndexedDB caching for persistence
 
 ## Memory System
 
@@ -506,6 +418,144 @@ The memory system automatically handles:
 ### Try the Interactive Demo
 
 Open `examples/memory-demo.html` in your browser to explore memory features with a full UI for managing memories, searching, and testing the memory tool chat functionality with different scenarios.
+
+## PDF Processing
+
+Load and analyze PDF documents with semantic search capabilities.
+
+### `readPdf(source, options)` → string
+
+Load and analyze PDF documents with semantic search capabilities:
+
+```javascript
+// From file input
+const fileInput = document.getElementById('pdfFile');
+const pdfFile = fileInput.files[0];
+
+const pdfId = await mind.readPdf(pdfFile, {
+    id: 'research-paper',                     // Optional custom ID
+    chunkTokens: 400,                        // Text chunk size
+    embedModel: 'text-embedding-3-small',    // Embedding model
+    pageRange: [1, 50],                      // Process specific pages (optional)
+    onProgress: (progress) => console.log(`${Math.round(progress * 100)}%`)
+});
+
+// From URL (full URL)
+const pdfId = await mind.readPdf('https://example.com/document.pdf');
+
+// From relative URL (relative to your web page)
+const pdfId = await mind.readPdf('documents/research-paper.pdf');
+const pdfId = await mind.readPdf('./instrumental_interaction.pdf');
+const pdfId = await mind.readPdf('/static/pdfs/document.pdf');
+
+// Process specific page range to stay within limits
+const pdfId = await mind.readPdf('large-document.pdf', {
+    pageRange: { start: 10, end: 60 }        // Object format also supported
+});
+```
+
+**Page Limits**: PDFs are limited to a maximum of 100 pages to prevent excessive API usage. For larger documents, specify a `pageRange` to process only the needed sections.
+
+The library supports File objects from input elements and HTTP URLs (both absolute and relative to your web server).
+
+### PDF Management
+
+```javascript
+// Check status
+const isLoaded = await mind.isPdfRead('research-paper');
+
+// List all PDFs with page information
+const pdfList = await mind.listReadPdfs();
+console.log(pdfList);
+// [
+//   {
+//     id: 'research-paper',
+//     title: 'research-paper', 
+//     numPages: 150,
+//     pagesProcessed: 50,
+//     pageRange: { start: 1, end: 50 },
+//     totalChunks: 25,
+//     processedAt: '2025-08-22T10:30:00.000Z'
+//   }
+// ]
+
+// Storage information
+const storageInfo = await mind.getPdfStorageInfo();
+
+// Remove from storage
+await mind.forgetPdf('research-paper');
+```
+
+### `recallPdf(pdfId)` → void
+
+Load previously processed PDF into memory:
+
+```javascript
+// Load previously processed PDF into memory
+await mind.recallPdf('research-paper');
+
+// Now available for chat
+const answer = await mind.chat("What were the key findings?");
+```
+
+### Chat Integration
+
+Once loaded, PDFs automatically enable AI search tools:
+
+```javascript
+const answer = await mind.chat("What is the main conclusion in the PDF?");
+const summary = await mind.chat("Summarize the methodology in the PDF");
+```
+
+### Structured Data Extraction
+
+Extract structured information directly from loaded PDFs using the `process` method:
+
+```javascript
+// Load PDF first
+await mind.readPdf('research-paper.pdf');
+// or recall: await mind.recallPdf('paper-id');
+
+// Extract data using "pdf" shorthand
+const paperAnalysis = await mind.process(
+    "Extract key information from this research paper",
+    "pdf",
+    {
+        title: "Paper title",
+        authors: "Array of author names",
+        methodology: "Research methodology used",
+        keyFindings: "Array of main findings",
+        conclusions: "Main conclusions"
+    }
+);
+
+// Focused extraction
+const methodology = await mind.process(
+    "Focus on the methodology section",
+    "pdf",
+    {
+        method: "What method was applied",
+        sampleSize: "Number of participants",
+        procedure: "Step-by-step procedure"
+    }
+);
+
+// With usage tracking
+const result = await mind.process(
+    "Extract author information", 
+    "pdf", 
+    { authors: "Array of author names", institution: "Research institution" },
+    { includeUsage: true }
+);
+console.log('Data:', result.data);
+console.log('Cost:', result.usage);
+```
+
+### Processing Pipeline
+
+- **Text Extraction**: PDF.js-based text extraction
+- **Semantic Chunking**: Embedding-based text segmentation
+- **Storage**: IndexedDB caching for persistence
 
 ## Custom Tool Integration
 
@@ -628,57 +678,6 @@ mind.registerTool({
 
 **Method Compatibility**: Tools work with `chat()`, `analyzeImage()`, and `process()`. Not supported in `streamChat()`, `complete()`, or audio methods.
 
-## Structured Data Processing
-
-### `process(prompt, source, schema, options)` → object
-
-Extract and organize information using defined schemas:
-
-```javascript
-// Text analysis
-const feedback = "The app is amazing but crashes sometimes. Love the new dark mode!";
-const analysis = await mind.process(
-    "Analyze this feedback",
-    feedback,
-    {
-        sentiment: "positive, negative, or neutral",
-        issues: "array of problems mentioned",
-        praise: "array of things they liked",
-        confidence: "number from 0 to 1"
-    }
-);
-
-// Contact extraction
-const contact = "Hi I'm Sarah Johnson, call me at 555-0123 or email sarah@university.edu";
-const info = await mind.process(
-    "Extract contact info",
-    contact,
-    {
-        name: "person's full name",
-        phone: "phone number",
-        email: "email address"
-    }
-);
-```
-
-### Process Features
-
-- Schema validation and automatic retries
-- JSON object output
-- Usage tracking with `{ includeUsage: true }`
-- Error handling and graceful degradation
-- PDF processing with `"pdf"` shorthand (see PDF section)
-
-```javascript
-const result = await mind.process(
-    "Extract info", 
-    data, 
-    schema, 
-    { includeUsage: true }
-);
-console.log('Data:', result.data);
-console.log('Cost:', result.usage);
-```
 
 ## Error Handling
 
