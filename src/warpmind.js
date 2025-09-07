@@ -591,6 +591,7 @@ class WarpMind extends BaseClient {
         
         // Update the message with only valid tool calls
         currentMessage.tool_calls = validToolCalls;
+        // Note: Messages with tool_calls should not be shown in UI
         
         // Add the assistant's message to the conversation
         const newMessages = [...messages, currentMessage];
@@ -604,14 +605,14 @@ class WarpMind extends BaseClient {
               onToolError: options.onToolError
             });
             
-            // Add tool result to messages
+            // Add tool result to messages (these should not be shown in UI)
             newMessages.push({
               role: 'tool',
               tool_call_id: toolCall.id,
               content: JSON.stringify(result)
             });
           } catch (error) {
-            // Add error result to messages
+            // Add error result to messages (these should not be shown in UI)
             newMessages.push({
               role: 'tool',
               tool_call_id: toolCall.id,
@@ -620,8 +621,17 @@ class WarpMind extends BaseClient {
           }
         }
 
-        // Recursively call streamChat to let the model respond to tool results
-        const toolResponse = await this._streamChatWithTools(newMessages, onChunk, options, depth + 1);
+        // Make a final call with tool_choice: "none" to get the user-facing response
+        const finalOptions = {
+          ...options,
+          tool_choice: 'none' // Force final response without more tool calls
+        };
+        
+        // Remove tools from final options to ensure no more tool calls
+        delete finalOptions.tools;
+        
+        // Recursively call to get final response
+        const toolResponse = await this._streamChatWithTools(newMessages, onChunk, finalOptions, depth + 1);
         return fullResponse + toolResponse;
       }
       
