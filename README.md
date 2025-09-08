@@ -77,7 +77,7 @@ Create a new WarpMind instance with these configuration options:
 |--------|------|---------|-------------|-------------|
 | `baseURL` | string | Required | API endpoint URL | - |
 | `apiKey` | string | Optional | Authentication key (prompted if missing) | - |
-| `model` | string | `'gpt-5-mini'` | AI model to use | - |
+| `model` | string | `'gpt-4o'` | AI model to use | - |
 | `temperature` | number | `1.0` | Response creativity (0-2) | - |
 | `timeoutMs` | number | `30000` | Request timeout in milliseconds | - |
 | `memoryToolEnabled` | boolean | `true` | Enable automatic memory tool | - |
@@ -90,14 +90,14 @@ If an API key is not provided, it will be requested through a prompt.
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',  // API endpoint
     apiKey: 'your-auth-key',                 // Authentication
-    model: 'gpt-5-mini',                     // Model selection
+    model: 'gpt4o',                     // Model selection
     timeoutMs: 30000                         // Request timeout
 });
 
 // Runtime configuration changes
 mind.setApiKey('new-auth-key');
 mind.setBaseURL('https://warp.cs.au.dk/mind/');
-mind.setModel('gpt-5-mini');
+mind.setModel('gpt4o');
 ```
 
 ### Token Usage Tracking
@@ -815,7 +815,7 @@ Key prompting and storage for browser applications:
 // No API key needed - will prompt automatically
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',
-    model: 'gpt-5-mini'
+    model: 'gpt-4o'
 });
 
 // First use prompts for key, subsequent visits load from localStorage
@@ -944,7 +944,7 @@ mind.clearAllTools()                                     // Remove all tools
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/v1',  // Warp CS API endpoint
     apiKey: 'your-key',                        // Your API key
-    model: 'gpt-5-mini',                       // AI model
+    model: 'gpt-4o',                       // AI model
     temperature: 1.0,                          // Creativity level
     timeoutMs: 30000                           // Default timeout
 });
