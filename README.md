@@ -90,14 +90,14 @@ If an API key is not provided, it will be requested through a prompt.
 const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',  // API endpoint
     apiKey: 'your-auth-key',                 // Authentication
-    model: 'gpt4o',                     // Model selection
+    model: 'gpt-4o',                     // Model selection
     timeoutMs: 30000                         // Request timeout
 });
 
 // Runtime configuration changes
 mind.setApiKey('new-auth-key');
 mind.setBaseURL('https://warp.cs.au.dk/mind/');
-mind.setModel('gpt4o');
+mind.setModel('gpt-4o');
 ```
 
 ### Token Usage Tracking
