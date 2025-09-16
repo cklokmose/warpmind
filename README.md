@@ -4,6 +4,7 @@ JavaScript library for easy AI integration in web browsers. Designed to work wit
 
 ## Table of Contents
 
+- [Core Capabilities](#core-capabilities)
 - [Quick Start](#quick-start)
 - [Examples](#examples)
 - [Configuration Options](#configuration-options)
@@ -15,12 +16,22 @@ JavaScript library for easy AI integration in web browsers. Designed to work wit
 - [Custom Tool Integration](#custom-tool-integration)
 - [Error Handling](#error-handling)
 - [API Key Management](#api-key-management)
-- [Core Capabilities](#core-capabilities)
 - [Architecture](#architecture)
 - [Development](#development)
 - [Quick Reference](#quick-reference)
 - [Acknowledgement](#acknowledgement)
 - [License](#license)
+
+## Core Capabilities
+
+- **Text Chat** - Conversation with AI models
+- **Memory System** - Semantic storage and retrieval with embeddings
+- **Image Analysis** - Computer vision and image description
+- **Voice Processing** - Speech-to-text and text-to-speech
+- **PDF Analysis** - Document reading with semantic search
+- **Tool Integration** - Connect AI to custom functions
+- **Streaming** - Real-time response generation
+- **Data Extraction** - Structured information processing
 
 ## Quick Start
 
@@ -33,7 +44,7 @@ Include the library and initialize:
     <title>WarpMind Integration Example</title>
 </head>
 <body>
-    <button onclick="askAI()">Test AI</button>
+    <button onclick="askAI()">Test WarpMind</button>
     <div id="response"></div>
 
     <!-- Include WarpMind library -->
@@ -769,7 +780,7 @@ mind.registerTool({
 });
 ```
 
-**Method Compatibility**: Tools work with `chat()`, `analyzeImage()`, and `process()`. Not supported in `streamChat()`, `complete()`, or audio methods.
+**Method Compatibility**: Tools work with `chat()`, `analyzeImage()`, `streamChat()`, and `process()`. Not supported in `complete()` or audio methods.
 
 
 ## Error Handling
@@ -831,24 +842,6 @@ WarpMind.clearSavedApiKey();             // Clear saved key
 const key = await WarpMind.promptForApiKey(); // Force new prompt
 ```
 
-## Core Capabilities
-
-- **Text Chat** - Conversation with AI models
-- **Memory System** - Semantic storage and retrieval with embeddings
-- **Image Analysis** - Computer vision and image description
-- **Voice Processing** - Speech-to-text and text-to-speech
-- **PDF Analysis** - Document reading with semantic search
-- **Tool Integration** - Connect AI to custom functions
-- **Streaming** - Real-time response generation
-- **Data Extraction** - Structured information processing
-
-## Architecture
-
-- **Size**: 250 KiB total (including JSZip for PDF export/import), modular design
-- **Dependencies**: JSZip (bundled) for PDF export/import functionality
-- **API**: RESTful integration with OpenAI-compatible endpoints
-- **Storage**: IndexedDB for PDF caching and export/import data
-- **Networking**: Built-in retry logic and error handling
 
 ## Development
 
