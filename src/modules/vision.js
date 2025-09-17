@@ -27,7 +27,7 @@ function createVisionModule(client) {
      * @param {string|File|Blob} image - Image to analyze (URL, File, or Blob)
      * @param {string} prompt - Question or instruction about the image
      * @param {Object} options - Optional parameters
-     * @param {string} options.model - Vision model to use (default: 'gpt-5')
+     * @param {string} options.model - Vision model to use (default: 'gpt-4o')
      * @param {string} options.detail - Image detail level: "low" or "high" (default: "low")
      * @param {number} options.timeoutMs - Request timeout in milliseconds
      * @returns {Promise<Object>} - AI response object with image analysis
@@ -93,7 +93,7 @@ function createVisionModule(client) {
 
       // Extract only valid chat options, excluding vision-specific options like 'detail'
       const chatOptions = {
-        model: options.model || 'gpt-5'
+        model: options.model || 'gpt-4o'
       };
       
       // Only pass through recognized chat options
