@@ -202,6 +202,10 @@ Process images with AI vision models:
 const imageFile = document.getElementById('imageInput').files[0];
 const description = await mind.analyzeImage(imageFile, "Describe this image");
 
+// From HTML img element (new!)
+const imgElement = document.querySelector('#myImage');
+const analysis = await mind.analyzeImage(imgElement, "What do you see?");
+
 // From URL (must be direct image URL)
 const analysis = await mind.analyzeImage(
     'https://example.com/photo.jpg',
@@ -218,6 +222,8 @@ const result = await mind.analyzeImage(imageFile, "Analyze this graph", {
     includeUsage: true 
 });
 ```
+
+**Supported image inputs**: File objects, Blob objects, URLs (direct image links), and HTML img elements.
 
 **Note**: When using URLs, provide direct links to image files (`.jpg`, `.png`, `.gif`, `.webp`). Page URLs containing images won't work.
 
