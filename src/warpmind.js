@@ -335,7 +335,7 @@ class WarpMind extends BaseClient {
           newMessages.push({
             role: 'tool',
             tool_call_id: toolCall.id,
-            content: JSON.stringify(result)
+            content: JSON.stringify(result ?? null)
           });
         } catch (error) {
           // Add error result to messages
@@ -609,7 +609,7 @@ class WarpMind extends BaseClient {
             newMessages.push({
               role: 'tool',
               tool_call_id: toolCall.id,
-              content: JSON.stringify(result)
+              content: JSON.stringify(result ?? null)
             });
           } catch (error) {
             // Add error result to messages (these should not be shown in UI)
