@@ -24,7 +24,7 @@ function createVisionModule(client) {
   return {
     /**
      * Analyze images using vision models
-     * @param {string|File|Blob} image - Image to analyze (URL, File, or Blob)
+     * @param {string|File|Blob|HTMLImageElement} image - Image to analyze (URL, File, Blob, or img element)
      * @param {string} prompt - Question or instruction about the image
      * @param {Object} options - Optional parameters
      * @param {string} options.model - Vision model to use (default: 'gpt-4o')
@@ -61,6 +61,18 @@ function createVisionModule(client) {
             }
           };
         }
+      } else if (image && image.tagName === 'IMG') {
+        // HTML img element - fetch and convert to blob
+        const response = await fetch(image.src);
+        const blob = await response.blob();
+        const base64 = await fileToBase64(blob);
+        imageContent = {
+          type: "image_url",
+          image_url: {
+            url: base64,
+            detail: detail
+          }
+        };
       } else if (image && (
         (typeof File !== 'undefined' && image instanceof File) || 
         (typeof Blob !== 'undefined' && image instanceof Blob) ||
@@ -78,7 +90,7 @@ function createVisionModule(client) {
           }
         };
       } else {
-        throw new Error('Image must be a URL string, File, or Blob object');
+        throw new Error('Image must be a URL string, HTML img element, File, or Blob object');
       }
 
       const messages = [
