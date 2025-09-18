@@ -330,23 +330,42 @@ console.log('Processing cost:', result.usage);
 Voice conversation interface:
 
 ```javascript
-const voiceAssistant = mind.createVoiceChat(
-    "You are a programming tutor. Keep responses under 30 seconds.",
-    {
-        autoSpeak: true,
-        voice: 'nova',
-        language: 'en'
-    }
+// Create a voice chat assistant
+const voiceChat = mind.createVoiceChat(
+    "You are a helpful assistant. Keep responses brief."
 );
 
-// Voice interaction
-document.getElementById('talkButton').onclick = async () => {
-    await voiceAssistant.startRecording();
-    const result = await voiceAssistant.stopRecordingAndRespond();
-    console.log('User:', result.userMessage);
-    console.log('AI:', result.aiResponse);
+// Voice interaction - simple pattern
+document.getElementById('startBtn').onclick = async () => {
+    await voiceChat.startRecording();
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+    console.log('🎤 Recording started... Speak now!');
+};
+
+document.getElementById('stopBtn').onclick = async () => {
+    const result = await voiceChat.stopRecordingAndRespond();
+    
+    console.log('You said:', result.userMessage);
+    console.log('AI replied:', result.aiResponse);
+    
+    // Play the AI's audio response
+    if (result.audioBlob) {
+        await mind.playAudio(result.audioBlob);
+    }
+    
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
 };
 ```
+
+**HTML for demo:**
+```html
+<button id="startBtn">🎤 Start Recording</button>
+<button id="stopBtn" disabled>⏹️ Stop & Get Response</button>
+```
+
+**Returns:** Object with `userMessage`, `aiResponse`, `audioBlob`, and `conversation` properties.
 
 ## Structured Data Processing
 
