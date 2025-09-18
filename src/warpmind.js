@@ -393,9 +393,12 @@ class WarpMind extends BaseClient {
    * @returns {Promise<string>} - The generated response
    */
   async complete(prompt, options = {}) {
+    // Convert prompt to chat format to work with modern chat models
+    const messages = [{ role: 'user', content: prompt }];
+    
     const requestData = {
       model: options.model || this.model,
-      prompt: prompt,
+      messages: messages,
       temperature: options.temperature !== undefined ? options.temperature : this.temperature
     };
 
@@ -411,8 +414,8 @@ class WarpMind extends BaseClient {
       timeoutMs: options.timeoutMs
     };
 
-    const response = await this.makeRequest('/completions', requestData, requestOptions);
-    return response.choices[0]?.text || '';
+    const response = await this.makeRequest('/chat/completions', requestData, requestOptions);
+    return response.choices[0]?.message?.content || '';
   }
 
   /**
