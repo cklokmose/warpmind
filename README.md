@@ -146,6 +146,27 @@ Message roles:
 - `user`: Human input
 - `assistant`: Previous AI responses
 
+**Options:**
+- `model` (string): Override the default model (e.g., 'gpt-4o', 'gpt-3.5-turbo')
+- `temperature` (number): Control randomness (0-2, default: instance temperature)
+- `timeoutMs` (number): Request timeout in milliseconds
+- `returnMetadata` (boolean): Return object with response and metadata instead of just string
+- `onToolCall` (function): Callback when a tool is called - receives `{callId, name, parameters, timestamp}`
+- `onToolResult` (function): Callback when tool completes - receives `{name, result, duration}`
+- `onToolError` (function): Callback when tool fails - receives `{name, error, duration}`
+
+```javascript
+// Using options
+const result = await mind.chat("Analyze this data", {
+    temperature: 0.2,
+    returnMetadata: true,
+    onToolCall: (call) => console.log(`Tool called: ${call.name}`)
+});
+
+console.log('Response:', result.response);
+console.log('Metadata:', result.metadata);
+```
+
 ### `streamChat(message, onChunk, options)` → void
 
 Real-time response streaming:
@@ -158,12 +179,43 @@ await mind.streamChat("Write a short story", (chunk) => {
 });
 ```
 
+**Options:** Same as `chat()` method above, including:
+- `model`, `temperature`, `timeoutMs`
+- Tool callbacks: `onToolCall`, `onToolResult`, `onToolError`
+- `returnMetadata`: Returns metadata after streaming completes
+
+```javascript
+// Streaming with options
+await mind.streamChat("Generate a detailed report", 
+    (chunk) => {
+        console.log('Chunk:', chunk.content);
+        updateUI(chunk.content);
+    },
+    {
+        temperature: 0.7,
+        onToolCall: (call) => console.log(`Streaming tool call: ${call.name}`)
+    }
+);
+```
+
 ### `complete(prompt, options)` → string
 
 Text completion:
 
 ```javascript
 const response = await mind.complete("The three laws of robotics are");
+```
+
+**Options:**
+- `model` (string): Override the default model
+- `temperature` (number): Control randomness (0-2, default: instance temperature)
+- `timeoutMs` (number): Request timeout in milliseconds
+
+```javascript
+// Completion with options
+const story = await mind.complete("Once upon a time in a distant galaxy", {
+    temperature: 0.8
+});
 ```
 
 ### `embed(text, options)` → number[]
