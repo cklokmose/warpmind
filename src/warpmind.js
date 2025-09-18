@@ -393,13 +393,17 @@ class WarpMind extends BaseClient {
    * @returns {Promise<string>} - The generated response
    */
   async complete(prompt, options = {}) {
-    // Convert prompt to chat format to work with modern chat models
-    const messages = [{ role: 'user', content: prompt }];
+    // Convert prompt to chat format with system prompt for completion behavior
+    const messages = [
+      { role: 'system', content: 'Complete the text directly and concisely without explanation or additional commentary.' },
+      { role: 'user', content: prompt }
+    ];
     
     const requestData = {
       model: options.model || this.model,
       messages: messages,
-      temperature: options.temperature !== undefined ? options.temperature : this.temperature
+      temperature: options.temperature !== undefined ? options.temperature : 0.1,
+      max_tokens: options.max_tokens !== undefined ? options.max_tokens : 50
     };
 
     // Add other options, but filter out our custom ones to avoid conflicts
@@ -407,6 +411,7 @@ class WarpMind extends BaseClient {
     delete filteredOptions.model;
     delete filteredOptions.temperature;
     delete filteredOptions.timeoutMs;
+    delete filteredOptions.max_tokens;
     
     Object.assign(requestData, filteredOptions);
 
