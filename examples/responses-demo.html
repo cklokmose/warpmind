@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WarpMind Responses API Demo</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .section {
+      margin-bottom: 40px;
+      padding: 20px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    .section h2 {
+      margin-top: 0;
+      color: #667eea;
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      margin: 10px 0;
+      box-sizing: border-box;
+    }
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+      font-family: inherit;
+    }
+    .output {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 15px;
+      margin-top: 15px;
+      min-height: 100px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+    .streaming {
+      border-left: 3px solid #667eea;
+      background: #f0f4ff;
+    }
+    .metadata {
+      font-size: 12px;
+      color: #666;
+      margin-top: 10px;
+      padding: 8px;
+      background: #f5f5f5;
+      border-radius: 4px;
+    }
+    .history {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .message {
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 6px;
+    }
+    .user {
+      background: #e3f2fd;
+      text-align: right;
+    }
+    .assistant {
+      background: #f5f5f5;
+    }
+    .error {
+      color: #d32f2f;
+      background: #ffebee;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    .config {
+      background: #fff3cd;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .badge {
+      display: inline-block;
+      background: #4caf50;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 WarpMind Responses API Demo</h1>
+    <p class="subtitle">Demonstrating the new Responses API features</p>
+
+    <div class="config">
+      <strong>⚙️ Configuration:</strong><br>
+      <input type="text" id="apiKey" placeholder="Enter your API key" />
+      <input type="text" id="baseURL" placeholder="Base URL" value="https://warp.cs.au.dk/mind" />
+      <input type="text" id="model" placeholder="Model" value="gpt-5" />
+      <button onclick="initializeMind()">Initialize WarpMind</button>
+      <span id="initStatus"></span>
+    </div>
+
+    <!-- Basic respond() -->
+    <div class="section">
+      <h2>1. Basic respond() <span class="badge">NEW</span></h2>
+      <p>Send a single message using the Responses API</p>
+      <input type="text" id="basicInput" placeholder="Enter your message..." value="Say hello in 3 different languages" />
+      <button onclick="testBasicRespond()">Send Message</button>
+      <div id="basicOutput" class="output"></div>
+      <div id="basicMetadata" class="metadata"></div>
+    </div>
+
+    <!-- Streaming -->
+    <div class="section">
+      <h2>2. Streaming Response <span class="badge">NEW</span></h2>
+      <p>Stream responses in real-time with streamRespond()</p>
+      <input type="text" id="streamInput" placeholder="Enter your message..." value="Count from 1 to 10" />
+      <button onclick="testStreaming()">Stream Response</button>
+      <div id="streamOutput" class="output streaming"></div>
+      <div id="streamMetadata" class="metadata"></div>
+    </div>
+
+    <!-- Conversations -->
+    <div class="section">
+      <h2>3. Conversations <span class="badge">NEW</span></h2>
+      <p>Multi-turn conversations with context retention</p>
+      <input type="text" id="convInstructions" placeholder="System instructions..." value="You are a helpful math tutor" />
+      <button onclick="createNewConversation()">Create Conversation</button>
+      <button onclick="exportConversation()">Export to localStorage</button>
+      <button onclick="importConversation()">Import from localStorage</button>
+      <button onclick="clearConversation()">Clear</button>
+      
+      <div style="margin-top: 15px;">
+        <textarea id="convInput" placeholder="Enter your message...">What is 15 * 24?</textarea>
+        <button onclick="sendConversationMessage()">Send</button>
+        <button onclick="streamConversationMessage()">Send (Stream)</button>
+      </div>
+      
+      <div id="convHistory" class="history output"></div>
+      <div id="convMetadata" class="metadata"></div>
+    </div>
+
+    <!-- Tool Calling -->
+    <div class="section">
+      <h2>4. Tool Calling <span class="badge">COMPATIBLE</span></h2>
+      <p>Automatic tool execution (works with both Chat and Responses APIs)</p>
+      <button onclick="registerWeatherTool()">Register Weather Tool</button>
+      <input type="text" id="toolInput" placeholder="Enter your message..." value="What's the weather in Paris?" />
+      <button onclick="testToolCalling()">Test Tool</button>
+      <div id="toolOutput" class="output"></div>
+    </div>
+
+    <!-- Response Management -->
+    <div class="section">
+      <h2>5. Response Management <span class="badge">NEW</span></h2>
+      <p>Retrieve, cancel, and manage responses by ID</p>
+      <input type="text" id="responseId" placeholder="Enter response ID..." />
+      <button onclick="getResponseById()">Get Response</button>
+      <button onclick="cancelResponseById()">Cancel Response</button>
+      <button onclick="deleteResponseById()">Delete Response</button>
+      <div id="mgmtOutput" class="output"></div>
+    </div>
+
+    <!-- Reasoning Effort -->
+    <div class="section">
+      <h2>6. Reasoning Effort <span class="badge">GPT-5</span></h2>
+      <p>Control how much the model "thinks" before responding</p>
+      <input type="text" id="reasoningInput" placeholder="Enter a complex problem..." value="What's the most efficient way to sort a million numbers?" />
+      <div style="margin: 15px 0;">
+        <label style="display: block; margin-bottom: 10px; font-weight: bold;">Reasoning Effort:</label>
+        <div style="display: flex; gap: 10px;">
+          <button onclick="testReasoning('minimal')">Minimal</button>
+          <button onclick="testReasoning('low')">Low</button>
+          <button onclick="testReasoning('medium')">Medium</button>
+          <button onclick="testReasoning('high')">High</button>
+        </div>
+      </div>
+      <div id="reasoningOutput" class="output"></div>
+      <div id="reasoningMetadata" class="metadata"></div>
+    </div>
+
+    <!-- Background Tasks -->
+    <div class="section">
+      <h2>7. Background Tasks <span class="badge">NEW</span></h2>
+      <p>Submit tasks and poll for completion</p>
+      <input type="text" id="bgInput" placeholder="Enter your message..." value="Write a short poem about AI" />
+      <button onclick="submitBackgroundTask()">Submit Background Task</button>
+      <button onclick="pollBackgroundTask()">Poll Last Task</button>
+      <div id="bgOutput" class="output"></div>
+      <div id="bgMetadata" class="metadata"></div>
+    </div>
+  </div>
+
+  <script src="../dist/warpmind.js"></script>
+  <script>
+    let mind = null;
+    let conversation = null;
+    let lastBackgroundTaskId = null;
+
+    // Load saved configuration on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedApiKey = localStorage.getItem('warpmind-apiKey');
+      const savedBaseURL = localStorage.getItem('warpmind-baseURL');
+      const savedModel = localStorage.getItem('warpmind-model');
+
+      if (savedApiKey) document.getElementById('apiKey').value = savedApiKey;
+      if (savedBaseURL) document.getElementById('baseURL').value = savedBaseURL;
+      if (savedModel) document.getElementById('model').value = savedModel;
+    });
+
+    function initializeMind() {
+      const apiKey = document.getElementById('apiKey').value;
+      const baseURL = document.getElementById('baseURL').value;
+      const model = document.getElementById('model').value;
+
+      if (!apiKey) {
+        alert('Please enter an API key');
+        return;
+      }
+
+      // Save to localStorage
+      localStorage.setItem('warpmind-apiKey', apiKey);
+      localStorage.setItem('warpmind-baseURL', baseURL);
+      localStorage.setItem('warpmind-model', model);
+
+      mind = new WarpMind({
+        apiKey: apiKey,
+        baseURL: baseURL,
+        model: model
+      });
+
+      document.getElementById('initStatus').innerHTML = '<span style="color: green;">✓ Initialized</span>';
+    }
+
+    function checkMind() {
+      if (!mind) {
+        alert('Please initialize WarpMind first');
+        return false;
+      }
+      return true;
+    }
+
+    async function testBasicRespond() {
+      if (!checkMind()) return;
+      
+      const input = document.getElementById('basicInput').value;
+      const output = document.getElementById('basicOutput');
+      const metadata = document.getElementById('basicMetadata');
+      
+      output.textContent = 'Sending...';
+      metadata.textContent = '';
+      
+      try {
+        const response = await mind.respond(input);
+        output.textContent = response.text;
+        metadata.textContent = `Response ID: ${response.id} | Tokens: ${JSON.stringify(response.usage)}`;
+      } catch (error) {
+        output.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function testStreaming() {
+      if (!checkMind()) return;
+      
+      const input = document.getElementById('streamInput').value;
+      const output = document.getElementById('streamOutput');
+      const metadata = document.getElementById('streamMetadata');
+      
+      output.textContent = '';
+      metadata.textContent = 'Streaming...';
+      
+      try {
+        const response = await mind.streamRespond(input, (event) => {
+          if (event.delta) {
+            output.textContent += event.delta;
+          }
+        });
+        
+        metadata.textContent = `✓ Complete | Response ID: ${response.id} | Tokens: ${JSON.stringify(response.usage)}`;
+      } catch (error) {
+        output.innerHTML += `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    function createNewConversation() {
+      if (!checkMind()) return;
+      
+      const instructions = document.getElementById('convInstructions').value;
+      conversation = mind.createConversation({ instructions: instructions });
+      
+      document.getElementById('convHistory').innerHTML = '<div style="color: green;">✓ New conversation created</div>';
+      document.getElementById('convMetadata').textContent = '';
+    }
+
+    async function sendConversationMessage() {
+      if (!conversation) {
+        alert('Please create a conversation first');
+        return;
+      }
+      
+      const input = document.getElementById('convInput').value;
+      const history = document.getElementById('convHistory');
+      const metadata = document.getElementById('convMetadata');
+      
+      metadata.textContent = 'Sending...';
+      
+      try {
+        const response = await conversation.respond(input);
+        updateConversationHistory();
+        metadata.textContent = `Messages: ${conversation.getMessageCount()} | Last ID: ${response.id}`;
+      } catch (error) {
+        history.innerHTML += `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function streamConversationMessage() {
+      if (!conversation) {
+        alert('Please create a conversation first');
+        return;
+      }
+      
+      const input = document.getElementById('convInput').value;
+      const history = document.getElementById('convHistory');
+      const metadata = document.getElementById('convMetadata');
+      
+      // Add user message immediately
+      const userMsg = document.createElement('div');
+      userMsg.className = 'message user';
+      userMsg.textContent = `You: ${input}`;
+      history.appendChild(userMsg);
+      
+      // Create assistant message container
+      const assistantMsg = document.createElement('div');
+      assistantMsg.className = 'message assistant';
+      assistantMsg.textContent = 'Assistant: ';
+      history.appendChild(assistantMsg);
+      
+      metadata.textContent = 'Streaming...';
+      
+      try {
+        const response = await conversation.streamRespond(input, (event) => {
+          if (event.delta) {
+            assistantMsg.textContent += event.delta;
+          }
+        });
+        
+        metadata.textContent = `Messages: ${conversation.getMessageCount()} | Last ID: ${response.id}`;
+      } catch (error) {
+        history.innerHTML += `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    function updateConversationHistory() {
+      const history = document.getElementById('convHistory');
+      const messages = conversation.getHistory();
+      
+      history.innerHTML = '';
+      messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `message ${msg.role}`;
+        div.textContent = `${msg.role === 'user' ? 'You' : 'Assistant'}: ${msg.content}`;
+        history.appendChild(div);
+      });
+    }
+
+    function exportConversation() {
+      if (!conversation) {
+        alert('No conversation to export');
+        return;
+      }
+      
+      const exported = conversation.exportHistory();
+      localStorage.setItem('warpmind-conversation', exported);
+      alert('Conversation exported to localStorage!');
+    }
+
+    function importConversation() {
+      if (!checkMind()) return;
+      
+      const data = localStorage.getItem('warpmind-conversation');
+      if (!data) {
+        alert('No conversation found in localStorage');
+        return;
+      }
+      
+      conversation = mind.createConversation();
+      conversation.importHistory(data);
+      updateConversationHistory();
+      
+      document.getElementById('convMetadata').textContent = `Imported ${conversation.getMessageCount()} messages`;
+    }
+
+    function clearConversation() {
+      if (!conversation) return;
+      
+      conversation.clear();
+      document.getElementById('convHistory').innerHTML = '<div style="color: green;">✓ Conversation cleared</div>';
+      document.getElementById('convMetadata').textContent = '';
+    }
+
+    function registerWeatherTool() {
+      if (!checkMind()) return;
+      
+      mind.registerTool({
+        name: 'get_weather',
+        description: 'Get current weather for a location',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: 'City name' }
+          },
+          required: ['location']
+        },
+        handler: async (args) => {
+          // Simulate API call delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const temp = Math.floor(Math.random() * 30) + 10;
+          const conditions = ['sunny', 'partly cloudy', 'cloudy', 'light rain', 'rain'];
+          const condition = conditions[Math.floor(Math.random() * conditions.length)];
+          
+          return {
+            location: args.location,
+            temperature: temp,
+            temperature_unit: 'celsius',
+            condition: condition,
+            humidity: Math.floor(Math.random() * 40) + 40,
+            wind_speed: Math.floor(Math.random() * 20) + 5,
+            timestamp: new Date().toISOString()
+          };
+        }
+      });
+      
+      alert('Weather tool registered!');
+    }
+
+    async function testToolCalling() {
+      if (!checkMind()) return;
+      
+      const input = document.getElementById('toolInput').value;
+      const output = document.getElementById('toolOutput');
+      
+      output.textContent = 'Calling tool...';
+      
+      try {
+        console.log('Testing tool calling with input:', input);
+        const response = await mind.respond(input);
+        console.log('Tool calling response:', response);
+        output.textContent = response.text || JSON.stringify(response);
+      } catch (error) {
+        console.error('Tool calling error:', error);
+        output.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function getResponseById() {
+      if (!checkMind()) return;
+      
+      const id = document.getElementById('responseId').value;
+      const output = document.getElementById('mgmtOutput');
+      
+      if (!id) {
+        alert('Please enter a response ID');
+        return;
+      }
+      
+      try {
+        const response = await mind.getResponse(id);
+        output.textContent = JSON.stringify(response, null, 2);
+      } catch (error) {
+        output.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function cancelResponseById() {
+      if (!checkMind()) return;
+      
+      const id = document.getElementById('responseId').value;
+      const output = document.getElementById('mgmtOutput');
+      
+      if (!id) {
+        alert('Please enter a response ID');
+        return;
+      }
+      
+      try {
+        const result = await mind.cancelResponse(id);
+        output.textContent = 'Response cancelled: ' + JSON.stringify(result, null, 2);
+      } catch (error) {
+        output.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function deleteResponseById() {
+      if (!checkMind()) return;
+      
+      const id = document.getElementById('responseId').value;
+      const output = document.getElementById('mgmtOutput');
+      
+      if (!id) {
+        alert('Please enter a response ID');
+        return;
+      }
+      
+      try {
+        const result = await mind.deleteResponse(id);
+        output.textContent = 'Response deleted: ' + JSON.stringify(result, null, 2);
+      } catch (error) {
+        output.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function testReasoning(effort) {
+      if (!checkMind()) return;
+      
+      const input = document.getElementById('reasoningInput').value;
+      const output = document.getElementById('reasoningOutput');
+      const metadata = document.getElementById('reasoningMetadata');
+      
+      output.textContent = `Testing with ${effort} reasoning effort...`;
+      metadata.textContent = '';
+      
+      try {
+        const startTime = Date.now();
+        const response = await mind.respond(input, {
+          reasoning: { effort: effort }
+        });
+        const duration = Date.now() - startTime;
+        
+        output.textContent = response.text;
+        
+        const reasoningTokens = response.usage?.output_tokens_details?.reasoning_tokens || 0;
+        const outputTokens = response.usage?.output_tokens || 0;
+        const thinkingPercentage = outputTokens > 0 ? Math.round((reasoningTokens / outputTokens) * 100) : 0;
+        
+        metadata.textContent = `✓ Complete (${duration}ms) | Effort: ${effort} | Reasoning tokens: ${reasoningTokens}/${outputTokens} (${thinkingPercentage}% thinking) | Total: ${response.usage?.total_tokens || 0} tokens`;
+      } catch (error) {
+        output.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function submitBackgroundTask() {
+      if (!checkMind()) return;
+      
+      const input = document.getElementById('bgInput').value;
+      const output = document.getElementById('bgOutput');
+      const metadata = document.getElementById('bgMetadata');
+      
+      output.textContent = 'Submitting...';
+      
+      try {
+        lastBackgroundTaskId = await mind.respondBackground(input);
+        output.textContent = 'Task submitted successfully!';
+        metadata.textContent = `Task ID: ${lastBackgroundTaskId}`;
+        document.getElementById('responseId').value = lastBackgroundTaskId;
+      } catch (error) {
+        output.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function pollBackgroundTask() {
+      if (!checkMind()) return;
+      
+      if (!lastBackgroundTaskId) {
+        alert('No background task to poll');
+        return;
+      }
+      
+      const output = document.getElementById('bgOutput');
+      const metadata = document.getElementById('bgMetadata');
+      
+      output.textContent = 'Polling...';
+      metadata.textContent = 'Waiting for task to complete...';
+      
+      try {
+        const result = await mind.pollUntilComplete(lastBackgroundTaskId);
+        output.textContent = JSON.stringify(result, null, 2);
+        metadata.textContent = `✓ Task completed | Status: ${result.status}`;
+      } catch (error) {
+        output.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+  </script>
+</body>
+</html>

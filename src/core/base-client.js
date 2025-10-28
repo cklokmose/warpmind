@@ -31,6 +31,7 @@ class BaseClient {
     this.model = config.model || 'gpt-4o';
     this.temperature = config.temperature || 0.7;
     this.defaultTimeoutMs = config.defaultTimeoutMs || 60000;
+    this.customHeaders = config.customHeaders || {}; // Support for custom headers
   }
 
   /**
@@ -47,6 +48,14 @@ class BaseClient {
    */
   setBaseURL(baseURL) {
     this.baseURL = baseURL;
+  }
+
+  /**
+   * Set custom headers for all requests (e.g., session keys)
+   * @param {Object} headers - Custom headers object
+   */
+  setCustomHeaders(headers) {
+    this.customHeaders = headers || {};
   }
 
   /**
@@ -100,12 +109,29 @@ class BaseClient {
   }
 
   /**
+   * Build API URL with query parameters
+   * @param {string} endpoint - API endpoint
+   * @param {Object} queryParams - Query parameters object
+   * @returns {string} - Complete API URL with query string
+   */
+  _buildApiUrlWithQuery(endpoint, queryParams) {
+    const url = this._buildApiUrl(endpoint);
+    if (!queryParams || Object.keys(queryParams).length === 0) {
+      return url;
+    }
+    const params = new URLSearchParams(queryParams);
+    return `${url}?${params.toString()}`;
+  }
+
+  /**
    * Make a request to the OpenAI-compatible API with proper headers, retry logic, and timeout
    * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request data
+   * @param {Object} data - Request data (ignored for GET/DELETE requests)
    * @param {Object} options - Request options
    * @param {number} options.timeoutMs - Request timeout in milliseconds
    * @param {number} options.maxRetries - Maximum number of retry attempts (default: 5)
+   * @param {string} options.method - HTTP method (default: 'POST')
+   * @param {Object} options.queryParams - Query parameters for GET requests
    * @returns {Promise} - API response
    */
   async makeRequest(endpoint, data, options = {}) {
@@ -115,21 +141,32 @@ class BaseClient {
 
     const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
     const maxRetries = options.maxRetries !== undefined ? options.maxRetries : 5;
-    const url = this._buildApiUrl(endpoint);
+    const method = options.method || 'POST';
+    const queryParams = options.queryParams || {};
+    const url = Object.keys(queryParams).length > 0
+      ? this._buildApiUrlWithQuery(endpoint, queryParams)
+      : this._buildApiUrl(endpoint);
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       const { controller, timeoutId } = createTimeoutController(timeoutMs);
       
       try {
-        const response = await fetch(url, {
-          method: 'POST',
+        const fetchOptions = {
+          method: method,
           headers: {
             'Content-Type': 'application/json',
-            'api-key': this.apiKey // Custom header for proxy authentication
+            'api-key': this.apiKey, // Custom header for proxy authentication
+            ...this.customHeaders    // Merge any custom headers (e.g., session keys)
           },
-          body: JSON.stringify(data),
           signal: controller ? controller.signal : undefined
-        });
+        };
+
+        // Only include body for POST/PUT/PATCH requests
+        if (data && method !== 'GET' && method !== 'DELETE') {
+          fetchOptions.body = JSON.stringify(data);
+        }
+
+        const response = await fetch(url, fetchOptions);
 
         clearTimeout(timeoutId);
 

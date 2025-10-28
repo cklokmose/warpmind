@@ -77,7 +77,11 @@ describe('WarpMind SSE Parser Tests', () => {
 
       const result = await warpMind.parseSSE(mockReader, onEvent);
 
-      expect(result).toBe('Hello world');
+      expect(result).toEqual({
+        text: 'Hello world',
+        id: null,
+        usage: null
+      });
       expect(onEvent).toHaveBeenCalledTimes(2);
       expect(events[0]).toEqual({ role: 'assistant', delta: 'Hello' });
       expect(events[1]).toEqual({ role: 'assistant', delta: ' world' });
@@ -108,7 +112,11 @@ describe('WarpMind SSE Parser Tests', () => {
 
       const result = await warpMind.parseSSE(mockReader, onEvent);
 
-      expect(result).toBe('');
+      expect(result).toEqual({
+        text: '',
+        id: null,
+        usage: null
+      });
       expect(onEvent).not.toHaveBeenCalled();
     });
 
@@ -138,7 +146,11 @@ describe('WarpMind SSE Parser Tests', () => {
 
       const result = await warpMind.parseSSE(mockReader, onEvent);
 
-      expect(result).toBe('');
+      expect(result).toEqual({
+        text: '',
+        id: null,
+        usage: null
+      });
       expect(onEvent).not.toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith('Failed to parse SSE event:', expect.any(String));
       
@@ -157,7 +169,11 @@ describe('WarpMind SSE Parser Tests', () => {
 
       const result = await warpMind.parseSSE(mockReader);
 
-      expect(result).toBe('');
+      expect(result).toEqual({
+        text: '',
+        id: null,
+        usage: null
+      });
     });
   });
 

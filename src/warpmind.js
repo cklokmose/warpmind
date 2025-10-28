@@ -871,6 +871,138 @@ class WarpMind extends BaseClient {
       throw error;
     }
   }
+
+  // ========================================
+  // Responses API Methods (NEW)
+  // ========================================
+
+  /**
+   * Send a message using the Responses API (non-streaming)
+   * @param {string|Array} input - User input (string or array)
+   * @param {Object} options - Request options
+   * @param {string} options.instructions - System instructions
+   * @param {string} options.model - Model to use
+   * @param {string} options.previous_response_id - Previous response ID for conversation chaining
+   * @param {boolean} options.store - Whether to store the response (default: true)
+   * @param {Object} options.metadata - Custom metadata
+   * @returns {Promise<Object>} - Response object with {text, id, usage}
+   */
+  async respond(input, options = {}) {
+    const { ResponseClient } = require('./core/response-client.js');
+    return await ResponseClient.respond(this, input, options);
+  }
+
+  /**
+   * Send a streaming message using the Responses API
+   * @param {string|Array} input - User input
+   * @param {Function} onChunk - Callback for each chunk
+   * @param {Object} options - Request options
+   * @returns {Promise<Object>} - Final response object
+   */
+  async streamRespond(input, onChunk, options = {}) {
+    const { ResponseClient } = require('./core/response-client.js');
+    return await ResponseClient.streamRespond(this, input, onChunk, options);
+  }
+
+  /**
+   * Create a conversation instance for multi-turn interactions
+   * @param {Object} options - Conversation options
+   * @param {string} options.instructions - System instructions for the conversation
+   * @param {string} options.model - Model to use
+   * @returns {Conversation} - Conversation instance
+   */
+  createConversation(options = {}) {
+    const { Conversation } = require('./conversations/conversation.js');
+    return new Conversation(this, options);
+  }
+
+  /**
+   * Get a response by ID
+   * @param {string} responseId - Response ID
+   * @param {Object} options - Query options
+   * @param {Array<string>} options.include - Additional data to include
+   * @returns {Promise<Object>} - Response object
+   */
+  async getResponse(responseId, options = {}) {
+    return await this.makeRequest(`/responses/${responseId}`, null, {
+      method: 'GET',
+      queryParams: options
+    });
+  }
+
+  /**
+   * Delete a response by ID
+   * @param {string} responseId - Response ID
+   * @returns {Promise<Object>} - Deletion confirmation
+   */
+  async deleteResponse(responseId) {
+    return await this.makeRequest(`/responses/${responseId}`, null, {
+      method: 'DELETE'
+    });
+  }
+
+  /**
+   * Cancel a response by ID
+   * @param {string} responseId - Response ID
+   * @returns {Promise<Object>} - Cancellation confirmation
+   */
+  async cancelResponse(responseId) {
+    return await this.makeRequest(`/responses/${responseId}/cancel`, null, {
+      method: 'POST'
+    });
+  }
+
+  /**
+   * Send a background response and return immediately
+   * @param {string|Array} input - User input
+   * @param {Object} options - Request options
+   * @returns {Promise<string>} - Response ID for polling
+   */
+  async respondBackground(input, options = {}) {
+    const response = await this.respond(input, { ...options, store: true });
+    return response.id;
+  }
+
+  /**
+   * Poll a response until it's completed
+   * @param {string} responseId - Response ID to poll
+   * @param {Object} options - Polling options
+   * @param {number} options.maxWaitMs - Maximum wait time in milliseconds (default: 300000 = 5 minutes)
+   * @param {number} options.initialDelayMs - Initial delay before first check (default: 1000ms)
+   * @returns {Promise<Object>} - Completed response
+   */
+  async pollUntilComplete(responseId, options = {}) {
+    const maxWaitMs = options.maxWaitMs || 300000; // 5 minutes default
+    const initialDelayMs = options.initialDelayMs || 1000;
+    const startTime = Date.now();
+    let delay = initialDelayMs;
+
+    while (Date.now() - startTime < maxWaitMs) {
+      // Wait before checking
+      await new Promise(resolve => setTimeout(resolve, delay));
+
+      // Get response status
+      const response = await this.getResponse(responseId);
+
+      // Check status
+      if (response.status === 'completed') {
+        return response;
+      }
+
+      if (response.status === 'failed') {
+        throw new Error(`Response failed: ${response.error?.message || 'Unknown error'}`);
+      }
+
+      if (response.status === 'cancelled') {
+        throw new Error('Response was cancelled');
+      }
+
+      // Exponential backoff: 1s → 2s → 4s → 8s → max 10s
+      delay = Math.min(delay * 2, 10000);
+    }
+
+    throw new Error(`Polling timeout: Response not completed after ${maxWaitMs}ms`);
+  }
 }
 
 // Export for both CommonJS and ES modules

@@ -9,6 +9,7 @@ JavaScript library for easy AI integration in web browsers. Designed to work wit
 - [Examples](#examples)
 - [Configuration Options](#configuration-options)
 - [Core Methods](#core-methods)
+- [Responses API (New)](#responses-api-new)
 - [Multi-Modal Processing](#multi-modal-processing)
 - [Structured Data Processing](#structured-data-processing)
 - [Memory System](#memory-system)
@@ -66,6 +67,7 @@ Include the library and initialize:
 
 The `examples/` directory contains interactive demonstrations:
 
+- **`responses-demo.html`** - **NEW**: Complete Responses API demo with streaming, conversations, tools, and background tasks
 - **`memory-demo.html`** - Full memory system UI with storage, search, management, and memory tool chat
 - **`memory-tool-demo.html`** - Standalone demo showing automatic memory-tool activation
 - **`chat-interface.html`** - Complete chat interface with streaming responses  
@@ -77,7 +79,7 @@ To run examples with a local server (required for CORS):
 
 ```bash
 python3 -m http.server 3000
-# Then open http://localhost:3000/examples/memory-demo.html
+# Then open http://localhost:3000/examples/responses-demo.html
 ```
 
 ## Configuration Options
@@ -242,6 +244,365 @@ Options:
 - `timeoutMs`: Request timeout in milliseconds
 
 Returns a normalized vector array for semantic similarity calculations. Used internally by the memory and PDF systems.
+
+## Responses API
+
+WarpMind supports OpenAI's new **Responses API** (`/v1/responses`), which provides advanced features like stateful conversations, background execution, and better integration with reasoning models.
+
+### Why Use Responses API?
+
+- **Stateful Conversations**: Automatic context retention via `previous_response_id` chaining
+- **Background Execution**: Submit long-running tasks and poll for completion
+- **Better Reasoning Support**: Optimized for o-series models with reasoning tracking
+- **Unified Interface**: Consistent API for both synchronous and asynchronous operations
+- **Response Management**: Retrieve, cancel, and delete responses by ID
+
+### Quick Start with Responses API
+
+```javascript
+const mind = new WarpMind({
+  baseURL: 'https://api.openai.com',
+  apiKey: 'your-key',
+  model: 'gpt-4o-mini'
+});
+
+// Basic respond (similar to chat())
+const response = await mind.respond('Explain quantum computing');
+console.log(response.text);
+console.log(response.id);    // Response ID for later retrieval
+console.log(response.usage);  // Token usage
+
+// Streaming respond
+await mind.streamRespond('Write a story', (event) => {
+  if (event.delta) {
+    process.stdout.write(event.delta);
+  }
+});
+
+// Multi-turn conversation with automatic context
+const conv = mind.createConversation({
+  instructions: 'You are a helpful math tutor'
+});
+
+await conv.respond('What is 15 * 24?');
+await conv.respond('Now add 100 to that');  // Remembers context
+await conv.respond('Double it');            // Continues conversation
+
+console.log(conv.getHistory());  // View full conversation
+```
+
+### Responses API Methods
+
+#### `respond(input, options)` → {text, id, usage}
+
+Send a message using the Responses API:
+
+```javascript
+// Simple string input
+const response = await mind.respond('Hello, world!');
+
+// With instructions (system prompt)
+const response = await mind.respond('Analyze this data', {
+  instructions: 'You are a data analyst',
+  model: 'gpt-4o',
+  temperature: 0.7
+});
+
+// Conversation chaining
+const first = await mind.respond('Remember the number 42');
+const second = await mind.respond('What number did I tell you?', {
+  previous_response_id: first.id
+});
+
+// With metadata
+const response = await mind.respond('Hello', {
+  metadata: {
+    user_id: '123',
+    session_id: 'abc'
+  }
+});
+```
+
+**Input Formats:**
+- String: `"Hello"`
+- Chat Completions format: `[{role: 'user', content: 'Hello'}]`
+- Responses API format: `[{type: 'message', role: 'user', content: [...]}]`
+
+**Options:**
+- `instructions` (string): System instructions
+- `model` (string): Model to use
+- `previous_response_id` (string): Previous response ID for chaining
+- `store` (boolean): Store response for later retrieval (default: true)
+- `metadata` (object): Custom metadata (max 16 key-value pairs)
+- `temperature` (number): Response creativity (0-2)
+- `max_output_tokens` (number): Maximum tokens in response
+- `reasoning` (object): Reasoning settings for GPT-5 and o-series models
+  - `effort`: Control thinking depth - `'minimal'`, `'low'`, `'medium'`, or `'high'`
+    - `minimal`: Fast responses with minimal reasoning
+    - `low`: Light reasoning for simple tasks
+    - `medium`: Balanced reasoning (default)
+    - `high`: Deep reasoning for complex problems
+
+**Reasoning Example:**
+
+```javascript
+// Fast response with minimal thinking
+const quick = await mind.respond('What is 2+2?', {
+  reasoning: { effort: 'minimal' }
+});
+
+// Deep reasoning for complex problems
+const deep = await mind.respond('Explain quantum entanglement', {
+  reasoning: { effort: 'high' }
+});
+
+// Check reasoning token usage
+console.log(deep.usage.output_tokens_details.reasoning_tokens);
+```
+
+#### `streamRespond(input, onChunk, options)` → {text, id, usage}
+
+Stream responses in real-time:
+
+```javascript
+let fullText = '';
+
+const response = await mind.streamRespond(
+  'Count from 1 to 10',
+  (event) => {
+    if (event.delta) {
+      fullText += event.delta;
+      console.log(event.delta);
+    }
+  },
+  {
+    instructions: 'Count slowly',
+    temperature: 0.5
+  }
+);
+
+console.log('Final:', response.text);
+console.log('ID:', response.id);
+```
+
+**onChunk Event:**
+- `delta` (string): Text chunk
+- `tool_calls` (array): Tool call deltas
+
+**Options:** Same as `respond()`
+
+#### `createConversation(options)` → Conversation
+
+Create a stateful conversation instance:
+
+```javascript
+const conversation = mind.createConversation({
+  instructions: 'You are a helpful assistant',
+  model: 'gpt-4o'
+});
+
+// Send messages - context is automatically maintained
+await conversation.respond('My name is Alice');
+await conversation.respond('What is my name?');  // Knows it's Alice
+
+// Streaming in conversations
+await conversation.streamRespond('Tell me a joke', (event) => {
+  if (event.delta) console.log(event.delta);
+});
+
+// Conversation management
+console.log(conversation.getHistory());           // Get all messages
+console.log(conversation.getMessageCount());      // Count messages
+console.log(conversation.getLastMessage());       // Get last message
+
+// Export/import for persistence (localStorage)
+const exported = conversation.exportHistory();
+localStorage.setItem('my-conversation', exported);
+
+// Later...
+const restored = mind.createConversation();
+restored.importHistory(localStorage.getItem('my-conversation'));
+
+// Clear conversation
+await conversation.clear();
+```
+
+**Conversation Methods:**
+- `respond(input, options)` - Send a message
+- `streamRespond(input, onChunk, options)` - Stream a message
+- `getHistory()` - Get conversation history
+- `getMessageCount()` - Get number of messages
+- `getLastMessage()` - Get last message
+- `exportHistory()` - Export to JSON string
+- `importHistory(data)` - Import from JSON string
+- `clear()` - Clear conversation history
+
+#### `getResponse(responseId, options)` → Response
+
+Retrieve a response by ID:
+
+```javascript
+const response = await mind.getResponse('resp_abc123');
+
+// With additional data
+const response = await mind.getResponse('resp_abc123', {
+  include: [
+    'message.output_text.logprobs',
+    'reasoning.encrypted_content'
+  ]
+});
+```
+
+#### `deleteResponse(responseId)` → Confirmation
+
+Delete a stored response:
+
+```javascript
+await mind.deleteResponse('resp_abc123');
+```
+
+#### `cancelResponse(responseId)` → Confirmation
+
+Cancel a response that's in progress:
+
+```javascript
+await mind.cancelResponse('resp_abc123');
+```
+
+#### `respondBackground(input, options)` → responseId
+
+Submit a background task and return immediately:
+
+```javascript
+const taskId = await mind.respondBackground('Write a long essay', {
+  instructions: 'Be detailed and thorough'
+});
+
+console.log('Task submitted:', taskId);
+
+// Later, poll for completion
+const result = await mind.pollUntilComplete(taskId);
+console.log('Task complete:', result);
+```
+
+#### `pollUntilComplete(responseId, options)` → Response
+
+Poll a background response until it's completed:
+
+```javascript
+const result = await mind.pollUntilComplete('resp_abc123', {
+  maxWaitMs: 300000,      // Max 5 minutes
+  initialDelayMs: 1000    // Start with 1 second
+});
+
+// Uses exponential backoff: 1s → 2s → 4s → 8s (max 10s)
+```
+
+### Responses API with Tools
+
+Tools work seamlessly with the Responses API - just use `registerTool()` as before:
+
+```javascript
+// Register a tool (same as before)
+mind.registerTool(
+  'get_weather',
+  async (args) => {
+    return { temperature: 22, condition: 'sunny' };
+  },
+  {
+    description: 'Get current weather',
+    parameters: {
+      type: 'object',
+      properties: {
+        location: { type: 'string', description: 'City name' }
+      },
+      required: ['location']
+    }
+  }
+);
+
+// Tool is automatically available in Responses API
+const response = await mind.respond('What is the weather in Paris?');
+// Tool is executed automatically, just like with chat()
+```
+
+### Backward Compatibility
+
+**All existing WarpMind methods work unchanged:**
+
+```javascript
+// Old API (Chat Completions) - still works perfectly
+await mind.chat('Hello');
+await mind.streamChat(messages, onChunk);
+mind.registerTool(...);  // Works with both APIs
+
+// New API (Responses) - added alongside
+await mind.respond('Hello');
+await mind.streamRespond(input, onChunk);
+const conv = mind.createConversation();
+
+// Tools, memory, PDF, vision, audio - all compatible with both APIs
+```
+
+### Migration Guide
+
+**From `chat()` to `respond()`:**
+
+```javascript
+// Before (Chat Completions)
+const response = await mind.chat([
+  { role: 'system', content: 'You are helpful' },
+  { role: 'user', content: 'Hello' }
+]);
+
+// After (Responses API - simpler)
+const response = await mind.respond('Hello', {
+  instructions: 'You are helpful'
+});
+console.log(response.text);  // Note: returns object, not string
+```
+
+**From `streamChat()` to `streamRespond()`:**
+
+```javascript
+// Before
+await mind.streamChat(messages, (chunk) => {
+  console.log(chunk.content);  // Note: chunk.content
+});
+
+// After
+await mind.streamRespond(input, (event) => {
+  console.log(event.delta);  // Note: event.delta
+});
+```
+
+**Conversation Management:**
+
+```javascript
+// Before - manual history tracking
+let history = [];
+history.push({ role: 'user', content: 'Hello' });
+const resp1 = await mind.chat(history);
+history.push({ role: 'assistant', content: resp1 });
+history.push({ role: 'user', content: 'How are you?' });
+const resp2 = await mind.chat(history);
+
+// After - automatic with Conversation
+const conv = mind.createConversation();
+await conv.respond('Hello');
+await conv.respond('How are you?');
+// Context is maintained automatically!
+```
+
+### Example: Complete Responses API Demo
+
+See `examples/responses-demo.html` for a full interactive demo showcasing:
+- Basic respond() usage
+- Streaming responses
+- Conversation management with export/import
+- Tool calling integration
+- Response management (get, cancel, delete)
+- Background tasks with polling
 
 ## Multi-Modal Processing
 
