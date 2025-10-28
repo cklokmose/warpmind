@@ -261,9 +261,9 @@ WarpMind supports OpenAI's new **Responses API** (`/v1/responses`), which provid
 
 ```javascript
 const mind = new WarpMind({
-  baseURL: 'https://api.openai.com',
+  baseURL: 'https://warp.cs.au.dk/mind',
   apiKey: 'your-key',
-  model: 'gpt-4o-mini'
+  model: 'gpt-5'
 });
 
 // Basic respond (similar to chat())
