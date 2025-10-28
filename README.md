@@ -9,7 +9,7 @@ JavaScript library for easy AI integration in web browsers. Designed to work wit
 - [Examples](#examples)
 - [Configuration Options](#configuration-options)
 - [Core Methods](#core-methods)
-- [Responses API (New)](#responses-api-new)
+- [Responses API](#responses-api)
 - [Multi-Modal Processing](#multi-modal-processing)
 - [Structured Data Processing](#structured-data-processing)
 - [Memory System](#memory-system)
