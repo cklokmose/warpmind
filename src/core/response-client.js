@@ -312,8 +312,8 @@ class ResponseClient {
       payload.instructions = options.instructions;
     }
 
-    // Add tools (Responses API format)
-    if (mind._tools && mind._tools.length > 0) {
+    // Add tools (Responses API format) - but respect tool_choice: 'none'
+    if (mind._tools && mind._tools.length > 0 && options.tool_choice !== 'none') {
       payload.tools = mind._tools.map(tool => ({
         type: 'function',
         name: tool.schema.function.name,
@@ -321,15 +321,28 @@ class ResponseClient {
         parameters: tool.schema.function.parameters
       }));
     }
+    
+    // Remove tool_choice from payload if set to 'none' (don't send it to API)
+    if (payload.tool_choice === 'none') {
+      delete payload.tool_choice;
+    }
+
+    // Prepare headers
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (mind.authType === 'bearer') {
+      headers['Authorization'] = `Bearer ${mind.apiKey}`;
+    } else {
+      headers['api-key'] = mind.apiKey;
+    }
 
     // Make streaming request (similar to streamChat implementation)
     const url = mind._buildApiUrl('/responses');
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': mind.apiKey
-      },
+      headers: headers,
       body: JSON.stringify(payload)
     });
 

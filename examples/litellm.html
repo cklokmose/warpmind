@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiteLLM Test - Towers of Hanoi</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .test-section { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 5px; }
+        .test-section h2 { margin-top: 0; color: #333; }
+        button { padding: 10px 15px; margin: 5px; font-size: 14px; cursor: pointer; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        #output { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px; 
+                 max-height: 400px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; }
+        #game-container { margin-top: 20px; border: 1px solid #ccc; padding: 20px; min-height: 300px; }
+    </style>
+</head>
+<body>
+    <h1>🤖 LiteLLM Test: Towers of Hanoi</h1>
+    <p>Testing connection to LiteLLM by asking AI to generate a Towers of Hanoi game.</p>
+
+    <!-- Configuration Section -->
+    <div class="test-section" style="background-color: #f8f9fa; border: 2px solid #007cba;">
+        <h2>⚙️ Configuration</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+            <div>
+                <label for="serverURL" style="display: block; margin-bottom: 5px; font-weight: bold;">Server URL:</label>
+                <input type="text" id="serverURL" placeholder="http://localhost:4000" 
+                       style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div>
+                <label for="apiKeyInput" style="display: block; margin-bottom: 5px; font-weight: bold;">API Key (optional):</label>
+                <input type="password" id="apiKeyInput" placeholder="sk-1234 (dummy key for LiteLLM)" 
+                       style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div>
+                <label for="modelInput" style="display: block; margin-bottom: 5px; font-weight: bold;">Model:</label>
+                <input type="text" id="modelInput" placeholder="gpt-3.5-turbo" 
+                       style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div>
+                <label for="authTypeInput" style="display: block; margin-bottom: 5px; font-weight: bold;">Auth Type:</label>
+                <select id="authTypeInput" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="bearer">Bearer (OpenAI/LiteLLM)</option>
+                    <option value="default">Default (Proxy)</option>
+                </select>
+            </div>
+        </div>
+        <div style="text-align: center;">
+            <button onclick="updateConfiguration()" style="background-color: #007cba; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                🔄 Update Configuration
+            </button>
+            <button onclick="resetConfiguration()" style="background-color: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                🔄 Reset to Defaults
+            </button>
+        </div>
+        <div id="configStatus" style="margin-top: 10px; padding: 10px; border-radius: 4px; text-align: center; display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎮 Generate Game</h2>
+        <button onclick="generateGame()" style="background-color: #28a745; color: white; font-size: 16px;">Generate Towers of Hanoi</button>
+        <div id="output">Ready to generate...</div>
+    </div>
+
+    <div id="game-container">
+        <h3>Game Preview</h3>
+        <div id="game-content"></div>
+    </div>
+
+    <script src="../dist/warpmind.js"></script>
+    <script>
+        // Configuration management
+        const DEFAULT_CONFIG = {
+            baseURL: 'http://localhost:4000',
+            apiKey: 'sk-1234',
+            model: 'gpt-3.5-turbo',
+            authType: 'bearer',
+            memoryToolEnabled: false // Disable memory tool to prevent tool calls
+        };
+
+        // Load configuration from localStorage or use defaults
+        function loadConfiguration() {
+            const savedConfig = localStorage.getItem('warpMind-litellm-config');
+            if (savedConfig) {
+                try {
+                    return JSON.parse(savedConfig);
+                } catch (e) {
+                    console.warn('Failed to parse saved config, using defaults');
+                    return DEFAULT_CONFIG;
+                }
+            }
+            return DEFAULT_CONFIG;
+        }
+
+        // Save configuration to localStorage
+        function saveConfiguration(config) {
+            localStorage.setItem('warpMind-litellm-config', JSON.stringify(config));
+        }
+
+        // Initialize configuration
+        let currentConfig = loadConfiguration();
+        
+        // FORCE DISABLE MEMORY TOOL for this test file
+        // This overrides any saved configuration to ensure the test works as expected
+        currentConfig.memoryToolEnabled = false;
+        
+        // Initialize WarpMind with current configuration
+        let wm = new WarpMind(currentConfig);
+
+        // Initialize form inputs
+        function initializeForm() {
+            document.getElementById('serverURL').value = currentConfig.baseURL;
+            document.getElementById('apiKeyInput').value = currentConfig.apiKey || '';
+            document.getElementById('modelInput').value = currentConfig.model || 'gpt-3.5-turbo';
+            document.getElementById('authTypeInput').value = currentConfig.authType || 'bearer';
+        }
+
+        // Update configuration from form inputs
+        function updateConfiguration() {
+            const serverURL = document.getElementById('serverURL').value.trim();
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const model = document.getElementById('modelInput').value.trim();
+            const authType = document.getElementById('authTypeInput').value;
+            
+            if (!serverURL) {
+                showConfigStatus('Please enter a server URL', 'error');
+                return;
+            }
+
+            // Build configuration object
+            const newConfig = { 
+                baseURL: serverURL,
+                apiKey: apiKey,
+                model: model,
+                authType: authType,
+                memoryToolEnabled: false // Ensure memory tool stays disabled
+            };
+
+            currentConfig = newConfig;
+            saveConfiguration(currentConfig);
+            
+            // Reinitialize WarpMind with new config
+            wm = new WarpMind(currentConfig);
+            
+            showConfigStatus('Configuration updated successfully!', 'success');
+            log('🔄 Configuration updated and saved to localStorage');
+        }
+
+        // Reset configuration to defaults
+        function resetConfiguration() {
+            currentConfig = { ...DEFAULT_CONFIG };
+            saveConfiguration(currentConfig);
+            initializeForm();
+            
+            // Reinitialize WarpMind
+            wm = new WarpMind(currentConfig);
+            
+            showConfigStatus('Configuration reset to defaults', 'info');
+            log('🔄 Configuration reset to defaults');
+        }
+
+        // Show configuration status message
+        function showConfigStatus(message, type) {
+            const statusDiv = document.getElementById('configStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        /**
+         * Extract code from various response formats that models like devstral return.
+         * Handles: {code: "..."}, {answer: "..."}, {"name": "tool", "arguments": {...}}, etc.
+         */
+        function extractCodeFromResponse(response) {
+            if (!response || typeof response !== 'string') {
+                return response || '';
+            }
+            
+            // If it already looks like HTML, return as-is
+            if (response.trim().startsWith('<!DOCTYPE') || response.trim().startsWith('<html')) {
+                return response;
+            }
+            
+            // Try to parse as complete JSON first
+            try {
+                const parsed = JSON.parse(response);
+                // Handle {code: "..."}, {answer: "..."}, {content: "..."}, {text: "..."}
+                const extracted = parsed.code || parsed.answer || parsed.content || parsed.text || parsed.html;
+                if (extracted) {
+                    log('Extracted content from JSON response', 'info');
+                    return extracted;
+                }
+                // Handle tool call format: {name: "...", arguments: {code: "..."}}
+                if (parsed.arguments) {
+                    const argCode = parsed.arguments.code || parsed.arguments.content || parsed.arguments.html;
+                    if (argCode) {
+                        log('Extracted content from tool call arguments', 'info');
+                        return argCode;
+                    }
+                }
+            } catch (e) {
+                // Not valid JSON, try regex extraction
+            }
+            
+            // Try to extract HTML from partial/malformed JSON using regex
+            // Match patterns like: "code": "<!DOCTYPE..." or "answer": "<html..."
+            const jsonValueMatch = response.match(/["'](?:code|answer|content|text|html)["']\s*:\s*["']((<!DOCTYPE|<html)[\s\S]*)/i);
+            if (jsonValueMatch) {
+                let extracted = jsonValueMatch[1];
+                // Try to find the end of the JSON string value
+                // Look for unescaped quote followed by } or ,
+                const endMatch = extracted.match(/([\s\S]*?)(?:["'](?:\s*[,}]|$))/);
+                if (endMatch) {
+                    extracted = endMatch[1];
+                }
+                // Unescape JSON string escapes
+                extracted = extracted.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                log('Extracted HTML from JSON string pattern', 'info');
+                return extracted;
+            }
+            
+            // Try to find HTML anywhere in the response
+            const htmlMatch = response.match(/(<!DOCTYPE[\s\S]*<\/html>)/i) || 
+                              response.match(/(<html[\s\S]*<\/html>)/i);
+            if (htmlMatch) {
+                log('Extracted HTML block from response', 'info');
+                return htmlMatch[1];
+            }
+            
+            // Last resort: return original
+            return response;
+        }
+
+        async function generateGame() {
+            const gameContent = document.getElementById('game-content');
+            gameContent.innerHTML = '';
+            output.textContent = '';
+            
+            log('Generating Towers of Hanoi game code using Responses API...');
+            
+            const prompt = `Create a complete Towers of Hanoi game as a single HTML file with embedded CSS and JavaScript. Include 3 towers, 4 colorful disks, click-to-move gameplay, win detection, and a reset button.`;
+
+            try {
+                let fullResponse = '';
+                
+                // Create a pre/code block for the output
+                gameContent.innerHTML = '<pre><code id="code-display" style="display:block; padding:10px; background:#f4f4f4; overflow-x:auto;"></code></pre>';
+                const codeDisplay = document.getElementById('code-display');
+                
+                log('Starting stream...', 'info');
+                console.log('Starting stream request...');
+
+                const result = await wm.streamRespond(prompt, (event) => {
+                    console.log('Stream event received:', event);
+                    if (event.delta) {
+                        fullResponse += event.delta;
+                        codeDisplay.textContent = fullResponse;
+                    }
+                }, {
+                    instructions: 'You are a code completion assistant. You have NO tools or functions available. You cannot write files, create files, or call any functions. You can ONLY output text directly. Complete the code that the user starts. Output raw code only, no JSON, no markdown.',
+                    tool_choice: 'none'
+                });
+
+                console.log('Stream finished. Full response:', fullResponse);
+                console.log('Result object:', result);
+
+                if (!fullResponse) {
+                    log('Warning: No content received from stream.', 'error');
+                    if (result && result.text) {
+                        log('Found text in result object, displaying it.', 'info');
+                        fullResponse = result.text;
+                    }
+                }
+
+                // Extract code from various response formats
+                let displayContent = extractCodeFromResponse(fullResponse);
+                
+                codeDisplay.textContent = displayContent;
+                log('Generation complete!', 'success');
+                
+            } catch (error) {
+                log(`Generation failed: ${error.message}`, 'error');
+                if (error.message.includes('Failed to fetch')) {
+                    log('Tip: Make sure LiteLLM is running (usually on http://localhost:4000)', 'info');
+                }
+            }
+        }
+
+        // Initialize form on load
+        initializeForm();
+    </script>
+</body>
+</html>

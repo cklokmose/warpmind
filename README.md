@@ -93,6 +93,7 @@ Create a new WarpMind instance with these configuration options:
 | `model` | string | `'gpt-4o'` | AI model to use | - |
 | `temperature` | number | `1.0` | Response creativity (0-2) | - |
 | `timeoutMs` | number | `30000` | Request timeout in milliseconds | - |
+| `authType` | string | `'default'` | Authentication type ('default' or 'bearer') | - |
 | `memoryToolEnabled` | boolean | `true` | Enable automatic memory tool | - |
 | `memoryToolExplicitOnly` | boolean | `true` | Only use memory when explicitly requested | - |
 | `memoryToolMaxResults` | number | `5` | Maximum memories per search | - |
@@ -104,13 +105,36 @@ const mind = new WarpMind({
     baseURL: 'https://warp.cs.au.dk/mind/',  // API endpoint
     apiKey: 'your-auth-key',                 // Authentication
     model: 'gpt-4o',                     // Model selection
-    timeoutMs: 30000                         // Request timeout
+    timeoutMs: 30000,                        // Request timeout
+    authType: 'default'                      // 'default' (proxy) or 'bearer' (OpenAI/LiteLLM)
 });
 
 // Runtime configuration changes
 mind.setApiKey('new-auth-key');
 mind.setBaseURL('https://warp.cs.au.dk/mind/');
 mind.setModel('gpt-4o');
+```
+
+### Using with OpenAI or LiteLLM
+
+To use WarpMind directly with OpenAI or a local LiteLLM instance, set `authType` to `'bearer'`:
+
+```javascript
+// Direct OpenAI usage
+const mind = new WarpMind({
+    baseURL: 'https://api.openai.com',
+    apiKey: 'sk-proj-...',
+    authType: 'bearer',
+    model: 'gpt-4o'
+});
+
+// Local LiteLLM usage
+const localMind = new WarpMind({
+    baseURL: 'http://localhost:4000',
+    apiKey: 'sk-1234', // LiteLLM dummy key
+    authType: 'bearer',
+    model: 'gpt-3.5-turbo'
+});
 ```
 
 ### Token Usage Tracking

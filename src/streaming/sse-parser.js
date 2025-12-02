@@ -55,6 +55,10 @@ async function parseSSE(reader, onEvent) {
         if (eventType) {
           handleResponsesAPIEvent(eventType, parsed);
         } 
+        // Check if the parsed JSON has a 'type' field (Responses API format without SSE event type)
+        else if (parsed.type && parsed.type.startsWith('response.')) {
+          handleResponsesAPIEvent(parsed.type, parsed);
+        }
         // Chat Completions API format (no event type)
         else {
           handleChatCompletionsEvent(parsed);
@@ -72,9 +76,6 @@ async function parseSSE(reader, onEvent) {
    */
   function handleResponsesAPIEvent(type, data) {
     const eventData = {};
-    
-    // Debug logging
-    console.log('SSE Event Type:', type, 'Data:', data);
 
     switch (type) {
       case 'response.created':
@@ -124,7 +125,6 @@ async function parseSSE(reader, onEvent) {
       case 'response.completed':
       case 'response.done':
         // Final event with full response
-        console.log('response.completed/done event received:', data);
         responseId = data.response?.id || data.id || responseId;
         usage = data.response?.usage || data.usage;
         break;
@@ -135,8 +135,7 @@ async function parseSSE(reader, onEvent) {
         break;
 
       default:
-        // Ignore unknown event types (but log for debugging)
-        console.log('Unknown event type:', type);
+        // Ignore unknown event types
         break;
     }
   }

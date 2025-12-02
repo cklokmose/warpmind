@@ -119,6 +119,11 @@ class WarpMind extends BaseClient {
     
     super(config); // Call BaseClient constructor
     
+    console.log('WarpMind initialized with config:', {
+      ...config,
+      apiKey: config.apiKey ? '***' : 'missing'
+    });
+
     // Initialize tool registry
     this._tools = [];
     
@@ -497,12 +502,19 @@ class WarpMind extends BaseClient {
     let hasToolCalls = false;
     
     try {
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      if (this.authType === 'bearer') {
+        headers['Authorization'] = `Bearer ${this.apiKey}`;
+      } else {
+        headers['api-key'] = this.apiKey;
+      }
+
       const response = await fetch(this._buildApiUrl('/chat/completions'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api-key': this.apiKey
-        },
+        headers: headers,
         body: JSON.stringify(requestData),
         signal: controller.signal
       });

@@ -32,6 +32,7 @@ class BaseClient {
     this.temperature = config.temperature || 0.7;
     this.defaultTimeoutMs = config.defaultTimeoutMs || 60000;
     this.customHeaders = config.customHeaders || {}; // Support for custom headers
+    this.authType = config.authType || 'default';
   }
 
   /**
@@ -73,12 +74,14 @@ class BaseClient {
    * @param {string} params.model - Model name
    * @param {string} params.apiKey - API key
    * @param {string} params.baseURL - Base URL
+   * @param {string} params.authType - Auth type ('default' or 'bearer')
    */
   configure(params = {}) {
     if (params.temperature !== undefined) this.temperature = params.temperature;
     if (params.model !== undefined) this.model = params.model;
     if (params.apiKey !== undefined) this.apiKey = params.apiKey;
     if (params.baseURL !== undefined) this.baseURL = params.baseURL;
+    if (params.authType !== undefined) this.authType = params.authType;
   }
 
   /**
@@ -151,13 +154,20 @@ class BaseClient {
       const { controller, timeoutId } = createTimeoutController(timeoutMs);
       
       try {
+        const headers = {
+          'Content-Type': 'application/json',
+          ...this.customHeaders
+        };
+
+        if (this.authType === 'bearer') {
+          headers['Authorization'] = `Bearer ${this.apiKey}`;
+        } else {
+          headers['api-key'] = this.apiKey; // Custom header for proxy authentication
+        }
+
         const fetchOptions = {
           method: method,
-          headers: {
-            'Content-Type': 'application/json',
-            'api-key': this.apiKey, // Custom header for proxy authentication
-            ...this.customHeaders    // Merge any custom headers (e.g., session keys)
-          },
+          headers: headers,
           signal: controller ? controller.signal : undefined
         };
 

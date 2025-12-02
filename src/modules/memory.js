@@ -346,6 +346,9 @@ function createMemoryModule(client) {
     } catch (error) {
       console.warn('Failed to register memory tool:', error.message);
     }
+  } else if (client.unregisterTool && typeof client.unregisterTool === 'function') {
+    // Ensure tool is unregistered if disabled
+    client.unregisterTool("recall_memory");
   }
 
   return {
