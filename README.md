@@ -92,7 +92,7 @@ Create a new WarpMind instance with these configuration options:
 | `apiKey` | string | Optional | Authentication key (prompted if missing) | - |
 | `model` | string | `'gpt-4o'` | AI model to use | - |
 | `temperature` | number | `1.0` | Response creativity (0-2) | - |
-| `timeoutMs` | number | `30000` | Request timeout in milliseconds | - |
+| `defaultTimeoutMs` | number | `60000` | Default request timeout in milliseconds | - |
 | `authType` | string | `'default'` | Authentication type ('default' or 'bearer') | - |
 | `memoryToolEnabled` | boolean | `true` | Enable automatic memory tool | - |
 | `memoryToolExplicitOnly` | boolean | `true` | Only use memory when explicitly requested | - |

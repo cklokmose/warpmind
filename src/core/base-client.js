@@ -75,6 +75,7 @@ class BaseClient {
    * @param {string} params.apiKey - API key
    * @param {string} params.baseURL - Base URL
    * @param {string} params.authType - Auth type ('default' or 'bearer')
+   * @param {number} params.defaultTimeoutMs - Default timeout in milliseconds
    */
   configure(params = {}) {
     if (params.temperature !== undefined) this.temperature = params.temperature;
@@ -82,6 +83,7 @@ class BaseClient {
     if (params.apiKey !== undefined) this.apiKey = params.apiKey;
     if (params.baseURL !== undefined) this.baseURL = params.baseURL;
     if (params.authType !== undefined) this.authType = params.authType;
+    if (params.defaultTimeoutMs !== undefined) this.defaultTimeoutMs = params.defaultTimeoutMs;
   }
 
   /**
@@ -142,7 +144,7 @@ class BaseClient {
       throw new Error('API key is required. Use setApiKey() to set your proxy authentication key.');
     }
 
-    const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
+    const timeoutMs = options.timeoutMs !== undefined ? options.timeoutMs : this.defaultTimeoutMs;
     const maxRetries = options.maxRetries !== undefined ? options.maxRetries : 5;
     const method = options.method || 'POST';
     const queryParams = options.queryParams || {};

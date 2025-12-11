@@ -493,7 +493,7 @@ class WarpMind extends BaseClient {
     
     Object.assign(requestData, filteredOptions);
 
-    const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
+    const timeoutMs = options.timeoutMs !== undefined ? options.timeoutMs : this.defaultTimeoutMs;
     const { controller, timeoutId } = createTimeoutController(timeoutMs);
     
     // Internal accumulator for full response
