@@ -14,9 +14,9 @@ describe('API Authentication Tests', () => {
   beforeEach(() => {
     warpMind = new WarpMind({
       apiKey: 'sk-test-key-123',
-      baseURL: 'https://api.test.com/v1'
+      baseURL: 'https://api.test.com/v1',
     });
-    
+
     jest.clearAllMocks();
   });
 
@@ -25,7 +25,7 @@ describe('API Authentication Tests', () => {
     fetch.mockResolvedValue({
       ok: true,
       blob: () => Promise.resolve(mockBlob),
-      headers: { get: () => 'audio/mp3' }
+      headers: { get: () => 'audio/mp3' },
     });
 
     await warpMind.textToSpeech('Hello');
@@ -34,8 +34,8 @@ describe('API Authentication Tests', () => {
       'https://api.test.com/v1/audio/speech',
       expect.objectContaining({
         headers: expect.objectContaining({
-          'Authorization': 'Bearer sk-test-key-123'
-        })
+          Authorization: 'Bearer sk-test-key-123',
+        }),
       })
     );
   });
@@ -44,7 +44,7 @@ describe('API Authentication Tests', () => {
     const mockFile = new File(['audio data'], 'test.wav', { type: 'audio/wav' });
     fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ text: 'Hello world' })
+      json: () => Promise.resolve({ text: 'Hello world' }),
     });
 
     await warpMind.speechToText(mockFile);
@@ -53,8 +53,8 @@ describe('API Authentication Tests', () => {
       'https://api.test.com/v1/audio/transcriptions',
       expect.objectContaining({
         headers: expect.objectContaining({
-          'Authorization': 'Bearer sk-test-key-123'
-        })
+          Authorization: 'Bearer sk-test-key-123',
+        }),
       })
     );
   });
@@ -62,9 +62,10 @@ describe('API Authentication Tests', () => {
   test('chat should use Authorization header', async () => {
     fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({
-        choices: [{ message: { content: 'Hello!' } }]
-      })
+      json: () =>
+        Promise.resolve({
+          choices: [{ message: { content: 'Hello!' } }],
+        }),
     });
 
     await warpMind.chat('Hello');
@@ -73,8 +74,8 @@ describe('API Authentication Tests', () => {
       'https://api.test.com/v1/chat/completions',
       expect.objectContaining({
         headers: expect.objectContaining({
-          'Authorization': 'Bearer sk-test-key-123'
-        })
+          Authorization: 'Bearer sk-test-key-123',
+        }),
       })
     );
   });
@@ -82,14 +83,16 @@ describe('API Authentication Tests', () => {
   test('streamChat should use Authorization header', async () => {
     const mockStream = new ReadableStream({
       start(controller) {
-        controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n'));
+        controller.enqueue(
+          new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n')
+        );
         controller.close();
-      }
+      },
     });
 
     fetch.mockResolvedValue({
       ok: true,
-      body: mockStream
+      body: mockStream,
     });
 
     await warpMind.streamChat('Hello', () => {});
@@ -98,8 +101,8 @@ describe('API Authentication Tests', () => {
       'https://api.test.com/v1/chat/completions',
       expect.objectContaining({
         headers: expect.objectContaining({
-          'Authorization': 'Bearer sk-test-key-123'
-        })
+          Authorization: 'Bearer sk-test-key-123',
+        }),
       })
     );
   });
@@ -107,15 +110,15 @@ describe('API Authentication Tests', () => {
   test('speechToText streaming should simulate streaming when onPartial is provided', async () => {
     const mockFile = new File(['audio data'], 'test.wav', { type: 'audio/wav' });
     const partialResults = [];
-    
+
     fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ text: 'Hello world from streaming' })
+      json: () => Promise.resolve({ text: 'Hello world from streaming' }),
     });
 
     const result = await warpMind.speechToText(mockFile, {
       stream: true,
-      onPartial: (text) => partialResults.push(text)
+      onPartial: (text) => partialResults.push(text),
     });
 
     expect(result).toBe('Hello world from streaming');

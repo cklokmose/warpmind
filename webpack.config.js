@@ -7,13 +7,13 @@ module.exports = {
     path: path.resolve(__dirname, 'dist'),
     library: 'WarpMind',
     libraryTarget: 'umd',
-    globalObject: 'this'
+    globalObject: 'this',
   },
   mode: 'production',
   optimization: {
     usedExports: false,
     sideEffects: false,
-    minimize: false
+    minimize: false,
   },
   devServer: {
     static: {
@@ -24,13 +24,13 @@ module.exports = {
   },
   resolve: {
     fallback: {
-      "fs": false,
-      "path": false,
-      "os": false,
-      "pdfjs-dist/legacy/build/pdf.js": false
-    }
+      fs: false,
+      path: false,
+      os: false,
+      'pdfjs-dist/legacy/build/pdf.js': false,
+    },
   },
   externals: {
-    'pdfjs-dist/legacy/build/pdf.js': 'pdfjsLib'
-  }
+    'pdfjs-dist/legacy/build/pdf.js': 'pdfjsLib',
+  },
 };

@@ -16,9 +16,9 @@ describe('WarpMind Audio Streaming Tests', () => {
   beforeEach(() => {
     warpMind = new WarpMind({
       apiKey: 'test-key',
-      baseURL: 'https://api.test.com/v1'
+      baseURL: 'https://api.test.com/v1',
     });
-    
+
     // Reset all mocks
     jest.clearAllMocks();
   });
@@ -34,13 +34,13 @@ describe('WarpMind Audio Streaming Tests', () => {
       const mockResponse = {
         ok: true,
         blob: jest.fn().mockResolvedValue(mockBlob),
-        headers: { get: () => 'audio/mp3' }
+        headers: { get: () => 'audio/mp3' },
       };
 
       fetch.mockResolvedValue(mockResponse);
 
       const result = await warpMind.textToSpeech('Hello world');
-      
+
       expect(result).toBe(mockBlob);
       expect(fetch).toHaveBeenCalledWith(
         'https://api.test.com/v1/audio/speech',
@@ -48,15 +48,15 @@ describe('WarpMind Audio Streaming Tests', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'api-key': 'test-key'
+            'api-key': 'test-key',
           },
           body: JSON.stringify({
             model: 'warp/tts',
             input: 'Hello world',
             voice: 'alloy',
             response_format: 'mp3',
-            speed: 1.0
-          })
+            speed: 1.0,
+          }),
         })
       );
     });
@@ -65,20 +65,21 @@ describe('WarpMind Audio Streaming Tests', () => {
       const chunk1 = new Uint8Array([1, 2, 3]);
       const chunk2 = new Uint8Array([4, 5, 6]);
       const chunk3 = new Uint8Array([7, 8, 9]);
-      
+
       const mockReader = {
-        read: jest.fn()
+        read: jest
+          .fn()
           .mockResolvedValueOnce({ done: false, value: chunk1 })
           .mockResolvedValueOnce({ done: false, value: chunk2 })
           .mockResolvedValueOnce({ done: false, value: chunk3 })
           .mockResolvedValueOnce({ done: true }),
-        releaseLock: jest.fn()
+        releaseLock: jest.fn(),
       };
 
       const mockResponse = {
         ok: true,
         body: { getReader: () => mockReader },
-        headers: { get: () => 'audio/opus' }
+        headers: { get: () => 'audio/opus' },
       };
 
       fetch.mockResolvedValue(mockResponse);
@@ -88,7 +89,7 @@ describe('WarpMind Audio Streaming Tests', () => {
 
       const result = await warpMind.textToSpeech('Hello world', {
         stream: true,
-        onChunk: onChunk
+        onChunk: onChunk,
       });
 
       // Should call onChunk for each chunk
@@ -99,7 +100,7 @@ describe('WarpMind Audio Streaming Tests', () => {
 
       // Should return combined blob
       expect(result).toBeInstanceOf(Blob);
-      
+
       // Verify the request included stream parameter
       expect(fetch).toHaveBeenCalledWith(
         'https://api.test.com/v1/audio/speech',
@@ -110,8 +111,8 @@ describe('WarpMind Audio Streaming Tests', () => {
             voice: 'alloy',
             response_format: 'opus', // Should default to opus for streaming
             speed: 1.0,
-            stream: true
-          })
+            stream: true,
+          }),
         })
       );
     });
@@ -119,13 +120,13 @@ describe('WarpMind Audio Streaming Tests', () => {
     test('should use custom options in streaming mode', async () => {
       const mockReader = {
         read: jest.fn().mockResolvedValueOnce({ done: true }),
-        releaseLock: jest.fn()
+        releaseLock: jest.fn(),
       };
 
       const mockResponse = {
         ok: true,
         body: { getReader: () => mockReader },
-        headers: { get: () => 'audio/mp3' }
+        headers: { get: () => 'audio/mp3' },
       };
 
       fetch.mockResolvedValue(mockResponse);
@@ -136,7 +137,7 @@ describe('WarpMind Audio Streaming Tests', () => {
         voice: 'nova',
         format: 'mp3',
         speed: 1.2,
-        onChunk: () => {}
+        onChunk: () => {},
       });
 
       expect(fetch).toHaveBeenCalledWith(
@@ -148,8 +149,8 @@ describe('WarpMind Audio Streaming Tests', () => {
             voice: 'nova',
             response_format: 'mp3',
             speed: 1.2,
-            stream: true
-          })
+            stream: true,
+          }),
         })
       );
     });
@@ -157,14 +158,14 @@ describe('WarpMind Audio Streaming Tests', () => {
     test('should handle timeout in streaming mode', async () => {
       const abortError = new Error('The operation was aborted');
       abortError.name = 'AbortError';
-      
+
       fetch.mockRejectedValue(abortError);
 
       await expect(
-        warpMind.textToSpeech('Hello world', { 
-          stream: true, 
+        warpMind.textToSpeech('Hello world', {
+          stream: true,
           onChunk: () => {},
-          timeoutMs: 1000 
+          timeoutMs: 1000,
         })
       ).rejects.toThrow(TimeoutError);
     });
@@ -174,15 +175,15 @@ describe('WarpMind Audio Streaming Tests', () => {
         ok: false,
         status: 400,
         statusText: 'Bad Request',
-        json: jest.fn().mockResolvedValue({ error: { message: 'Invalid voice' } })
+        json: jest.fn().mockResolvedValue({ error: { message: 'Invalid voice' } }),
       };
 
       fetch.mockResolvedValue(mockResponse);
 
       await expect(
-        warpMind.textToSpeech('Hello world', { 
-          stream: true, 
-          onChunk: () => {} 
+        warpMind.textToSpeech('Hello world', {
+          stream: true,
+          onChunk: () => {},
         })
       ).rejects.toThrow('TTS request failed: 400 Bad Request. Invalid voice');
     });
@@ -194,21 +195,21 @@ describe('WarpMind Audio Streaming Tests', () => {
     test('should work in standard non-streaming mode', async () => {
       const mockResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ text: 'Hello world transcription' })
+        json: jest.fn().mockResolvedValue({ text: 'Hello world transcription' }),
       };
 
       fetch.mockResolvedValue(mockResponse);
 
       const result = await warpMind.speechToText(mockAudioFile);
-      
+
       expect(result).toBe('Hello world transcription');
       expect(fetch).toHaveBeenCalledWith(
         'https://api.test.com/v1/audio/transcriptions',
         expect.objectContaining({
           method: 'POST',
           headers: {
-            'api-key': 'test-key'
-          }
+            'api-key': 'test-key',
+          },
         })
       );
 
@@ -220,9 +221,9 @@ describe('WarpMind Audio Streaming Tests', () => {
     test('should handle streaming mode with onPartial callback', async () => {
       const mockResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ 
-          text: 'Hello world transcription streaming test'
-        })
+        json: jest.fn().mockResolvedValue({
+          text: 'Hello world transcription streaming test',
+        }),
       };
 
       fetch.mockResolvedValue(mockResponse);
@@ -232,7 +233,7 @@ describe('WarpMind Audio Streaming Tests', () => {
 
       const result = await warpMind.speechToText(mockAudioFile, {
         stream: true,
-        onPartial: onPartial
+        onPartial: onPartial,
       });
 
       // Should call onPartial multiple times (simulated streaming)
@@ -259,20 +260,21 @@ describe('WarpMind Audio Streaming Tests', () => {
         status: 400,
         statusText: 'Bad Request',
         json: jest.fn().mockResolvedValue({
-          error: { message: 'Invalid audio format' }
-        })
+          error: { message: 'Invalid audio format' },
+        }),
       };
 
       fetch.mockResolvedValue(errorResponse);
 
-      await expect(warpMind.speechToText(mockAudioFile, { stream: true }))
-        .rejects.toThrow('STT request failed: 400 Bad Request. Error details: Invalid audio format');
+      await expect(warpMind.speechToText(mockAudioFile, { stream: true })).rejects.toThrow(
+        'STT request failed: 400 Bad Request. Error details: Invalid audio format'
+      );
     });
 
     test('should use custom options in streaming mode', async () => {
       const mockResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ text: 'Custom test result' })
+        json: jest.fn().mockResolvedValue({ text: 'Custom test result' }),
       };
 
       fetch.mockResolvedValue(mockResponse);
@@ -283,7 +285,7 @@ describe('WarpMind Audio Streaming Tests', () => {
         language: 'en',
         prompt: 'Technical discussion',
         temperature: 0.2,
-        onPartial: () => {}
+        onPartial: () => {},
       });
 
       // Verify the request was made with api-key header
@@ -292,8 +294,8 @@ describe('WarpMind Audio Streaming Tests', () => {
         expect.objectContaining({
           method: 'POST',
           headers: {
-            'api-key': 'test-key'
-          }
+            'api-key': 'test-key',
+          },
         })
       );
     });
@@ -301,14 +303,14 @@ describe('WarpMind Audio Streaming Tests', () => {
     test('should handle timeout in streaming mode', async () => {
       const abortError = new Error('The operation was aborted');
       abortError.name = 'AbortError';
-      
+
       fetch.mockRejectedValue(abortError);
 
       await expect(
-        warpMind.speechToText(mockAudioFile, { 
-          stream: true, 
+        warpMind.speechToText(mockAudioFile, {
+          stream: true,
           onPartial: () => {},
-          timeoutMs: 1000 
+          timeoutMs: 1000,
         })
       ).rejects.toThrow(TimeoutError);
     });
@@ -316,7 +318,7 @@ describe('WarpMind Audio Streaming Tests', () => {
     test('should handle streaming with empty result gracefully', async () => {
       const mockResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ text: '' })
+        json: jest.fn().mockResolvedValue({ text: '' }),
       };
 
       fetch.mockResolvedValue(mockResponse);
@@ -324,7 +326,7 @@ describe('WarpMind Audio Streaming Tests', () => {
       const onPartial = jest.fn();
       const result = await warpMind.speechToText(mockAudioFile, {
         stream: true,
-        onPartial: onPartial
+        onPartial: onPartial,
       });
 
       // Should not call onPartial for empty text
@@ -333,13 +335,13 @@ describe('WarpMind Audio Streaming Tests', () => {
     });
 
     test('should validate audio file input', async () => {
-      await expect(
-        warpMind.speechToText(null)
-      ).rejects.toThrow('Audio file must be a File or Blob object');
+      await expect(warpMind.speechToText(null)).rejects.toThrow(
+        'Audio file must be a File or Blob object'
+      );
 
-      await expect(
-        warpMind.speechToText('not a file')
-      ).rejects.toThrow('Audio file must be a File or Blob object');
+      await expect(warpMind.speechToText('not a file')).rejects.toThrow(
+        'Audio file must be a File or Blob object'
+      );
     });
   });
 
@@ -349,20 +351,20 @@ describe('WarpMind Audio Streaming Tests', () => {
       global.navigator = {
         mediaDevices: {
           getUserMedia: jest.fn().mockResolvedValue({
-            getTracks: () => [{ stop: jest.fn() }]
-          })
-        }
+            getTracks: () => [{ stop: jest.fn() }],
+          }),
+        },
       };
 
       global.MediaRecorder = jest.fn().mockImplementation(() => ({
         start: jest.fn(),
         stop: jest.fn(),
-        addEventListener: jest.fn()
+        addEventListener: jest.fn(),
       }));
 
       const voiceChat = warpMind.createVoiceChat('Test assistant', {
         stt: { stream: true },
-        tts: { stream: true, voice: 'nova' }
+        tts: { stream: true, voice: 'nova' },
       });
 
       expect(voiceChat).toHaveProperty('startRecording');

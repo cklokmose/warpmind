@@ -33,12 +33,12 @@ describe('WarpMind Exponential Back-off Tests', () => {
   beforeEach(() => {
     warpMind = new WarpMind({
       apiKey: 'test-key',
-      baseURL: 'https://api.test.com/v1'
+      baseURL: 'https://api.test.com/v1',
     });
-    
+
     // Reset all mocks first
     jest.clearAllMocks();
-    
+
     // Then mock the utility delay calculation to use smaller delays for testing
     jest.spyOn(utils, 'calculateRetryDelay').mockImplementation((attempt, retryAfter) => {
       if (retryAfter) {
@@ -52,7 +52,7 @@ describe('WarpMind Exponential Back-off Tests', () => {
   afterEach(() => {
     // Restore all mocks
     jest.restoreAllMocks();
-    
+
     // Clean up any pending timers
     jest.clearAllTimers();
   });
@@ -61,35 +61,33 @@ describe('WarpMind Exponential Back-off Tests', () => {
     test('should preserve request data through retries', async () => {
       // Clear any previous mocks to ensure clean state
       fetch.mockClear();
-      
+
       const mockResponse = {
         ok: false,
         status: 429,
         statusText: 'Too Many Requests',
         headers: { get: () => null },
-        json: jest.fn().mockResolvedValue({ error: { message: 'Rate limited' } })
+        json: jest.fn().mockResolvedValue({ error: { message: 'Rate limited' } }),
       };
 
       const successResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] })
+        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] }),
       };
 
-      fetch
-        .mockResolvedValueOnce(mockResponse)
-        .mockResolvedValueOnce(successResponse);
+      fetch.mockResolvedValueOnce(mockResponse).mockResolvedValueOnce(successResponse);
 
       const result = await warpMind.chat('Test message', { temperature: 0.5 });
-      
+
       // Should have succeeded after retry
       expect(result).toBe('Success!');
 
       // Check that both calls had the same request data
       expect(fetch).toHaveBeenCalledTimes(2);
-      
+
       const firstCall = fetch.mock.calls[0];
       const secondCall = fetch.mock.calls[1];
-      
+
       expect(firstCall[1].body).toBe(secondCall[1].body);
       expect(firstCall[1].headers).toEqual(secondCall[1].headers);
     });
@@ -100,18 +98,16 @@ describe('WarpMind Exponential Back-off Tests', () => {
         status: 429,
         statusText: 'Too Many Requests',
         headers: { get: () => null }, // Mock headers.get method
-        json: jest.fn().mockResolvedValue({ error: { message: 'Rate limited' } })
+        json: jest.fn().mockResolvedValue({ error: { message: 'Rate limited' } }),
       };
 
       const successResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] })
+        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] }),
       };
 
       // First call fails with 429, second call succeeds
-      fetch
-        .mockResolvedValueOnce(mockResponse)
-        .mockResolvedValueOnce(successResponse);
+      fetch.mockResolvedValueOnce(mockResponse).mockResolvedValueOnce(successResponse);
 
       const result = await warpMind.chat('Hello', { timeoutMs: 10000 });
       expect(result).toBe('Success!');
@@ -120,27 +116,25 @@ describe('WarpMind Exponential Back-off Tests', () => {
 
     test('should retry on 502, 503, and 524 status codes', async () => {
       const statusCodes = [502, 503, 524];
-      
+
       for (const statusCode of statusCodes) {
         // Reset fetch mock only for each iteration
         fetch.mockClear();
-        
+
         const mockResponse = {
           ok: false,
           status: statusCode,
           statusText: 'Server Error',
           headers: { get: () => null },
-          json: jest.fn().mockResolvedValue({ error: { message: 'Server error' } })
+          json: jest.fn().mockResolvedValue({ error: { message: 'Server error' } }),
         };
 
         const successResponse = {
           ok: true,
-          json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] })
+          json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] }),
         };
 
-        fetch
-          .mockResolvedValueOnce(mockResponse)
-          .mockResolvedValueOnce(successResponse);
+        fetch.mockResolvedValueOnce(mockResponse).mockResolvedValueOnce(successResponse);
 
         const result = await warpMind.chat('Hello', { timeoutMs: 10000 });
         expect(result).toBe('Success!');
@@ -154,7 +148,7 @@ describe('WarpMind Exponential Back-off Tests', () => {
         status: 400,
         statusText: 'Bad Request',
         headers: { get: () => null },
-        json: jest.fn().mockResolvedValue({ error: { message: 'Bad request' } })
+        json: jest.fn().mockResolvedValue({ error: { message: 'Bad request' } }),
       };
 
       fetch.mockResolvedValueOnce(mockResponse);
@@ -168,18 +162,16 @@ describe('WarpMind Exponential Back-off Tests', () => {
         ok: false,
         status: 429,
         statusText: 'Too Many Requests',
-        headers: { get: (header) => header === 'Retry-After' ? '2' : null },
-        json: jest.fn().mockResolvedValue({ error: { message: 'Rate limited' } })
+        headers: { get: (header) => (header === 'Retry-After' ? '2' : null) },
+        json: jest.fn().mockResolvedValue({ error: { message: 'Rate limited' } }),
       };
 
       const successResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] })
+        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] }),
       };
 
-      fetch
-        .mockResolvedValueOnce(mockResponse)
-        .mockResolvedValueOnce(successResponse);
+      fetch.mockResolvedValueOnce(mockResponse).mockResolvedValueOnce(successResponse);
 
       const result = await warpMind.chat('Hello');
       expect(result).toBe('Success!');
@@ -192,19 +184,21 @@ describe('WarpMind Exponential Back-off Tests', () => {
         status: 429,
         statusText: 'Too Many Requests',
         headers: { get: () => null },
-        json: jest.fn().mockResolvedValue({ error: { message: 'Rate limited' } })
+        json: jest.fn().mockResolvedValue({ error: { message: 'Rate limited' } }),
       };
 
       fetch.mockResolvedValue(mockResponse);
 
-      await expect(warpMind.makeRequest('/test', {}, { maxRetries: 2 })).rejects.toThrow('API request failed: 429 Too Many Requests');
+      await expect(warpMind.makeRequest('/test', {}, { maxRetries: 2 })).rejects.toThrow(
+        'API request failed: 429 Too Many Requests'
+      );
       expect(fetch).toHaveBeenCalledTimes(3); // Initial + 2 retries
     });
 
     test('should calculate exponential back-off correctly', () => {
       // Temporarily restore the original method for this test
       jest.restoreAllMocks();
-      
+
       // Test the utility delay calculation method directly
       const delay0 = utils.calculateRetryDelay(0);
       const delay1 = utils.calculateRetryDelay(1);
@@ -213,13 +207,13 @@ describe('WarpMind Exponential Back-off Tests', () => {
       // Base delays should be 500, 1000, 2000 + jitter (0-250)
       expect(delay0).toBeGreaterThanOrEqual(500);
       expect(delay0).toBeLessThanOrEqual(750);
-      
+
       expect(delay1).toBeGreaterThanOrEqual(1000);
       expect(delay1).toBeLessThanOrEqual(1250);
-      
+
       expect(delay2).toBeGreaterThanOrEqual(2000);
       expect(delay2).toBeLessThanOrEqual(2250);
-      
+
       // Re-mock for other tests
       jest.spyOn(utils, 'calculateRetryDelay').mockImplementation((attempt, retryAfter) => {
         if (retryAfter) {
@@ -235,11 +229,11 @@ describe('WarpMind Exponential Back-off Tests', () => {
       // Mock a request that times out
       const abortError = new Error('The operation was aborted');
       abortError.name = 'AbortError';
-      
+
       fetch.mockRejectedValue(abortError);
 
       const promise = warpMind.chat('Hello', { timeoutMs: 1000 });
-      
+
       await expect(promise).rejects.toThrow(TimeoutError);
       await expect(promise).rejects.toThrow('Request timed out after 1000ms');
     });
@@ -247,46 +241,48 @@ describe('WarpMind Exponential Back-off Tests', () => {
     test('should use default timeout when not specified', async () => {
       const abortError = new Error('The operation was aborted');
       abortError.name = 'AbortError';
-      
+
       fetch.mockRejectedValue(abortError);
 
       const promise = warpMind.chat('Hello'); // No timeout specified
-      
+
       await expect(promise).rejects.toThrow(TimeoutError);
     });
 
     test('should clear timeout on successful response', async () => {
       const mockResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] })
+        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] }),
       };
 
       fetch.mockResolvedValueOnce(mockResponse);
 
       const result = await warpMind.chat('Hello', { timeoutMs: 1000 });
-      
+
       expect(result).toBe('Success!');
     });
 
     test('should apply timeout to all public methods', async () => {
       const mockResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ 
-          choices: [{ 
-            message: { content: 'Success!' },
-            text: 'Success!'
-          }] 
-        })
+        json: jest.fn().mockResolvedValue({
+          choices: [
+            {
+              message: { content: 'Success!' },
+              text: 'Success!',
+            },
+          ],
+        }),
       };
 
       fetch.mockResolvedValue(mockResponse);
 
       // Test chat method
       await warpMind.chat('Hello', { timeoutMs: 5000 });
-      
+
       // Test complete method
       await warpMind.complete('Hello', { timeoutMs: 5000 });
-      
+
       // Test ask method
       await warpMind.ask('Hello', { timeoutMs: 5000 });
 
@@ -299,12 +295,10 @@ describe('WarpMind Exponential Back-off Tests', () => {
       const networkError = new TypeError('Failed to fetch');
       const successResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] })
+        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] }),
       };
 
-      fetch
-        .mockRejectedValueOnce(networkError)
-        .mockResolvedValueOnce(successResponse);
+      fetch.mockRejectedValueOnce(networkError).mockResolvedValueOnce(successResponse);
 
       const result = await warpMind.chat('Hello');
       expect(result).toBe('Success!');
@@ -315,7 +309,9 @@ describe('WarpMind Exponential Back-off Tests', () => {
       const networkError = new TypeError('Failed to fetch');
       fetch.mockRejectedValue(networkError);
 
-      await expect(warpMind.makeRequest('/test', {}, { maxRetries: 1 })).rejects.toThrow('Network error: Unable to connect to the API');
+      await expect(warpMind.makeRequest('/test', {}, { maxRetries: 1 })).rejects.toThrow(
+        'Network error: Unable to connect to the API'
+      );
       expect(fetch).toHaveBeenCalledTimes(2); // Initial + 1 retry
     });
   });
@@ -324,15 +320,13 @@ describe('WarpMind Exponential Back-off Tests', () => {
     test('should work with real retry scenario (timeout + retry)', async () => {
       const timeoutError = new Error('AbortError');
       timeoutError.name = 'AbortError';
-      
+
       const successResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] })
+        json: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Success!' } }] }),
       };
 
-      fetch
-        .mockRejectedValueOnce(timeoutError)
-        .mockResolvedValueOnce(successResponse);
+      fetch.mockRejectedValueOnce(timeoutError).mockResolvedValueOnce(successResponse);
 
       // Should timeout first, then succeed on retry
       await expect(warpMind.chat('Hello', { timeoutMs: 100 })).rejects.toThrow(TimeoutError);
@@ -358,7 +352,7 @@ describe('WarpMind Exponential Back-off Tests', () => {
     test('addJitter should add random jitter to delay', () => {
       const baseDelay = 1000;
       const delayWithJitter = utils.addJitter(baseDelay);
-      
+
       expect(delayWithJitter).toBeGreaterThanOrEqual(baseDelay);
       expect(delayWithJitter).toBeLessThanOrEqual(baseDelay + 250);
     });

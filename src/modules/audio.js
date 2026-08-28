@@ -40,7 +40,9 @@ function createAudioModule(client) {
      */
     async textToSpeech(text, options = {}) {
       if (!client.apiKey) {
-        throw new Error('API key is required. Use setApiKey() to set your proxy authentication key.');
+        throw new Error(
+          'API key is required. Use setApiKey() to set your proxy authentication key.'
+        );
       }
 
       const requestData = {
@@ -48,7 +50,7 @@ function createAudioModule(client) {
         input: text,
         voice: options.voice || 'alloy',
         response_format: options.format || 'mp3',
-        speed: options.speed || 1.0
+        speed: options.speed || 1.0,
       };
 
       // Add streaming parameter if requested
@@ -63,42 +65,44 @@ function createAudioModule(client) {
       const timeoutMs = options.timeoutMs || client.defaultTimeoutMs;
       const { controller, timeoutId } = createTimeoutController(timeoutMs);
       const url = client._buildApiUrl('/audio/speech');
-      
+
       try {
         const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'api-key': client.apiKey
+            'api-key': client.apiKey,
           },
           body: JSON.stringify(requestData),
-          signal: controller.signal
+          signal: controller.signal,
         });
 
         if (!response.ok) {
           clearTimeout(timeoutId);
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(`TTS request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+          throw new Error(
+            `TTS request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`
+          );
         }
 
         // Handle streaming response
         if (options.stream && options.onChunk) {
           const reader = response.body.getReader();
           const chunks = [];
-          
+
           try {
             while (true) {
               const { done, value } = await reader.read();
-              
+
               if (done) break;
-              
+
               // Store chunk for final blob and call callback
               chunks.push(value);
               options.onChunk(value);
             }
-            
+
             clearTimeout(timeoutId);
-            
+
             // Return combined blob for compatibility
             return new Blob(chunks, { type: response.headers.get('content-type') || 'audio/opus' });
           } finally {
@@ -111,11 +115,11 @@ function createAudioModule(client) {
         }
       } catch (error) {
         clearTimeout(timeoutId);
-        
+
         if (error.name === 'AbortError') {
           throw new TimeoutError(`Request timed out after ${timeoutMs}ms`);
         }
-        
+
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
           throw new Error('Network error: Unable to connect to the TTS API.');
         }
@@ -138,7 +142,9 @@ function createAudioModule(client) {
      */
     async speechToText(audioFile, options = {}) {
       if (!client.apiKey) {
-        throw new Error('API key is required. Use setApiKey() to set your proxy authentication key.');
+        throw new Error(
+          'API key is required. Use setApiKey() to set your proxy authentication key.'
+        );
       }
 
       if (!audioFile || !(audioFile instanceof File || audioFile instanceof Blob)) {
@@ -146,12 +152,12 @@ function createAudioModule(client) {
       }
 
       const formData = new FormData();
-      
+
       // Ensure the file has a proper name and extension
       const fileName = audioFile.name || 'audio.wav';
       formData.append('file', audioFile, fileName);
-      formData.append('model', options.model || 'warp/stt');
-      
+      formData.append('model', options.model || 'whisper-1');
+
       // Optional parameters - only add if they exist
       if (options.language) {
         formData.append('language', options.language);
@@ -172,19 +178,19 @@ function createAudioModule(client) {
 
       const timeoutMs = options.timeoutMs || client.defaultTimeoutMs;
       const { controller, timeoutId } = createTimeoutController(timeoutMs);
-      
+
       // Always use the standard transcriptions endpoint
       const url = client._buildApiUrl('/audio/transcriptions');
-      
+
       try {
         const response = await fetch(url, {
           method: 'POST',
           headers: {
-            'api-key': client.apiKey
+            'api-key': client.apiKey,
             // Don't set Content-Type for FormData - let browser set it with boundary
           },
           body: formData,
-          signal: controller.signal
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -201,31 +207,33 @@ function createAudioModule(client) {
               errorDetails = 'Unable to parse error response';
             }
           }
-          
+
           // Enhanced error message with more details
-          throw new Error(`STT request failed: ${response.status} ${response.statusText}. Error details: ${errorDetails}`);
+          throw new Error(
+            `STT request failed: ${response.status} ${response.statusText}. Error details: ${errorDetails}`
+          );
         }
 
         clearTimeout(timeoutId);
         const result = await response.json();
-        
+
         // If streaming was requested but API doesn't support it, simulate streaming
         if (options.stream && options.onPartial && result.text) {
           // Simulate streaming by breaking the text into chunks
           const words = result.text.split(' ');
           let currentText = '';
-          
+
           // Emit partial results word by word with small delays
           for (let i = 0; i < words.length; i++) {
             currentText += (i > 0 ? ' ' : '') + words[i];
             options.onPartial(currentText);
-            
+
             // Small delay to simulate streaming (only if more words remain)
             if (i < words.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 50));
+              await new Promise((resolve) => setTimeout(resolve, 50));
             }
           }
-          
+
           return result.text;
         } else {
           // Standard non-streaming response
@@ -233,11 +241,11 @@ function createAudioModule(client) {
         }
       } catch (error) {
         clearTimeout(timeoutId);
-        
+
         if (error.name === 'AbortError') {
           throw new TimeoutError(`Request timed out after ${timeoutMs}ms`);
         }
-        
+
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
           throw new Error('Network error: Unable to connect to the STT API.');
         }
@@ -254,17 +262,17 @@ function createAudioModule(client) {
       return new Promise((resolve, reject) => {
         const audio = new Audio();
         const url = URL.createObjectURL(audioBlob);
-        
+
         audio.onended = () => {
           URL.revokeObjectURL(url);
           resolve();
         };
-        
+
         audio.onerror = () => {
           URL.revokeObjectURL(url);
           reject(new Error('Failed to play audio'));
         };
-        
+
         audio.src = url;
         audio.play().catch(reject);
       });
@@ -276,7 +284,7 @@ function createAudioModule(client) {
      * @param {Object} options - Configuration options
      * @returns {Object} - Voice conversation controller
      */
-    createVoiceChat(systemPrompt = "You are a helpful assistant.", options = {}) {
+    createVoiceChat(systemPrompt = 'You are a helpful assistant.', options = {}) {
       const conversation = [];
       let isRecording = false;
       let mediaRecorder = null;
@@ -297,26 +305,26 @@ function createAudioModule(client) {
           }
 
           try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-              audio: { 
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
                 sampleRate: 16000,
                 channelCount: 1,
                 echoCancellation: true,
-                noiseSuppression: true
-              } 
+                noiseSuppression: true,
+              },
             });
-            
+
             audioChunks = [];
             mediaRecorder = new MediaRecorder(stream, {
-              mimeType: 'audio/webm;codecs=opus'
+              mimeType: 'audio/webm;codecs=opus',
             });
-            
+
             mediaRecorder.ondataavailable = (event) => {
               if (event.data.size > 0) {
                 audioChunks.push(event.data);
               }
             };
-            
+
             mediaRecorder.start();
             isRecording = true;
           } catch (error) {
@@ -335,32 +343,32 @@ function createAudioModule(client) {
           return new Promise(async (resolve, reject) => {
             mediaRecorder.onstop = async () => {
               isRecording = false;
-              
+
               // Stop all tracks to release microphone
               if (mediaRecorder.stream) {
-                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                mediaRecorder.stream.getTracks().forEach((track) => track.stop());
               }
 
               try {
                 // Create audio blob from recorded chunks
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
-                
+
                 // Convert speech to text
                 const userMessage = await self.speechToText(audioBlob, options.stt || {});
                 conversation.push({ role: 'user', content: userMessage });
-                
+
                 // Get AI response
                 const aiResponse = await client.chat(conversation, options.chat || {});
                 conversation.push({ role: 'assistant', content: aiResponse });
-                
+
                 // Convert AI response to speech
                 const speechBlob = await self.textToSpeech(aiResponse, options.tts || {});
-                
+
                 resolve({
                   userMessage,
                   aiResponse,
                   audioBlob: speechBlob,
-                  conversation: [...conversation]
+                  conversation: [...conversation],
                 });
               } catch (error) {
                 reject(error);
@@ -393,14 +401,14 @@ function createAudioModule(client) {
          */
         isRecording() {
           return isRecording;
-        }
+        },
       };
-      
+
       // Add alias for backward compatibility
       voiceChat.stopRecordingAndRespond = voiceChat.stopRecording;
-      
+
       return voiceChat;
-    }
+    },
   };
 }
 

@@ -7,7 +7,7 @@ const WarpMind = require('../src/warpmind.js');
 
 // Mock eventsource-parser
 jest.mock('eventsource-parser', () => ({
-  createParser: jest.fn()
+  createParser: jest.fn(),
 }));
 
 const { createParser } = require('eventsource-parser');
@@ -19,12 +19,12 @@ describe('WarpMind streamChat Enhancements', () => {
   beforeEach(() => {
     warpMind = new WarpMind({
       apiKey: 'test-key',
-      baseURL: 'https://api.test.com/v1'
+      baseURL: 'https://api.test.com/v1',
     });
 
     // Mock parser implementation
     mockParser = {
-      feed: jest.fn()
+      feed: jest.fn(),
     };
 
     createParser.mockImplementation((onEvent) => {
@@ -42,9 +42,9 @@ describe('WarpMind streamChat Enhancements', () => {
         ok: true,
         body: {
           getReader: () => ({
-            read: jest.fn().mockResolvedValueOnce({ done: true })
-          })
-        }
+            read: jest.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
       };
 
       fetch.mockResolvedValue(mockResponse);
@@ -53,13 +53,15 @@ describe('WarpMind streamChat Enhancements', () => {
       const onChunk = jest.fn((chunk) => chunks.push(chunk));
 
       // Mock parseSSE to call the event callback with test data
-      const parseSSESpy = jest.spyOn(warpMind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
-        // Simulate multiple streaming events
-        onEvent({ role: 'assistant', delta: 'Hello' });
-        onEvent({ role: 'assistant', delta: ' world' });
-        onEvent({ role: 'assistant', delta: '!' });
-        return 'Hello world!';
-      });
+      const parseSSESpy = jest
+        .spyOn(warpMind, 'parseSSE')
+        .mockImplementation(async (reader, onEvent) => {
+          // Simulate multiple streaming events
+          onEvent({ role: 'assistant', delta: 'Hello' });
+          onEvent({ role: 'assistant', delta: ' world' });
+          onEvent({ role: 'assistant', delta: '!' });
+          return 'Hello world!';
+        });
 
       const result = await warpMind.streamChat('Test message', onChunk);
 
@@ -80,9 +82,9 @@ describe('WarpMind streamChat Enhancements', () => {
         ok: true,
         body: {
           getReader: () => ({
-            read: jest.fn().mockResolvedValueOnce({ done: true })
-          })
-        }
+            read: jest.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
       };
 
       fetch.mockResolvedValue(mockResponse);
@@ -90,22 +92,24 @@ describe('WarpMind streamChat Enhancements', () => {
       const onChunk = jest.fn();
 
       // Mock parseSSE to simulate streaming with gaps
-      const parseSSESpy = jest.spyOn(warpMind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
-        onEvent({ role: 'assistant', delta: 'Part' });
-        onEvent({ role: 'assistant', delta: ' ' });
-        onEvent({ role: 'assistant', delta: 'one' });
-        onEvent({ role: 'assistant', delta: '. ' });
-        onEvent({ role: 'assistant', delta: 'Part' });
-        onEvent({ role: 'assistant', delta: ' ' });
-        onEvent({ role: 'assistant', delta: 'two.' });
-        return 'Part one. Part two.';
-      });
+      const parseSSESpy = jest
+        .spyOn(warpMind, 'parseSSE')
+        .mockImplementation(async (reader, onEvent) => {
+          onEvent({ role: 'assistant', delta: 'Part' });
+          onEvent({ role: 'assistant', delta: ' ' });
+          onEvent({ role: 'assistant', delta: 'one' });
+          onEvent({ role: 'assistant', delta: '. ' });
+          onEvent({ role: 'assistant', delta: 'Part' });
+          onEvent({ role: 'assistant', delta: ' ' });
+          onEvent({ role: 'assistant', delta: 'two.' });
+          return 'Part one. Part two.';
+        });
 
       const result = await warpMind.streamChat('Test', onChunk);
 
       // Verify complete response is returned
       expect(result).toBe('Part one. Part two.');
-      
+
       // Verify all chunks were emitted
       expect(onChunk).toHaveBeenCalledTimes(7);
 
@@ -117,9 +121,9 @@ describe('WarpMind streamChat Enhancements', () => {
         ok: true,
         body: {
           getReader: () => ({
-            read: jest.fn().mockResolvedValueOnce({ done: true })
-          })
-        }
+            read: jest.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
       };
 
       fetch.mockResolvedValue(mockResponse);
@@ -127,13 +131,15 @@ describe('WarpMind streamChat Enhancements', () => {
       const chunks = [];
       const onChunk = jest.fn((chunk) => chunks.push(chunk));
 
-      const parseSSESpy = jest.spyOn(warpMind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
-        // Simulate some empty content (shouldn't happen in practice, but test resilience)
-        onEvent({ role: 'assistant', delta: '' });
-        onEvent({ role: 'assistant', delta: 'Hello' });
-        onEvent({ role: 'assistant', delta: '' });
-        return 'Hello';
-      });
+      const parseSSESpy = jest
+        .spyOn(warpMind, 'parseSSE')
+        .mockImplementation(async (reader, onEvent) => {
+          // Simulate some empty content (shouldn't happen in practice, but test resilience)
+          onEvent({ role: 'assistant', delta: '' });
+          onEvent({ role: 'assistant', delta: 'Hello' });
+          onEvent({ role: 'assistant', delta: '' });
+          return 'Hello';
+        });
 
       const result = await warpMind.streamChat('Test', onChunk);
 
@@ -141,7 +147,7 @@ describe('WarpMind streamChat Enhancements', () => {
       expect(chunks).toEqual([
         { type: 'chunk', content: '' },
         { type: 'chunk', content: 'Hello' },
-        { type: 'chunk', content: '' }
+        { type: 'chunk', content: '' },
       ]);
 
       parseSSESpy.mockRestore();
@@ -152,18 +158,20 @@ describe('WarpMind streamChat Enhancements', () => {
         ok: true,
         body: {
           getReader: () => ({
-            read: jest.fn().mockResolvedValueOnce({ done: true })
-          })
-        }
+            read: jest.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
       };
 
       fetch.mockResolvedValue(mockResponse);
 
-      const parseSSESpy = jest.spyOn(warpMind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
-        onEvent({ role: 'assistant', delta: 'Test' });
-        onEvent({ role: 'assistant', delta: ' response' });
-        return 'Test response';
-      });
+      const parseSSESpy = jest
+        .spyOn(warpMind, 'parseSSE')
+        .mockImplementation(async (reader, onEvent) => {
+          onEvent({ role: 'assistant', delta: 'Test' });
+          onEvent({ role: 'assistant', delta: ' response' });
+          return 'Test response';
+        });
 
       // Should not throw when no callback provided
       const result = await warpMind.streamChat('Test message', null);
@@ -179,9 +187,9 @@ describe('WarpMind streamChat Enhancements', () => {
         ok: true,
         body: {
           getReader: () => ({
-            read: jest.fn().mockResolvedValueOnce({ done: true })
-          })
-        }
+            read: jest.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
       };
 
       fetch.mockResolvedValue(mockResponse);
@@ -203,12 +211,12 @@ describe('WarpMind streamChat Enhancements', () => {
     test('should pass timeout parameter correctly', async () => {
       const abortError = new Error('The operation was aborted');
       abortError.name = 'AbortError';
-      
+
       fetch.mockRejectedValue(abortError);
 
-      await expect(
-        warpMind.streamChat('Test', null, { timeoutMs: 5000 })
-      ).rejects.toThrow('Request timed out after 5000ms');
+      await expect(warpMind.streamChat('Test', null, { timeoutMs: 5000 })).rejects.toThrow(
+        'Request timed out after 5000ms'
+      );
     });
   });
 
@@ -218,14 +226,14 @@ describe('WarpMind streamChat Enhancements', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-        json: jest.fn().mockResolvedValue({ error: { message: 'Server error' } })
+        json: jest.fn().mockResolvedValue({ error: { message: 'Server error' } }),
       };
 
       fetch.mockResolvedValue(mockResponse);
 
-      await expect(
-        warpMind.streamChat('Test', jest.fn())
-      ).rejects.toThrow('API request failed: 500 Internal Server Error');
+      await expect(warpMind.streamChat('Test', jest.fn())).rejects.toThrow(
+        'API request failed: 500 Internal Server Error'
+      );
     });
 
     test('should clear timeout on error', async () => {
@@ -234,9 +242,7 @@ describe('WarpMind streamChat Enhancements', () => {
 
       const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
 
-      await expect(
-        warpMind.streamChat('Test', jest.fn())
-      ).rejects.toThrow('Network error');
+      await expect(warpMind.streamChat('Test', jest.fn())).rejects.toThrow('Network error');
 
       expect(clearTimeoutSpy).toHaveBeenCalled();
       clearTimeoutSpy.mockRestore();
@@ -249,9 +255,9 @@ describe('WarpMind streamChat Enhancements', () => {
         ok: true,
         body: {
           getReader: () => ({
-            read: jest.fn().mockResolvedValueOnce({ done: true })
-          })
-        }
+            read: jest.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
       };
 
       fetch.mockResolvedValue(mockResponse);
@@ -267,11 +273,13 @@ describe('WarpMind streamChat Enhancements', () => {
         }
       };
 
-      const parseSSESpy = jest.spyOn(warpMind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
-        onEvent({ role: 'assistant', delta: 'Hello' });
-        onEvent({ role: 'assistant', delta: ' there' });
-        return 'Hello there';
-      });
+      const parseSSESpy = jest
+        .spyOn(warpMind, 'parseSSE')
+        .mockImplementation(async (reader, onEvent) => {
+          onEvent({ role: 'assistant', delta: 'Hello' });
+          onEvent({ role: 'assistant', delta: ' there' });
+          return 'Hello there';
+        });
 
       const result = await warpMind.streamChat('Test', legacyCallback);
 

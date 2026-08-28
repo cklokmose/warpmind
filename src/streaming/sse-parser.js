@@ -11,7 +11,9 @@ if (typeof module !== 'undefined' && module.exports) {
   try {
     createParser = require('eventsource-parser').createParser;
   } catch (error) {
-    throw new Error('eventsource-parser is required for SSE streaming support. Please install it with: npm install eventsource-parser');
+    throw new Error(
+      'eventsource-parser is required for SSE streaming support. Please install it with: npm install eventsource-parser'
+    );
   }
 } else {
   // Browser environment - webpack should bundle eventsource-parser
@@ -20,7 +22,9 @@ if (typeof module !== 'undefined' && module.exports) {
     const EventSourceParser = require('eventsource-parser');
     createParser = EventSourceParser.createParser;
   } catch (error) {
-    throw new Error('eventsource-parser is required for SSE streaming support. Please ensure it is bundled with your application.');
+    throw new Error(
+      'eventsource-parser is required for SSE streaming support. Please ensure it is bundled with your application.'
+    );
   }
 }
 
@@ -37,24 +41,24 @@ async function parseSSE(reader, onEvent) {
   let responseId = null;
   let usage = null;
   let eventType = null;
-  
+
   // Create the SSE parser
   const parser = createParser((event) => {
     if (event.type === 'event') {
       // Store event type for Responses API
       eventType = event.event || null;
-      
+
       if (event.data === '[DONE]') {
         return;
       }
-      
+
       try {
         const parsed = JSON.parse(event.data);
-        
+
         // Responses API format (has event type)
         if (eventType) {
           handleResponsesAPIEvent(eventType, parsed);
-        } 
+        }
         // Check if the parsed JSON has a 'type' field (Responses API format without SSE event type)
         else if (parsed.type && parsed.type.startsWith('response.')) {
           handleResponsesAPIEvent(parsed.type, parsed);
@@ -108,13 +112,15 @@ async function parseSSE(reader, onEvent) {
         break;
 
       case 'response.function_call_arguments.delta':
-        eventData.tool_calls = [{
-          id: data.call_id,
-          function: {
-            name: data.name,
-            arguments: data.arguments
-          }
-        }];
+        eventData.tool_calls = [
+          {
+            id: data.call_id,
+            function: {
+              name: data.name,
+              arguments: data.arguments,
+            },
+          },
+        ];
         if (onEvent) onEvent(eventData);
         break;
 
@@ -146,23 +152,23 @@ async function parseSSE(reader, onEvent) {
    */
   function handleChatCompletionsEvent(parsed) {
     const delta = parsed.choices?.[0]?.delta;
-    
+
     if (delta) {
       const eventData = {
-        role: delta.role || 'assistant'
+        role: delta.role || 'assistant',
       };
-      
+
       // Handle content delta
       if (delta.content !== undefined && delta.content !== null) {
         eventData.delta = delta.content;
         fullResponse += delta.content;
       }
-      
+
       // Handle tool calls delta
       if (delta.tool_calls) {
         eventData.tool_calls = delta.tool_calls;
       }
-      
+
       if (onEvent) onEvent(eventData);
     }
 
@@ -192,7 +198,7 @@ async function parseSSE(reader, onEvent) {
   return {
     text: fullResponse,
     id: responseId,
-    usage: usage
+    usage: usage,
   };
 }
 
@@ -200,12 +206,12 @@ async function parseSSE(reader, onEvent) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     parseSSE,
-    createParser
+    createParser,
   };
 } else {
   // Browser environment
   window.SSEParser = {
     parseSSE,
-    createParser
+    createParser,
   };
 }

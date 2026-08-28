@@ -8,11 +8,11 @@ describe('WarpMind Tool Calling System', () => {
   let mind;
 
   beforeEach(() => {
-    mind = new WarpMind({ 
+    mind = new WarpMind({
       apiKey: 'test-key',
-      memoryToolEnabled: false // Disable auto-registration of memory tool for clean testing
+      memoryToolEnabled: false, // Disable auto-registration of memory tool for clean testing
     });
-    
+
     // Mock the makeRequest method to simulate tool calling responses
     mind.makeRequest = jest.fn();
   });
@@ -29,9 +29,9 @@ describe('WarpMind Tool Calling System', () => {
         parameters: {
           type: 'object',
           properties: { title: { type: 'string' } },
-          required: ['title']
+          required: ['title'],
         },
-        handler: async (args) => ({ books: [`Book about ${args.title}`] })
+        handler: async (args) => ({ books: [`Book about ${args.title}`] }),
       };
 
       expect(() => mind.registerTool(tool)).not.toThrow();
@@ -40,45 +40,55 @@ describe('WarpMind Tool Calling System', () => {
     });
 
     it('should throw error for invalid tool name', () => {
-      expect(() => mind.registerTool({
-        name: '',
-        description: 'Test',
-        parameters: {},
-        handler: () => {}
-      })).toThrow('Tool name must be a non-empty string');
+      expect(() =>
+        mind.registerTool({
+          name: '',
+          description: 'Test',
+          parameters: {},
+          handler: () => {},
+        })
+      ).toThrow('Tool name must be a non-empty string');
 
-      expect(() => mind.registerTool({
-        description: 'Test',
-        parameters: {},
-        handler: () => {}
-      })).toThrow('Tool name must be a non-empty string');
+      expect(() =>
+        mind.registerTool({
+          description: 'Test',
+          parameters: {},
+          handler: () => {},
+        })
+      ).toThrow('Tool name must be a non-empty string');
     });
 
     it('should throw error for invalid description', () => {
-      expect(() => mind.registerTool({
-        name: 'test',
-        description: '',
-        parameters: {},
-        handler: () => {}
-      })).toThrow('Tool description must be a non-empty string');
+      expect(() =>
+        mind.registerTool({
+          name: 'test',
+          description: '',
+          parameters: {},
+          handler: () => {},
+        })
+      ).toThrow('Tool description must be a non-empty string');
     });
 
     it('should throw error for invalid parameters', () => {
-      expect(() => mind.registerTool({
-        name: 'test',
-        description: 'Test tool',
-        parameters: null,
-        handler: () => {}
-      })).toThrow('Tool parameters must be an object');
+      expect(() =>
+        mind.registerTool({
+          name: 'test',
+          description: 'Test tool',
+          parameters: null,
+          handler: () => {},
+        })
+      ).toThrow('Tool parameters must be an object');
     });
 
     it('should throw error for invalid handler', () => {
-      expect(() => mind.registerTool({
-        name: 'test',
-        description: 'Test tool',
-        parameters: {},
-        handler: 'not a function'
-      })).toThrow('Tool handler must be a function');
+      expect(() =>
+        mind.registerTool({
+          name: 'test',
+          description: 'Test tool',
+          parameters: {},
+          handler: 'not a function',
+        })
+      ).toThrow('Tool handler must be a function');
     });
 
     it('should throw error for duplicate tool names', () => {
@@ -86,11 +96,13 @@ describe('WarpMind Tool Calling System', () => {
         name: 'duplicate',
         description: 'Test tool',
         parameters: {},
-        handler: () => {}
+        handler: () => {},
       };
 
       mind.registerTool(tool);
-      expect(() => mind.registerTool(tool)).toThrow("Tool with name 'duplicate' is already registered");
+      expect(() => mind.registerTool(tool)).toThrow(
+        "Tool with name 'duplicate' is already registered"
+      );
     });
   });
 
@@ -101,14 +113,14 @@ describe('WarpMind Tool Calling System', () => {
         name: 'calculator',
         description: 'Perform calculations',
         parameters: { type: 'object', properties: { expr: { type: 'string' } } },
-        handler: async (args) => eval(args.expr)
+        handler: async (args) => eval(args.expr),
       });
-      
+
       mind.registerTool({
         name: 'timer',
         description: 'Set a timer',
         parameters: { type: 'object', properties: { seconds: { type: 'number' } } },
-        handler: async (args) => `Timer set for ${args.seconds} seconds`
+        handler: async (args) => `Timer set for ${args.seconds} seconds`,
       });
     });
 
@@ -172,20 +184,20 @@ describe('WarpMind Tool Calling System', () => {
       it('should handle dynamic tool registration/unregistration', () => {
         // Start with 2 tools
         expect(mind.getRegisteredTools().length).toBe(2);
-        
+
         // Add another
         mind.registerTool({
           name: 'converter',
           description: 'Convert units',
           parameters: { type: 'object', properties: {} },
-          handler: async () => 'converted'
+          handler: async () => 'converted',
         });
         expect(mind.getRegisteredTools().length).toBe(3);
-        
+
         // Remove one
         mind.unregisterTool('timer');
         expect(mind.getRegisteredTools()).toEqual(['calculator', 'converter']);
-        
+
         // Clear all
         mind.clearAllTools();
         expect(mind.getRegisteredTools()).toEqual([]);
@@ -202,36 +214,37 @@ describe('WarpMind Tool Calling System', () => {
         parameters: {
           type: 'object',
           properties: { city: { type: 'string' } },
-          required: ['city']
+          required: ['city'],
         },
-        handler: async (args) => ({ 
-          city: args.city, 
-          temperature: '22°C', 
-          condition: 'sunny' 
-        })
+        handler: async (args) => ({
+          city: args.city,
+          temperature: '22°C',
+          condition: 'sunny',
+        }),
       });
     });
 
     it('should include tools in request when tools are registered', async () => {
       // Mock response without tool calls
       mind.makeRequest.mockResolvedValue({
-        choices: [{ message: { content: 'Hello! How can I help you?' } }]
+        choices: [{ message: { content: 'Hello! How can I help you?' } }],
       });
 
       await mind.chat('Hello');
 
-      expect(mind.makeRequest).toHaveBeenCalledWith('/chat/completions', 
+      expect(mind.makeRequest).toHaveBeenCalledWith(
+        '/chat/completions',
         expect.objectContaining({
           tools: expect.arrayContaining([
             expect.objectContaining({
               type: 'function',
               function: expect.objectContaining({
                 name: 'getWeather',
-                description: 'Get weather for a city'
-              })
-            })
+                description: 'Get weather for a city',
+              }),
+            }),
           ]),
-          tool_choice: 'auto'
+          tool_choice: 'auto',
         }),
         expect.any(Object)
       );
@@ -241,30 +254,36 @@ describe('WarpMind Tool Calling System', () => {
       // First call: AI wants to use a tool
       mind.makeRequest
         .mockResolvedValueOnce({
-          choices: [{
-            message: {
-              content: 'I\'ll check the weather for you.',
-              tool_calls: [{
-                id: 'call_123',
-                type: 'function',
-                function: {
-                  name: 'getWeather',
-                  arguments: JSON.stringify({ city: 'London' })
-                }
-              }]
-            }
-          }]
+          choices: [
+            {
+              message: {
+                content: "I'll check the weather for you.",
+                tool_calls: [
+                  {
+                    id: 'call_123',
+                    type: 'function',
+                    function: {
+                      name: 'getWeather',
+                      arguments: JSON.stringify({ city: 'London' }),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
         })
         // Second call: AI responds with tool results
         .mockResolvedValueOnce({
-          choices: [{
-            message: {
-              content: 'The weather in London is 22°C and sunny!'
-            }
-          }]
+          choices: [
+            {
+              message: {
+                content: 'The weather in London is 22°C and sunny!',
+              },
+            },
+          ],
         });
 
-      const result = await mind.chat('What\'s the weather in London?');
+      const result = await mind.chat("What's the weather in London?");
 
       expect(result).toBe('The weather in London is 22°C and sunny!');
       expect(mind.makeRequest).toHaveBeenCalledTimes(2);
@@ -274,11 +293,11 @@ describe('WarpMind Tool Calling System', () => {
       expect(secondCallArgs.messages).toContainEqual({
         role: 'tool',
         tool_call_id: 'call_123',
-        content: JSON.stringify({ 
-          city: 'London', 
-          temperature: '22°C', 
-          condition: 'sunny' 
-        })
+        content: JSON.stringify({
+          city: 'London',
+          temperature: '22°C',
+          condition: 'sunny',
+        }),
       });
     });
 
@@ -290,31 +309,37 @@ describe('WarpMind Tool Calling System', () => {
         parameters: { type: 'object', properties: {} },
         handler: async () => {
           throw new Error('Tool error');
-        }
+        },
       });
 
       mind.makeRequest
         .mockResolvedValueOnce({
-          choices: [{
-            message: {
-              content: 'I\'ll use the error tool.',
-              tool_calls: [{
-                id: 'call_error',
-                type: 'function',
-                function: {
-                  name: 'errorTool',
-                  arguments: JSON.stringify({})
-                }
-              }]
-            }
-          }]
+          choices: [
+            {
+              message: {
+                content: "I'll use the error tool.",
+                tool_calls: [
+                  {
+                    id: 'call_error',
+                    type: 'function',
+                    function: {
+                      name: 'errorTool',
+                      arguments: JSON.stringify({}),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
         })
         .mockResolvedValueOnce({
-          choices: [{
-            message: {
-              content: 'There was an error with the tool.'
-            }
-          }]
+          choices: [
+            {
+              message: {
+                content: 'There was an error with the tool.',
+              },
+            },
+          ],
         });
 
       const result = await mind.chat('Use the error tool');
@@ -326,7 +351,7 @@ describe('WarpMind Tool Calling System', () => {
       expect(secondCallArgs.messages).toContainEqual({
         role: 'tool',
         tool_call_id: 'call_error',
-        content: JSON.stringify({ error: 'Tool execution failed: Tool error' })
+        content: JSON.stringify({ error: 'Tool execution failed: Tool error' }),
       });
     });
 
@@ -334,36 +359,46 @@ describe('WarpMind Tool Calling System', () => {
       // Mock 3 tool call responses to test depth limit
       mind.makeRequest
         .mockResolvedValueOnce({
-          choices: [{
-            message: {
-              content: 'First tool call',
-              tool_calls: [{
-                id: 'call_1',
-                type: 'function',
-                function: { name: 'getWeather', arguments: '{"city":"Paris"}' }
-              }]
-            }
-          }]
+          choices: [
+            {
+              message: {
+                content: 'First tool call',
+                tool_calls: [
+                  {
+                    id: 'call_1',
+                    type: 'function',
+                    function: { name: 'getWeather', arguments: '{"city":"Paris"}' },
+                  },
+                ],
+              },
+            },
+          ],
         })
         .mockResolvedValueOnce({
-          choices: [{
-            message: {
-              content: 'Second tool call',
-              tool_calls: [{
-                id: 'call_2',
-                type: 'function',
-                function: { name: 'getWeather', arguments: '{"city":"Berlin"}' }
-              }]
-            }
-          }]
+          choices: [
+            {
+              message: {
+                content: 'Second tool call',
+                tool_calls: [
+                  {
+                    id: 'call_2',
+                    type: 'function',
+                    function: { name: 'getWeather', arguments: '{"city":"Berlin"}' },
+                  },
+                ],
+              },
+            },
+          ],
         })
         // Third call should not include tools (max depth reached)
         .mockResolvedValueOnce({
-          choices: [{
-            message: {
-              content: 'Final response without tools'
-            }
-          }]
+          choices: [
+            {
+              message: {
+                content: 'Final response without tools',
+              },
+            },
+          ],
         });
 
       const result = await mind.chat('Start tool calling chain');
@@ -379,30 +414,34 @@ describe('WarpMind Tool Calling System', () => {
     it('should handle multiple tool calls in single response', async () => {
       mind.makeRequest
         .mockResolvedValueOnce({
-          choices: [{
-            message: {
-              content: 'I\'ll check weather for multiple cities.',
-              tool_calls: [
-                {
-                  id: 'call_1',
-                  type: 'function',
-                  function: { name: 'getWeather', arguments: '{"city":"London"}' }
-                },
-                {
-                  id: 'call_2',
-                  type: 'function',
-                  function: { name: 'getWeather', arguments: '{"city":"Paris"}' }
-                }
-              ]
-            }
-          }]
+          choices: [
+            {
+              message: {
+                content: "I'll check weather for multiple cities.",
+                tool_calls: [
+                  {
+                    id: 'call_1',
+                    type: 'function',
+                    function: { name: 'getWeather', arguments: '{"city":"London"}' },
+                  },
+                  {
+                    id: 'call_2',
+                    type: 'function',
+                    function: { name: 'getWeather', arguments: '{"city":"Paris"}' },
+                  },
+                ],
+              },
+            },
+          ],
         })
         .mockResolvedValueOnce({
-          choices: [{
-            message: {
-              content: 'Weather checked for both cities!'
-            }
-          }]
+          choices: [
+            {
+              message: {
+                content: 'Weather checked for both cities!',
+              },
+            },
+          ],
         });
 
       const result = await mind.chat('Weather for London and Paris');
@@ -411,20 +450,20 @@ describe('WarpMind Tool Calling System', () => {
 
       // Should have tool results for both calls
       const secondCallArgs = mind.makeRequest.mock.calls[1][1];
-      expect(secondCallArgs.messages.filter(m => m.role === 'tool')).toHaveLength(2);
+      expect(secondCallArgs.messages.filter((m) => m.role === 'tool')).toHaveLength(2);
     });
   });
 
   describe('chat() without tools', () => {
     it('should work normally when no tools are registered', async () => {
       mind.makeRequest.mockResolvedValue({
-        choices: [{ message: { content: 'Normal response' } }]
+        choices: [{ message: { content: 'Normal response' } }],
       });
 
       const result = await mind.chat('Hello');
 
       expect(result).toBe('Normal response');
-      
+
       // Should not include tools in request
       const callArgs = mind.makeRequest.mock.calls[0][1];
       expect(callArgs.tools).toBeUndefined();
@@ -437,7 +476,7 @@ describe('WarpMind Tool Calling System', () => {
         name: 'testTool',
         description: 'Test tool',
         parameters: { type: 'object', properties: { value: { type: 'string' } } },
-        handler: async (args) => ({ result: `processed_${args.value}` })
+        handler: async (args) => ({ result: `processed_${args.value}` }),
       });
     });
 
@@ -446,8 +485,8 @@ describe('WarpMind Tool Calling System', () => {
         id: 'call_test',
         function: {
           name: 'testTool',
-          arguments: JSON.stringify({ value: 'test_input' })
-        }
+          arguments: JSON.stringify({ value: 'test_input' }),
+        },
       };
 
       const result = await mind._executeTool(toolCall);
@@ -460,8 +499,8 @@ describe('WarpMind Tool Calling System', () => {
         id: 'call_test',
         function: {
           name: 'nonExistentTool',
-          arguments: '{}'
-        }
+          arguments: '{}',
+        },
       };
 
       await expect(mind._executeTool(toolCall)).rejects.toThrow("Tool 'nonExistentTool' not found");
@@ -472,8 +511,8 @@ describe('WarpMind Tool Calling System', () => {
         id: 'call_test',
         function: {
           name: 'testTool',
-          arguments: 'invalid json'
-        }
+          arguments: 'invalid json',
+        },
       };
 
       await expect(mind._executeTool(toolCall)).rejects.toThrow('Tool execution failed');

@@ -4,12 +4,7 @@
  */
 
 // Import utility functions for retry logic and timeouts
-const { 
-  createTimeoutController, 
-  shouldRetry, 
-  calculateRetryDelay, 
-  sleep 
-} = require('../util.js');
+const { createTimeoutController, shouldRetry, calculateRetryDelay, sleep } = require('../util.js');
 
 /**
  * Custom error class for timeout errors
@@ -94,22 +89,22 @@ class BaseClient {
    */
   _buildApiUrl(endpoint) {
     let baseUrl = this.baseURL;
-    
+
     // Remove trailing slash from baseURL if present
     if (baseUrl.endsWith('/')) {
       baseUrl = baseUrl.slice(0, -1);
     }
-    
+
     // If baseURL doesn't end with /v1, add it
     if (!baseUrl.endsWith('/v1')) {
       baseUrl += '/v1';
     }
-    
+
     // Ensure endpoint starts with /
     if (!endpoint.startsWith('/')) {
       endpoint = '/' + endpoint;
     }
-    
+
     return baseUrl + endpoint;
   }
 
@@ -148,17 +143,18 @@ class BaseClient {
     const maxRetries = options.maxRetries !== undefined ? options.maxRetries : 5;
     const method = options.method || 'POST';
     const queryParams = options.queryParams || {};
-    const url = Object.keys(queryParams).length > 0
-      ? this._buildApiUrlWithQuery(endpoint, queryParams)
-      : this._buildApiUrl(endpoint);
-    
+    const url =
+      Object.keys(queryParams).length > 0
+        ? this._buildApiUrlWithQuery(endpoint, queryParams)
+        : this._buildApiUrl(endpoint);
+
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       const { controller, timeoutId } = createTimeoutController(timeoutMs);
-      
+
       try {
         const headers = {
           'Content-Type': 'application/json',
-          ...this.customHeaders
+          ...this.customHeaders,
         };
 
         if (this.authType === 'bearer') {
@@ -170,7 +166,7 @@ class BaseClient {
         const fetchOptions = {
           method: method,
           headers: headers,
-          signal: controller ? controller.signal : undefined
+          signal: controller ? controller.signal : undefined,
         };
 
         // Only include body for POST/PUT/PATCH requests
@@ -187,36 +183,44 @@ class BaseClient {
           if (shouldRetry(response.status) && attempt < maxRetries) {
             const retryAfter = response.headers.get ? response.headers.get('Retry-After') : null;
             const delay = calculateRetryDelay(attempt, retryAfter);
-            
-            console.warn(`Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+
+            console.warn(
+              `Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`
+            );
             await sleep(delay);
             continue;
           }
 
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+          throw new Error(
+            `API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`
+          );
         }
 
         return await response.json();
       } catch (error) {
         clearTimeout(timeoutId);
-        
+
         // Handle timeout errors
         if (error.name === 'AbortError') {
           throw new TimeoutError(`Request timed out after ${timeoutMs}ms`);
         }
-        
+
         // Handle network errors - retry if not last attempt
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
           if (attempt < maxRetries) {
             const delay = calculateRetryDelay(attempt);
-            console.warn(`Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+            console.warn(
+              `Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`
+            );
             await sleep(delay);
             continue;
           }
-          throw new Error('Network error: Unable to connect to the API. Please check your internet connection.');
+          throw new Error(
+            'Network error: Unable to connect to the API. Please check your internet connection.'
+          );
         }
-        
+
         // For other errors, don't retry
         throw error;
       }

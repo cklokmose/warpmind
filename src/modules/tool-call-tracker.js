@@ -8,7 +8,7 @@ class ToolCallTracker {
     this.callHistory = [];
     this.callIdCounter = 0;
   }
-  
+
   /**
    * Start tracking a new tool call
    * @param {string} name - Tool name
@@ -22,13 +22,13 @@ class ToolCallTracker {
       name,
       parameters: this._sanitizeParameters(parameters),
       timestamp: new Date().toISOString(),
-      startTime: performance.now()
+      startTime: performance.now(),
     };
-    
+
     this.activeCalls.set(callId, call);
     return call;
   }
-  
+
   /**
    * Mark a tool call as completed
    * @param {string} callId - Call ID
@@ -43,16 +43,16 @@ class ToolCallTracker {
         ...call,
         result: this._sanitizeResult(result),
         duration,
-        status: 'completed'
+        status: 'completed',
       };
-      
+
       this.activeCalls.delete(callId);
       this.callHistory.push(completedCall);
       return completedCall;
     }
     return null;
   }
-  
+
   /**
    * Mark a tool call as failed
    * @param {string} callId - Call ID
@@ -67,16 +67,16 @@ class ToolCallTracker {
         ...call,
         error: error.message,
         duration,
-        status: 'error'
+        status: 'error',
       };
-      
+
       this.activeCalls.delete(callId);
       this.callHistory.push(errorCall);
       return errorCall;
     }
     return null;
   }
-  
+
   /**
    * Generate a unique call ID
    * @returns {string} - Unique call ID
@@ -84,7 +84,7 @@ class ToolCallTracker {
   generateCallId() {
     return `call_${Date.now()}_${++this.callIdCounter}_${Math.random().toString(36).substr(2, 9)}`;
   }
-  
+
   /**
    * Get current active calls
    * @returns {Array} - Array of active call objects
@@ -92,7 +92,7 @@ class ToolCallTracker {
   getActiveCalls() {
     return Array.from(this.activeCalls.values());
   }
-  
+
   /**
    * Get call history
    * @param {number} limit - Maximum number of calls to return
@@ -101,14 +101,14 @@ class ToolCallTracker {
   getCallHistory(limit = 50) {
     return this.callHistory.slice(-limit);
   }
-  
+
   /**
    * Clear call history
    */
   clearHistory() {
     this.callHistory = [];
   }
-  
+
   /**
    * Sanitize parameters to prevent circular references and limit size
    * @param {*} parameters - Parameters to sanitize
@@ -118,26 +118,26 @@ class ToolCallTracker {
     try {
       // Convert to JSON and back to remove circular references
       const jsonString = JSON.stringify(parameters);
-      
+
       // Limit size to prevent memory issues
       if (jsonString.length > 10000) {
-        return { 
-          _truncated: true, 
+        return {
+          _truncated: true,
           _originalSize: jsonString.length,
-          _preview: jsonString.substring(0, 1000) + '...'
+          _preview: jsonString.substring(0, 1000) + '...',
         };
       }
-      
+
       return JSON.parse(jsonString);
     } catch (error) {
-      return { 
-        _error: 'Failed to serialize parameters', 
+      return {
+        _error: 'Failed to serialize parameters',
         _type: typeof parameters,
-        _message: error.message 
+        _message: error.message,
       };
     }
   }
-  
+
   /**
    * Sanitize result to prevent circular references and limit size
    * @param {*} result - Result to sanitize
@@ -147,22 +147,22 @@ class ToolCallTracker {
     try {
       // Convert to JSON and back to remove circular references
       const jsonString = JSON.stringify(result);
-      
+
       // Limit size to prevent memory issues
       if (jsonString.length > 10000) {
-        return { 
-          _truncated: true, 
+        return {
+          _truncated: true,
           _originalSize: jsonString.length,
-          _preview: jsonString.substring(0, 1000) + '...'
+          _preview: jsonString.substring(0, 1000) + '...',
         };
       }
-      
+
       return JSON.parse(jsonString);
     } catch (error) {
-      return { 
-        _error: 'Failed to serialize result', 
+      return {
+        _error: 'Failed to serialize result',
         _type: typeof result,
-        _message: error.message 
+        _message: error.message,
       };
     }
   }

@@ -26,11 +26,11 @@ function generateUUID() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  
+
   // Fallback implementation
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }
@@ -44,7 +44,7 @@ class MemoryStore {
     this.dbVersion = 1;
     this.storeName = 'memories';
     this.db = null;
-    
+
     // For Node.js environments - use in-memory storage
     this.isNode = typeof indexedDB === 'undefined';
     this.memoryData = new Map(); // In-memory storage for Node.js
@@ -75,10 +75,10 @@ class MemoryStore {
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        
+
         // Create memories object store
         const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
-        
+
         // Create indexes for efficient querying
         store.createIndex('timestamp', 'timestamp', { unique: false });
         store.createIndex('tags', 'tags', { unique: false, multiEntry: true });
@@ -97,10 +97,10 @@ class MemoryStore {
       this.memoryData.set(memory.id, memory);
       return Promise.resolve();
     }
-    
+
     // Browser - use IndexedDB
     if (!this.db) await this.init();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([this.storeName], 'readwrite');
       const store = transaction.objectStore(this.storeName);
@@ -121,10 +121,10 @@ class MemoryStore {
       // Node.js - use in-memory storage
       return Promise.resolve(this.memoryData.get(id) || null);
     }
-    
+
     // Browser - use IndexedDB
     if (!this.db) await this.init();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([this.storeName], 'readonly');
       const store = transaction.objectStore(this.storeName);
@@ -146,10 +146,10 @@ class MemoryStore {
       this.memoryData.delete(id);
       return Promise.resolve();
     }
-    
+
     // Browser - use IndexedDB
     if (!this.db) await this.init();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([this.storeName], 'readwrite');
       const store = transaction.objectStore(this.storeName);
@@ -169,28 +169,28 @@ class MemoryStore {
     if (this.isNode) {
       // Node.js - use in-memory storage
       let memories = Array.from(this.memoryData.values());
-      
+
       // Apply filters
       if (options.tags && options.tags.length > 0) {
-        memories = memories.filter(memory => 
-          memory.tags && memory.tags.some(tag => options.tags.includes(tag))
+        memories = memories.filter(
+          (memory) => memory.tags && memory.tags.some((tag) => options.tags.includes(tag))
         );
       }
-      
+
       if (options.after) {
-        memories = memories.filter(memory => memory.timestamp > options.after);
+        memories = memories.filter((memory) => memory.timestamp > options.after);
       }
-      
+
       if (options.before) {
-        memories = memories.filter(memory => memory.timestamp < options.before);
+        memories = memories.filter((memory) => memory.timestamp < options.before);
       }
-      
+
       return Promise.resolve(memories);
     }
-    
+
     // Browser - use IndexedDB
     if (!this.db) await this.init();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([this.storeName], 'readonly');
       const store = transaction.objectStore(this.storeName);
@@ -199,30 +199,30 @@ class MemoryStore {
       request.onerror = () => reject(new Error('Failed to retrieve memories'));
       request.onsuccess = () => {
         let memories = request.result || [];
-        
+
         // Apply filters
         if (options.tags && options.tags.length > 0) {
-          memories = memories.filter(memory => 
-            memory.tags && memory.tags.some(tag => options.tags.includes(tag))
+          memories = memories.filter(
+            (memory) => memory.tags && memory.tags.some((tag) => options.tags.includes(tag))
           );
         }
-        
+
         if (options.after) {
-          memories = memories.filter(memory => memory.timestamp > options.after);
+          memories = memories.filter((memory) => memory.timestamp > options.after);
         }
-        
+
         if (options.before) {
-          memories = memories.filter(memory => memory.timestamp < options.before);
+          memories = memories.filter((memory) => memory.timestamp < options.before);
         }
-        
+
         // Sort by timestamp (newest first)
         memories.sort((a, b) => b.timestamp - a.timestamp);
-        
+
         // Apply limit
         if (options.limit && options.limit > 0) {
           memories = memories.slice(0, options.limit);
         }
-        
+
         resolve(memories);
       };
     });
@@ -261,25 +261,28 @@ function cosineSimilarity(vectorA, vectorB) {
  * @returns {Array} - Sorted array of memories with relevance scores
  */
 function keywordSearch(query, memories) {
-  const queryWords = query.toLowerCase().split(/\s+/).filter(word => word.length > 2);
-  
-  const scoredMemories = memories.map(memory => {
+  const queryWords = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((word) => word.length > 2);
+
+  const scoredMemories = memories.map((memory) => {
     const content = memory.content.toLowerCase();
-    const tags = (memory.tags || []).map(tag => tag.toLowerCase()).join(' ');
+    const tags = (memory.tags || []).map((tag) => tag.toLowerCase()).join(' ');
     const searchableText = content + ' ' + tags;
-    
+
     let score = 0;
-    
-    queryWords.forEach(word => {
+
+    queryWords.forEach((word) => {
       const wordCount = (searchableText.match(new RegExp(word, 'g')) || []).length;
       score += wordCount;
     });
-    
+
     return { ...memory, relevanceScore: score };
   });
-  
+
   return scoredMemories
-    .filter(memory => memory.relevanceScore > 0)
+    .filter((memory) => memory.relevanceScore > 0)
     .sort((a, b) => b.relevanceScore - a.relevanceScore);
 }
 
@@ -292,52 +295,56 @@ function createMemoryModule(client) {
   const memoryStore = new MemoryStore();
 
   // Register the memory recall tool if the client supports tools and it's enabled
-  if (client.registerTool && typeof client.registerTool === 'function' && 
-      client._memoryToolConfig && client._memoryToolConfig.enabled) {
-    
+  if (
+    client.registerTool &&
+    typeof client.registerTool === 'function' &&
+    client._memoryToolConfig &&
+    client._memoryToolConfig.enabled
+  ) {
     const memoryTool = {
-      name: "recall_memory",
-      description: "Search for relevant memories when the user explicitly asks to remember or recall information. Only use this tool when the user specifically mentions remembering, recalling, or accessing stored information. Do not use for general knowledge questions or current conversation context.",
+      name: 'recall_memory',
+      description:
+        'Search for relevant memories when the user explicitly asks to remember or recall information. Only use this tool when the user specifically mentions remembering, recalling, or accessing stored information. Do not use for general knowledge questions or current conversation context.',
       parameters: {
-        type: "object",
+        type: 'object',
         properties: {
           query: {
-            type: "string",
-            description: "The search query to find relevant memories"
+            type: 'string',
+            description: 'The search query to find relevant memories',
           },
           limit: {
-            type: "number",
+            type: 'number',
             description: `Maximum number of memories to retrieve (default: ${client._memoryToolConfig.maxResults})`,
-            default: client._memoryToolConfig.maxResults
+            default: client._memoryToolConfig.maxResults,
           },
           tags: {
-            type: "array",
-            items: { type: "string" },
-            description: "Optional tags to filter memories"
-          }
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Optional tags to filter memories',
+          },
         },
-        required: ["query"]
+        required: ['query'],
       },
       handler: async (args) => {
         const { query, limit = client._memoryToolConfig.maxResults, tags } = args;
-        
+
         try {
           const memories = await client.recall(query, { limit, tags });
-          
+
           if (memories.length === 0) {
-            return "No relevant memories found for the query.";
+            return 'No relevant memories found for the query.';
           }
-          
-          return memories.map(memory => ({
+
+          return memories.map((memory) => ({
             content: memory.content,
             tags: memory.tags || [],
             timestamp: new Date(memory.timestamp).toLocaleString(),
-            relevanceScore: memory.relevanceScore
+            relevanceScore: memory.relevanceScore,
           }));
         } catch (error) {
           return `Error accessing memories: ${error.message}`;
         }
-      }
+      },
     };
 
     // Register the tool
@@ -348,7 +355,7 @@ function createMemoryModule(client) {
     }
   } else if (client.unregisterTool && typeof client.unregisterTool === 'function') {
     // Ensure tool is unregistered if disabled
-    client.unregisterTool("recall_memory");
+    client.unregisterTool('recall_memory');
   }
 
   return {
@@ -366,7 +373,7 @@ function createMemoryModule(client) {
 
       const id = generateUUID();
       const timestamp = Date.now();
-      
+
       // Convert data to content string for embedding
       let content, rawData;
       if (typeof data === 'string') {
@@ -381,7 +388,7 @@ function createMemoryModule(client) {
         content,
         rawData,
         tags: options.tags || [],
-        timestamp
+        timestamp,
       };
 
       // Try to generate embedding
@@ -412,7 +419,7 @@ function createMemoryModule(client) {
 
       const limit = options.limit || 5;
       const memories = await memoryStore.getAll({ tags: options.tags });
-      
+
       if (memories.length === 0) {
         return [];
       }
@@ -420,27 +427,26 @@ function createMemoryModule(client) {
       try {
         // Try semantic search with embeddings
         const promptEmbedding = await client.embed(prompt);
-        
-        const memoriesWithEmbeddings = memories.filter(memory => memory.embedding);
-        
+
+        const memoriesWithEmbeddings = memories.filter((memory) => memory.embedding);
+
         if (memoriesWithEmbeddings.length === 0) {
           // Fall back to keyword search
           return keywordSearch(prompt, memories).slice(0, limit);
         }
 
-        const scoredMemories = memoriesWithEmbeddings.map(memory => ({
+        const scoredMemories = memoriesWithEmbeddings.map((memory) => ({
           ...memory,
-          relevanceScore: cosineSimilarity(promptEmbedding, memory.embedding)
+          relevanceScore: cosineSimilarity(promptEmbedding, memory.embedding),
         }));
 
         return scoredMemories
           .sort((a, b) => b.relevanceScore - a.relevanceScore)
           .slice(0, limit)
-          .map(memory => {
+          .map((memory) => {
             const { embedding, ...memoryWithoutEmbedding } = memory;
             return memoryWithoutEmbedding;
           });
-
       } catch (error) {
         console.warn('Semantic search failed, falling back to keyword search:', error.message);
         return keywordSearch(prompt, memories).slice(0, limit);
@@ -462,13 +468,13 @@ function createMemoryModule(client) {
         // Use recall for prompt-based filtering
         return await this.recall(options.prompt, {
           limit: options.limit,
-          tags: options.tags
+          tags: options.tags,
         });
       }
 
       const memories = await memoryStore.getAll(options);
-      
-      return memories.map(memory => {
+
+      return memories.map((memory) => {
         const { embedding, ...memoryWithoutEmbedding } = memory;
         return memoryWithoutEmbedding;
       });
@@ -498,7 +504,7 @@ function createMemoryModule(client) {
      */
     async exportMemories(options = {}) {
       const memories = await memoryStore.getAll(options);
-      
+
       const exportData = {
         version: '1.0',
         exportedAt: new Date().toISOString(),
@@ -508,22 +514,22 @@ function createMemoryModule(client) {
           filters: {
             tags: options.tags,
             after: options.after,
-            before: options.before
-          }
+            before: options.before,
+          },
         },
-        memories: memories.map(memory => {
+        memories: memories.map((memory) => {
           const exported = { ...memory };
-          
+
           // Remove embedding unless specifically requested
           if (!options.includeEmbeddings && exported.embedding) {
             delete exported.embedding;
           }
-          
+
           return exported;
         }),
-        count: memories.length
+        count: memories.length,
       };
-      
+
       return exportData;
     },
 
@@ -536,41 +542,43 @@ function createMemoryModule(client) {
     async exportMemoriesToFile(options = {}) {
       // Check if we're in a browser environment
       if (typeof window === 'undefined' || typeof document === 'undefined') {
-        throw new Error('exportMemoriesToFile() is only available in browser environments. Use exportMemories() in Node.js.');
+        throw new Error(
+          'exportMemoriesToFile() is only available in browser environments. Use exportMemories() in Node.js.'
+        );
       }
 
       // Generate the export data
       const exportData = await this.exportMemories(options);
-      
+
       // Generate filename if not provided
       const now = new Date();
       const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
       const filename = options.filename || `warpmind-memories-${dateStr}.json`;
-      
+
       // Create and trigger download
       const jsonString = JSON.stringify(exportData, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      
+
       // Create temporary download link
       const downloadLink = document.createElement('a');
       downloadLink.href = url;
       downloadLink.download = filename;
       downloadLink.style.display = 'none';
-      
+
       // Trigger download
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
-      
+
       // Clean up the object URL
       URL.revokeObjectURL(url);
-      
+
       return {
         exported: exportData.count,
         filename: filename,
         size: new Blob([jsonString]).size,
-        data: exportData
+        data: exportData,
       };
     },
 
@@ -584,11 +592,7 @@ function createMemoryModule(client) {
      * @returns {Promise<Object>} - Import statistics: { imported: number, skipped: number, errors: string[] }
      */
     async importMemories(data, options = {}) {
-      const {
-        merge = true,
-        skipDuplicates = true,
-        regenerateEmbeddings = true
-      } = options;
+      const { merge = true, skipDuplicates = true, regenerateEmbeddings = true } = options;
 
       // Parse data if it's a string
       let importData;
@@ -606,7 +610,7 @@ function createMemoryModule(client) {
       const stats = {
         imported: 0,
         skipped: 0,
-        errors: []
+        errors: [],
       };
 
       // Get existing memories for duplicate checking
@@ -628,8 +632,8 @@ function createMemoryModule(client) {
         try {
           // Check for duplicates by content
           if (skipDuplicates) {
-            const isDuplicate = existingMemories.some(existing => 
-              existing.content === memoryData.content
+            const isDuplicate = existingMemories.some(
+              (existing) => existing.content === memoryData.content
             );
             if (isDuplicate) {
               stats.skipped++;
@@ -643,7 +647,7 @@ function createMemoryModule(client) {
             content: memoryData.content,
             rawData: memoryData.rawData,
             tags: memoryData.tags || [],
-            timestamp: memoryData.timestamp || Date.now()
+            timestamp: memoryData.timestamp || Date.now(),
           };
 
           // Handle embeddings
@@ -665,9 +669,10 @@ function createMemoryModule(client) {
 
           await memoryStore.store(memory);
           stats.imported++;
-
         } catch (error) {
-          stats.errors.push(`Failed to import memory "${memoryData.content?.slice(0, 50)}...": ${error.message}`);
+          stats.errors.push(
+            `Failed to import memory "${memoryData.content?.slice(0, 50)}...": ${error.message}`
+          );
         }
       }
 
@@ -682,7 +687,9 @@ function createMemoryModule(client) {
     async importMemoriesFromFile(options = {}) {
       // Check if we're in a browser environment
       if (typeof window === 'undefined' || typeof document === 'undefined') {
-        throw new Error('importMemoriesFromFile() is only available in browser environments. Use importMemories() in Node.js.');
+        throw new Error(
+          'importMemoriesFromFile() is only available in browser environments. Use importMemories() in Node.js.'
+        );
       }
 
       return new Promise((resolve, reject) => {
@@ -691,7 +698,7 @@ function createMemoryModule(client) {
         fileInput.type = 'file';
         fileInput.accept = '.json,application/json';
         fileInput.style.display = 'none';
-        
+
         // Handle file selection
         fileInput.onchange = async (event) => {
           try {
@@ -700,13 +707,13 @@ function createMemoryModule(client) {
               reject(new Error('No file selected'));
               return;
             }
-            
+
             // Validate file type
             if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
               reject(new Error('Please select a JSON file (.json)'));
               return;
             }
-            
+
             // Read file content
             const fileContent = await new Promise((fileResolve, fileReject) => {
               const reader = new FileReader();
@@ -714,7 +721,7 @@ function createMemoryModule(client) {
               reader.onerror = () => fileReject(new Error('Failed to read file'));
               reader.readAsText(file);
             });
-            
+
             // Parse and import the JSON data
             let importData;
             try {
@@ -723,19 +730,18 @@ function createMemoryModule(client) {
               reject(new Error(`Invalid JSON file: ${parseError.message}`));
               return;
             }
-            
+
             // Import the memories using existing importMemories method
             const stats = await this.importMemories(importData, options);
-            
+
             // Clean up file input
             document.body.removeChild(fileInput);
-            
+
             resolve({
               ...stats,
               filename: file.name,
-              fileSize: file.size
+              fileSize: file.size,
             });
-            
           } catch (error) {
             // Clean up file input on error
             if (document.body.contains(fileInput)) {
@@ -744,18 +750,18 @@ function createMemoryModule(client) {
             reject(error);
           }
         };
-        
+
         // Handle dialog cancellation
         fileInput.oncancel = () => {
           document.body.removeChild(fileInput);
           reject(new Error('File selection cancelled'));
         };
-        
+
         // Trigger file picker
         document.body.appendChild(fileInput);
         fileInput.click();
       });
-    }
+    },
   };
 }
 

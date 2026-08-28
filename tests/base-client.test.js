@@ -4,10 +4,10 @@
 
 const { BaseClient, TimeoutError } = require('../src/core/base-client');
 
-// Mock the util module 
+// Mock the util module
 jest.mock('../src/util', () => ({
   ...jest.requireActual('../src/util'),
-  sleep: jest.fn().mockResolvedValue(undefined)
+  sleep: jest.fn().mockResolvedValue(undefined),
 }));
 const { sleep } = require('../src/util');
 
@@ -17,7 +17,7 @@ global.fetch = jest.fn();
 // Mock AbortController globally
 global.AbortController = jest.fn(() => ({
   signal: {},
-  abort: jest.fn()
+  abort: jest.fn(),
 }));
 
 describe('BaseClient Additional Coverage Tests', () => {
@@ -26,9 +26,9 @@ describe('BaseClient Additional Coverage Tests', () => {
   beforeEach(() => {
     client = new BaseClient({
       apiKey: 'test-api-key',
-      baseURL: 'https://api.openai.com/v1'
+      baseURL: 'https://api.openai.com/v1',
     });
-    
+
     fetch.mockClear();
     sleep.mockClear();
   });
@@ -36,25 +36,25 @@ describe('BaseClient Additional Coverage Tests', () => {
   describe('constructor edge cases', () => {
     it('should handle configuration without apiKey', () => {
       const clientWithoutKey = new BaseClient({
-        baseURL: 'https://api.openai.com/v1'
+        baseURL: 'https://api.openai.com/v1',
       });
-      
+
       expect(clientWithoutKey.apiKey).toBe('');
       expect(clientWithoutKey.baseURL).toBe('https://api.openai.com/v1');
     });
 
     it('should handle empty configuration object', () => {
       const clientEmpty = new BaseClient({});
-      
+
       expect(clientEmpty.apiKey).toBe('');
       expect(clientEmpty.baseURL).toBe('https://api.openai.com');
-      expect(clientEmpty.model).toBe('gpt-4o');  // Updated to match actual default
-      expect(clientEmpty.temperature).toBe(1.0);  // Updated to match actual default
+      expect(clientEmpty.model).toBe('gpt-4o'); // Updated to match actual default
+      expect(clientEmpty.temperature).toBe(1.0); // Updated to match actual default
     });
 
     it('should handle undefined configuration', () => {
       const clientUndefined = new BaseClient();
-      
+
       expect(clientUndefined.apiKey).toBe('');
       expect(clientUndefined.baseURL).toBe('https://api.openai.com');
     });
@@ -65,9 +65,9 @@ describe('BaseClient Additional Coverage Tests', () => {
         baseURL: 'https://custom.api.com/v1',
         model: 'gpt-3.5-turbo',
         temperature: 0.5,
-        defaultTimeoutMs: 60000
+        defaultTimeoutMs: 60000,
       });
-      
+
       expect(customClient.apiKey).toBe('custom-key');
       expect(customClient.baseURL).toBe('https://custom.api.com/v1');
       expect(customClient.model).toBe('gpt-3.5-turbo');
@@ -97,9 +97,9 @@ describe('BaseClient Additional Coverage Tests', () => {
         apiKey: 'configured-key',
         baseURL: 'https://configured.api.com',
         model: 'configured-model',
-        temperature: 0.1
+        temperature: 0.1,
       });
-      
+
       expect(client.apiKey).toBe('configured-key');
       expect(client.baseURL).toBe('https://configured.api.com');
       expect(client.model).toBe('configured-model');
@@ -108,11 +108,11 @@ describe('BaseClient Additional Coverage Tests', () => {
 
     it('should handle partial configuration in configure method', () => {
       const originalModel = client.model;
-      
+
       client.configure({
-        apiKey: 'partial-key'
+        apiKey: 'partial-key',
       });
-      
+
       expect(client.apiKey).toBe('partial-key');
       expect(client.model).toBe(originalModel); // Should remain unchanged
     });
@@ -134,9 +134,9 @@ describe('BaseClient Additional Coverage Tests', () => {
           status: 429,
           statusText: 'Too Many Requests',
           headers: {
-            get: jest.fn().mockReturnValue(null)
+            get: jest.fn().mockReturnValue(null),
           },
-          json: () => Promise.resolve({ error: { message: 'Rate limited' } })
+          json: () => Promise.resolve({ error: { message: 'Rate limited' } }),
         })
         .mockRejectedValueOnce(new Error('Network disconnected'));
 
@@ -149,10 +149,10 @@ describe('BaseClient Additional Coverage Tests', () => {
         status: 500,
         statusText: 'Internal Server Error',
         headers: {
-          get: jest.fn().mockReturnValue(null)
+          get: jest.fn().mockReturnValue(null),
         },
         json: () => Promise.reject(new Error('Invalid JSON')),
-        text: () => Promise.resolve('Server Error')
+        text: () => Promise.resolve('Server Error'),
       });
 
       await expect(client.makeRequest('/test', {})).rejects.toThrow(
@@ -166,9 +166,9 @@ describe('BaseClient Additional Coverage Tests', () => {
         status: 400,
         statusText: 'Bad Request',
         headers: {
-          get: jest.fn().mockReturnValue(null)
+          get: jest.fn().mockReturnValue(null),
         },
-        json: () => Promise.resolve({ error: {} }) // No message property
+        json: () => Promise.resolve({ error: {} }), // No message property
       });
 
       await expect(client.makeRequest('/test', {})).rejects.toThrow(
@@ -182,9 +182,9 @@ describe('BaseClient Additional Coverage Tests', () => {
         status: 403,
         statusText: 'Forbidden',
         headers: {
-          get: jest.fn().mockReturnValue(null)
+          get: jest.fn().mockReturnValue(null),
         },
-        json: () => Promise.resolve({}) // No error object
+        json: () => Promise.resolve({}), // No error object
       });
 
       await expect(client.makeRequest('/test', {})).rejects.toThrow(
@@ -195,9 +195,9 @@ describe('BaseClient Additional Coverage Tests', () => {
     it('should handle timeout during retry sequence', async () => {
       const mockAbortController = {
         signal: { aborted: false },
-        abort: jest.fn()
+        abort: jest.fn(),
       };
-      
+
       global.AbortController = jest.fn(() => mockAbortController);
 
       // First call triggers retry, second call times out
@@ -207,31 +207,32 @@ describe('BaseClient Additional Coverage Tests', () => {
           status: 502,
           statusText: 'Bad Gateway',
           headers: {
-            get: jest.fn().mockReturnValue(null)
+            get: jest.fn().mockReturnValue(null),
           },
-          json: () => Promise.resolve({ error: { message: 'Gateway error' } })
+          json: () => Promise.resolve({ error: { message: 'Gateway error' } }),
         })
         .mockRejectedValueOnce({
           name: 'AbortError',
-          message: 'The operation was aborted'
+          message: 'The operation was aborted',
         });
 
-      await expect(client.makeRequest('/test', {}, { timeoutMs: 5000 }))
-        .rejects.toThrow('Request timed out after 5000ms');
+      await expect(client.makeRequest('/test', {}, { timeoutMs: 5000 })).rejects.toThrow(
+        'Request timed out after 5000ms'
+      );
     });
 
     it('should use default timeout when timeoutMs is not specified', async () => {
       const mockAbortController = {
         signal: { aborted: false },
-        abort: jest.fn()
+        abort: jest.fn(),
       };
-      
+
       global.AbortController = jest.fn(() => mockAbortController);
 
       const mockResponse = { test: 'success' };
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
       const result = await client.makeRequest('/test', {});
@@ -247,7 +248,7 @@ describe('BaseClient Additional Coverage Tests', () => {
       const mockResponse = { test: 'success' };
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
       const result = await client.makeRequest('/test', {}, { timeoutMs: 5000 });
@@ -263,7 +264,7 @@ describe('BaseClient Additional Coverage Tests', () => {
       const mockResponse = { test: 'success' };
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
       const result = await client.makeRequest('/test', {}, { timeoutMs: 0 });
@@ -274,7 +275,7 @@ describe('BaseClient Additional Coverage Tests', () => {
       const mockResponse = { test: 'success' };
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
       const result = await client.makeRequest('/test', {}, { timeoutMs: -1000 });
@@ -292,58 +293,59 @@ describe('BaseClient Additional Coverage Tests', () => {
           status: 429,
           statusText: 'Too Many Requests',
           headers: {
-            get: jest.fn().mockReturnValue(null)
+            get: jest.fn().mockReturnValue(null),
           },
-          json: () => Promise.resolve({ error: { message: 'Rate limited' } })
+          json: () => Promise.resolve({ error: { message: 'Rate limited' } }),
         })
         .mockResolvedValueOnce({
           ok: false,
           status: 502,
           statusText: 'Bad Gateway',
           headers: {
-            get: jest.fn().mockReturnValue(null)
+            get: jest.fn().mockReturnValue(null),
           },
-          json: () => Promise.resolve({ error: { message: 'Gateway error' } })
+          json: () => Promise.resolve({ error: { message: 'Gateway error' } }),
         })
         .mockResolvedValueOnce({
           ok: false,
           status: 503,
           statusText: 'Service Unavailable',
           headers: {
-            get: jest.fn().mockReturnValue(null)
+            get: jest.fn().mockReturnValue(null),
           },
-          json: () => Promise.resolve({ error: { message: 'Service down' } })
+          json: () => Promise.resolve({ error: { message: 'Service down' } }),
         })
         .mockResolvedValueOnce({
           ok: false,
           status: 524,
           statusText: 'Timeout',
           headers: {
-            get: jest.fn().mockReturnValue(null)
+            get: jest.fn().mockReturnValue(null),
           },
-          json: () => Promise.resolve({ error: { message: 'Timeout error' } })
+          json: () => Promise.resolve({ error: { message: 'Timeout error' } }),
         })
         .mockResolvedValueOnce({
           ok: false,
           status: 429,
           statusText: 'Too Many Requests',
           headers: {
-            get: jest.fn().mockReturnValue(null)
+            get: jest.fn().mockReturnValue(null),
           },
-          json: () => Promise.resolve({ error: { message: 'Still rate limited' } })
+          json: () => Promise.resolve({ error: { message: 'Still rate limited' } }),
         })
         .mockResolvedValueOnce({
           ok: false,
           status: 429,
           statusText: 'Too Many Requests',
           headers: {
-            get: jest.fn().mockReturnValue(null)
+            get: jest.fn().mockReturnValue(null),
           },
-          json: () => Promise.resolve({ error: { message: 'Final failure' } })
+          json: () => Promise.resolve({ error: { message: 'Final failure' } }),
         });
 
-      await expect(client.makeRequest('/test', {}))
-        .rejects.toThrow('API request failed: 429 Too Many Requests. Final failure');
+      await expect(client.makeRequest('/test', {})).rejects.toThrow(
+        'API request failed: 429 Too Many Requests. Final failure'
+      );
 
       expect(consoleSpy).toHaveBeenCalledTimes(5); // 5 retry attempts
 
@@ -359,22 +361,20 @@ describe('BaseClient Additional Coverage Tests', () => {
           status: 429,
           statusText: 'Too Many Requests',
           headers: {
-            get: (name) => (name.toLowerCase() === 'retry-after') ? '5' : null
+            get: (name) => (name.toLowerCase() === 'retry-after' ? '5' : null),
           },
-          json: () => Promise.resolve({ error: { message: 'Rate limited' } })
+          json: () => Promise.resolve({ error: { message: 'Rate limited' } }),
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ success: true })
+          json: () => Promise.resolve({ success: true }),
         });
 
       const result = await client.makeRequest('/test', {});
       expect(result).toEqual({ success: true });
 
       // Should have used the retry-after value (5000ms + jitter)
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/retrying in 5\d{3}\.\d+ms/)
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringMatching(/retrying in 5\d{3}\.\d+ms/));
 
       consoleSpy.mockRestore();
     });
@@ -384,7 +384,7 @@ describe('BaseClient Additional Coverage Tests', () => {
 describe('TimeoutError', () => {
   it('should create TimeoutError with correct properties', () => {
     const error = new TimeoutError('Test timeout message');
-    
+
     expect(error.name).toBe('TimeoutError');
     expect(error.message).toBe('Test timeout message');
     expect(error instanceof Error).toBe(true);

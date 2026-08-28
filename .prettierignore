@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+package-lock.json
+*.min.js
+
+# Course/demo material — kept as hand-written teaching examples
+examples/
+README.md
+
+# Binary and non-source assets
+**/*.pdf
+**/*.mp3
+**/*.m4a

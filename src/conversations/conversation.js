@@ -32,7 +32,7 @@ class Conversation {
     const requestOptions = {
       ...options,
       model: this.model || options.model,
-      instructions: this.instructions || options.instructions
+      instructions: this.instructions || options.instructions,
     };
 
     // Use previous_response_id for chaining
@@ -68,7 +68,7 @@ class Conversation {
     const requestOptions = {
       ...options,
       model: this.model || options.model,
-      instructions: this.instructions || options.instructions
+      instructions: this.instructions || options.instructions,
     };
 
     // Use previous_response_id for chaining
@@ -118,7 +118,7 @@ class Conversation {
       history: this.history,
       previousResponseId: this.previousResponseId,
       instructions: this.instructions,
-      model: this.model
+      model: this.model,
     });
   }
 

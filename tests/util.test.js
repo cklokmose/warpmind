@@ -9,13 +9,13 @@ const {
   createTimeoutController,
   sleep,
   delayForRetry,
-  fileToBase64
+  fileToBase64,
 } = require('../src/util');
 
 // Mock AbortController globally
 global.AbortController = jest.fn(() => ({
   signal: {},
-  abort: jest.fn()
+  abort: jest.fn(),
 }));
 
 // Mock FileReader globally
@@ -24,7 +24,7 @@ global.FileReader = jest.fn(() => {
     readAsDataURL: jest.fn(),
     onload: null,
     onerror: null,
-    result: 'data:image/jpeg;base64,mockbase64data'
+    result: 'data:image/jpeg;base64,mockbase64data',
   };
   return instance;
 });
@@ -34,7 +34,7 @@ const mockFileReader = {
   readAsDataURL: jest.fn(),
   result: 'data:image/jpeg;base64,mockbase64data',
   onload: null,
-  onerror: null
+  onerror: null,
 };
 
 describe('Utility Functions Tests', () => {
@@ -46,7 +46,7 @@ describe('Utility Functions Tests', () => {
     it('should add random jitter between 0 and 250ms', () => {
       const delay = 1000;
       const jitteredDelay = addJitter(delay);
-      
+
       expect(jitteredDelay).toBeGreaterThanOrEqual(delay);
       expect(jitteredDelay).toBeLessThan(delay + 250);
     });
@@ -68,10 +68,10 @@ describe('Utility Functions Tests', () => {
     it('should calculate exponential backoff correctly', () => {
       expect(calculateRetryDelay(0)).toBeGreaterThanOrEqual(500);
       expect(calculateRetryDelay(0)).toBeLessThan(750); // 500 + 250 jitter
-      
+
       expect(calculateRetryDelay(1)).toBeGreaterThanOrEqual(1000);
       expect(calculateRetryDelay(1)).toBeLessThan(1250); // 1000 + 250 jitter
-      
+
       expect(calculateRetryDelay(2)).toBeGreaterThanOrEqual(2000);
       expect(calculateRetryDelay(2)).toBeLessThan(2250); // 2000 + 250 jitter
     });
@@ -79,7 +79,7 @@ describe('Utility Functions Tests', () => {
     it('should respect retry-after header when provided', () => {
       const retryAfter = '3'; // 3 seconds as string (as it would come from HTTP header)
       const delay = calculateRetryDelay(1, retryAfter);
-      
+
       expect(delay).toBeGreaterThanOrEqual(3000); // 3 seconds in ms
       expect(delay).toBeLessThan(3250); // 3000 + max jitter
     });
@@ -128,13 +128,13 @@ describe('Utility Functions Tests', () => {
     it('should create AbortController and timeout', () => {
       const mockAbortController = {
         signal: { aborted: false },
-        abort: jest.fn()
+        abort: jest.fn(),
       };
-      
+
       global.AbortController = jest.fn(() => mockAbortController);
-      
+
       const { controller, timeoutId } = createTimeoutController(5000);
-      
+
       expect(controller).toBe(mockAbortController);
       expect(timeoutId).toBeDefined();
       expect(typeof timeoutId).toBe('object'); // setTimeout returns a timer object in Jest
@@ -143,28 +143,28 @@ describe('Utility Functions Tests', () => {
     it('should abort controller when timeout triggers', () => {
       const mockAbortController = {
         signal: { aborted: false },
-        abort: jest.fn()
+        abort: jest.fn(),
       };
-      
+
       global.AbortController = jest.fn(() => mockAbortController);
-      
+
       const { controller } = createTimeoutController(1000);
-      
+
       // Fast-forward time to trigger timeout
       jest.advanceTimersByTime(1000);
-      
+
       expect(controller.abort).toHaveBeenCalled();
     });
 
     it('should handle missing AbortController gracefully', () => {
       const originalAbortController = global.AbortController;
       delete global.AbortController;
-      
+
       const { controller, timeoutId } = createTimeoutController(5000);
-      
+
       expect(controller).toBeNull();
       expect(timeoutId).toBeDefined();
-      
+
       global.AbortController = originalAbortController;
     });
   });
@@ -180,15 +180,17 @@ describe('Utility Functions Tests', () => {
 
     it('should resolve after specified delay', async () => {
       const sleepPromise = sleep(1000);
-      
+
       jest.advanceTimersByTime(999);
       // Promise should not be resolved yet
       let resolved = false;
-      sleepPromise.then(() => { resolved = true; });
-      
+      sleepPromise.then(() => {
+        resolved = true;
+      });
+
       await Promise.resolve(); // Allow promise to settle
       expect(resolved).toBe(false);
-      
+
       jest.advanceTimersByTime(1);
       await sleepPromise;
       expect(resolved).toBe(true);
@@ -220,14 +222,16 @@ describe('Utility Functions Tests', () => {
 
     it('should delay for calculated retry time', async () => {
       const delayPromise = delayForRetry(1); // Should be ~1000ms + jitter
-      
+
       jest.advanceTimersByTime(999);
       let resolved = false;
-      delayPromise.then(() => { resolved = true; });
-      
+      delayPromise.then(() => {
+        resolved = true;
+      });
+
       await Promise.resolve();
       expect(resolved).toBe(false);
-      
+
       jest.advanceTimersByTime(300); // Account for jitter
       await delayPromise;
       expect(resolved).toBe(true);
@@ -237,23 +241,25 @@ describe('Utility Functions Tests', () => {
       // Mock Math.random to control jitter BEFORE calling delayForRetry
       const originalRandom = Math.random;
       Math.random = jest.fn(() => 0.5); // Fixed jitter value
-      
+
       const retryAfter = '2'; // 2 seconds as string
       const delayPromise = delayForRetry(0, retryAfter);
-      
+
       jest.advanceTimersByTime(1999);
       let resolved = false;
-      delayPromise.then(() => { resolved = true; });
-      
+      delayPromise.then(() => {
+        resolved = true;
+      });
+
       await Promise.resolve();
       expect(resolved).toBe(false);
-      
+
       jest.advanceTimersByTime(300); // Account for jitter
       await delayPromise;
-      
+
       // Restore Math.random
       Math.random = originalRandom;
-      
+
       expect(resolved).toBe(true);
     });
   });
@@ -262,33 +268,33 @@ describe('Utility Functions Tests', () => {
     it('should convert file to base64 in browser environment', async () => {
       // Mock browser environment
       global.FileReader = jest.fn(() => mockFileReader);
-      
+
       const mockFile = new Blob(['test'], { type: 'image/jpeg' });
-      
+
       // Set up FileReader mock to call onload after readAsDataURL
-      mockFileReader.readAsDataURL.mockImplementation(function(file) {
+      mockFileReader.readAsDataURL.mockImplementation(function (file) {
         setTimeout(() => {
           this.onload();
         }, 0);
       });
-      
+
       const result = await fileToBase64(mockFile);
-      
+
       expect(result).toBe('data:image/jpeg;base64,mockbase64data');
       expect(mockFileReader.readAsDataURL).toHaveBeenCalledWith(mockFile);
     });
 
     it('should handle FileReader errors in browser', async () => {
       global.FileReader = jest.fn(() => mockFileReader);
-      
+
       const mockFile = new Blob(['test'], { type: 'image/jpeg' });
-      
-      mockFileReader.readAsDataURL.mockImplementation(function(file) {
+
+      mockFileReader.readAsDataURL.mockImplementation(function (file) {
         setTimeout(() => {
           this.onerror(new Error('File read error'));
         }, 0);
       });
-      
+
       await expect(fileToBase64(mockFile)).rejects.toThrow('Failed to read file');
     });
 
@@ -296,23 +302,23 @@ describe('Utility Functions Tests', () => {
       // Remove FileReader to simulate Node.js environment
       const originalFileReader = global.FileReader;
       delete global.FileReader;
-      
+
       // Mock fs.readFileSync
       const mockReadFileSync = jest.fn().mockReturnValue(Buffer.from('test data'));
       jest.doMock('fs', () => ({
-        readFileSync: mockReadFileSync
+        readFileSync: mockReadFileSync,
       }));
-      
+
       // Re-require the module to get the Node.js version
       delete require.cache[require.resolve('../src/util.js')];
       const { fileToBase64: nodeFileToBase64 } = require('../src/util.js');
-      
+
       const mockFile = { path: '/test/image.jpg', type: 'image/jpeg' };
       const result = await nodeFileToBase64(mockFile);
-      
+
       expect(result).toBe('data:image/jpeg;base64,dGVzdCBkYXRh'); // base64 of 'test data'
       expect(mockReadFileSync).toHaveBeenCalledWith('/test/image.jpg');
-      
+
       // Restore environment
       global.FileReader = originalFileReader;
       jest.unmock('fs');
@@ -320,18 +326,18 @@ describe('Utility Functions Tests', () => {
 
     it('should handle files without type property', async () => {
       global.FileReader = jest.fn(() => mockFileReader);
-      
+
       const mockFile = new Blob(['test']); // No type specified
-      
-      mockFileReader.readAsDataURL.mockImplementation(function(file) {
+
+      mockFileReader.readAsDataURL.mockImplementation(function (file) {
         setTimeout(() => {
           this.result = 'data:application/octet-stream;base64,mockdata';
           this.onload();
         }, 0);
       });
-      
+
       const result = await fileToBase64(mockFile);
-      
+
       expect(result).toBe('data:application/octet-stream;base64,mockdata');
     });
 
@@ -343,20 +349,20 @@ describe('Utility Functions Tests', () => {
     it('should use fallback MIME type in Node.js when type is not available', async () => {
       const originalFileReader = global.FileReader;
       delete global.FileReader;
-      
+
       const mockReadFileSync = jest.fn().mockReturnValue(Buffer.from('test data'));
       jest.doMock('fs', () => ({
-        readFileSync: mockReadFileSync
+        readFileSync: mockReadFileSync,
       }));
-      
+
       delete require.cache[require.resolve('../src/util.js')];
       const { fileToBase64: nodeFileToBase64 } = require('../src/util.js');
-      
+
       const mockFile = { path: '/test/unknown-file' }; // No type property
       const result = await nodeFileToBase64(mockFile);
-      
+
       expect(result).toBe('data:application/octet-stream;base64,dGVzdCBkYXRh');
-      
+
       global.FileReader = originalFileReader;
       jest.unmock('fs');
     });
@@ -365,7 +371,7 @@ describe('Utility Functions Tests', () => {
   describe('module exports', () => {
     it('should export all utility functions', () => {
       const utils = require('../src/util.js');
-      
+
       expect(utils.addJitter).toBeDefined();
       expect(utils.calculateRetryDelay).toBeDefined();
       expect(utils.shouldRetry).toBeDefined();

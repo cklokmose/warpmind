@@ -13,7 +13,7 @@ global.FileReader = jest.fn(() => {
     readAsDataURL: jest.fn(),
     onload: null,
     onerror: null,
-    result: 'data:image/jpeg;base64,mockbase64data'
+    result: 'data:image/jpeg;base64,mockbase64data',
   };
   return instance;
 });
@@ -24,9 +24,9 @@ describe('WarpMind Vision Module Tests', () => {
   beforeEach(() => {
     mind = new WarpMind({
       apiKey: 'test-api-key',
-      baseURL: 'https://api.openai.com/v1'
+      baseURL: 'https://api.openai.com/v1',
     });
-    
+
     // Reset fetch mock
     fetch.mockClear();
   });
@@ -34,12 +34,12 @@ describe('WarpMind Vision Module Tests', () => {
   describe('analyzeImage() method', () => {
     it('should analyze image from URL with default options', async () => {
       const mockResponse = {
-        choices: [{ message: { content: 'This is a beautiful landscape image.' } }]
+        choices: [{ message: { content: 'This is a beautiful landscape image.' } }],
       };
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
       const result = await mind.analyzeImage(
@@ -47,61 +47,57 @@ describe('WarpMind Vision Module Tests', () => {
         'What do you see in this image?'
       );
 
-      expect(result).toEqual("This is a beautiful landscape image.");
-      
+      expect(result).toEqual('This is a beautiful landscape image.');
+
       const requestBody = JSON.parse(fetch.mock.calls[0][1].body);
       expect(requestBody.messages[0].content).toEqual([
-        { type: "text", text: "What do you see in this image?" },
+        { type: 'text', text: 'What do you see in this image?' },
         {
-          type: "image_url",
+          type: 'image_url',
           image_url: {
-            url: "https://example.com/image.jpg",
-            detail: "low"
-          }
-        }
+            url: 'https://example.com/image.jpg',
+            detail: 'low',
+          },
+        },
       ]);
     });
 
     it('should analyze image with high detail option', async () => {
       const mockResponse = {
-        choices: [{ message: { content: 'Detailed analysis of the image.' } }]
+        choices: [{ message: { content: 'Detailed analysis of the image.' } }],
       };
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
-      await mind.analyzeImage(
-        'https://example.com/image.jpg',
-        'Analyze in detail',
-        { detail: 'high' }
-      );
+      await mind.analyzeImage('https://example.com/image.jpg', 'Analyze in detail', {
+        detail: 'high',
+      });
 
       const requestBody = JSON.parse(fetch.mock.calls[0][1].body);
       expect(requestBody.messages[0].content[1].image_url.detail).toBe('high');
     });
 
     it('should validate detail parameter and throw error for invalid values', async () => {
-      await expect(mind.analyzeImage(
-        'https://example.com/image.jpg',
-        'Test',
-        { detail: 'invalid' }
-      )).rejects.toThrow('options.detail must be "low" or "high"');
+      await expect(
+        mind.analyzeImage('https://example.com/image.jpg', 'Test', { detail: 'invalid' })
+      ).rejects.toThrow('options.detail must be "low" or "high"');
     });
 
     it('should handle base64 data URL images', async () => {
       const mockResponse = {
-        choices: [{ message: { content: 'Analysis of base64 image.' } }]
+        choices: [{ message: { content: 'Analysis of base64 image.' } }],
       };
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
       const base64Image = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAA==';
-      
+
       await mind.analyzeImage(base64Image, 'Analyze this base64 image');
 
       const requestBody = JSON.parse(fetch.mock.calls[0][1].body);
@@ -110,27 +106,27 @@ describe('WarpMind Vision Module Tests', () => {
 
     it('should handle File objects by converting to base64', async () => {
       const mockResponse = {
-        choices: [{ message: { content: 'Analysis of uploaded file.' } }]
+        choices: [{ message: { content: 'Analysis of uploaded file.' } }],
       };
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
-      // Mock File object with better detection properties  
+      // Mock File object with better detection properties
       const mockFile = {
         constructor: {
-          name: 'File'
+          name: 'File',
         },
         type: 'image/jpeg',
         size: 1024,
-        name: 'test.jpg'
+        name: 'test.jpg',
       };
 
       // Make the vision module detect this as a File and convert to base64
       Object.defineProperty(mockFile, Symbol.toStringTag, {
-        value: 'File'
+        value: 'File',
       });
 
       // Mock FileReader for the browser environment
@@ -148,36 +144,36 @@ describe('WarpMind Vision Module Tests', () => {
           }, 10);
         }
       };
-      
+
       const result = await mind.analyzeImage(mockFile, 'Analyze this file');
       expect(result).toBe('Analysis of uploaded file.');
-      
+
       // Clean up
       delete global.FileReader;
     }, 10000);
 
     it('should handle Blob objects by converting to base64', async () => {
       const mockResponse = {
-        choices: [{ message: { content: 'Analysis of blob image.' } }]
+        choices: [{ message: { content: 'Analysis of blob image.' } }],
       };
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
       // Mock Blob object
       const mockBlob = {
         constructor: {
-          name: 'Blob'
+          name: 'Blob',
         },
         type: 'image/png',
-        size: 2048
+        size: 2048,
       };
 
       // Make the vision module detect this as a Blob and convert to base64
       Object.defineProperty(mockBlob, Symbol.toStringTag, {
-        value: 'Blob'
+        value: 'Blob',
       });
 
       // Mock FileReader for the browser environment
@@ -198,19 +194,19 @@ describe('WarpMind Vision Module Tests', () => {
 
       const result = await mind.analyzeImage(mockBlob, 'Analyze this blob');
       expect(result).toBe('Analysis of blob image.');
-      
+
       // Clean up
       delete global.FileReader;
     }, 10000);
 
     it('should use default prompt when none provided', async () => {
       const mockResponse = {
-        choices: [{ message: { content: 'Default analysis.' } }]
+        choices: [{ message: { content: 'Default analysis.' } }],
       };
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
       await mind.analyzeImage('https://example.com/image.jpg');
@@ -221,24 +217,20 @@ describe('WarpMind Vision Module Tests', () => {
 
     it('should pass through additional options like model and temperature', async () => {
       const mockResponse = {
-        choices: [{ message: { content: 'Custom model analysis.' } }]
+        choices: [{ message: { content: 'Custom model analysis.' } }],
       };
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
-      await mind.analyzeImage(
-        'https://example.com/image.jpg',
-        'Analyze',
-        {
-          detail: 'low',
-          model: 'gpt-4-vision-preview',
-          temperature: 0.3,
-          timeoutMs: 10000
-        }
-      );
+      await mind.analyzeImage('https://example.com/image.jpg', 'Analyze', {
+        detail: 'low',
+        model: 'gpt-4-vision-preview',
+        temperature: 0.3,
+        timeoutMs: 10000,
+      });
 
       const requestBody = JSON.parse(fetch.mock.calls[0][1].body);
       expect(requestBody.model).toBe('gpt-4-vision-preview');
@@ -247,37 +239,35 @@ describe('WarpMind Vision Module Tests', () => {
 
     it('should handle HTTP errors properly', async () => {
       // Mock makeRequest to throw the expected error
-      mind.makeRequest = jest.fn().mockRejectedValueOnce(
-        new Error('API request failed: 400 Bad Request. Invalid image format')
-      );
+      mind.makeRequest = jest
+        .fn()
+        .mockRejectedValueOnce(
+          new Error('API request failed: 400 Bad Request. Invalid image format')
+        );
 
-      await expect(mind.analyzeImage(
-        'https://example.com/invalid-image.txt',
-        'Analyze this'
-      )).rejects.toThrow('API request failed: 400 Bad Request');
+      await expect(
+        mind.analyzeImage('https://example.com/invalid-image.txt', 'Analyze this')
+      ).rejects.toThrow('API request failed: 400 Bad Request');
     });
 
     it('should handle timeout errors', async () => {
       // Mock makeRequest to throw timeout error
-      mind.makeRequest = jest.fn().mockRejectedValueOnce(
-        new Error('Request timed out after 1000ms')
-      );
+      mind.makeRequest = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Request timed out after 1000ms'));
 
-      await expect(mind.analyzeImage(
-        'https://example.com/image.jpg',
-        'Test',
-        { timeoutMs: 1000 }
-      )).rejects.toThrow('Request timed out after 1000ms');
+      await expect(
+        mind.analyzeImage('https://example.com/image.jpg', 'Test', { timeoutMs: 1000 })
+      ).rejects.toThrow('Request timed out after 1000ms');
     });
 
     it('should handle network errors', async () => {
       // Mock makeRequest to throw network error
       mind.makeRequest = jest.fn().mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(mind.analyzeImage(
-        'https://example.com/image.jpg',
-        'Test'
-      )).rejects.toThrow('Network error');
+      await expect(mind.analyzeImage('https://example.com/image.jpg', 'Test')).rejects.toThrow(
+        'Network error'
+      );
     });
   });
 
@@ -292,9 +282,9 @@ describe('WarpMind Vision Module Tests', () => {
       // but ensures the utility function is available
       const createVisionModule = require('../src/modules/vision.js');
       const mockClient = {
-        makeRequest: jest.fn()
+        makeRequest: jest.fn(),
       };
-      
+
       const visionModule = createVisionModule(mockClient);
       expect(visionModule.analyzeImage).toBeDefined();
       expect(typeof visionModule.analyzeImage).toBe('function');
@@ -304,12 +294,12 @@ describe('WarpMind Vision Module Tests', () => {
   describe('edge cases and error handling', () => {
     it('should handle empty string image URL', async () => {
       const mockResponse = {
-        choices: [{ message: { content: 'No image provided.' } }]
+        choices: [{ message: { content: 'No image provided.' } }],
       };
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
       await mind.analyzeImage('', 'What do you see?');
@@ -320,24 +310,27 @@ describe('WarpMind Vision Module Tests', () => {
 
     it('should handle null image parameter gracefully', async () => {
       // Null should throw an error since it's not a valid image input
-      await expect(mind.analyzeImage(null, 'Analyze null'))
-        .rejects.toThrow('Image must be a URL string, File, or Blob object');
+      await expect(mind.analyzeImage(null, 'Analyze null')).rejects.toThrow(
+        'Image must be a URL string, File, or Blob object'
+      );
     });
 
     it('should handle non-data URL strings as regular URLs', async () => {
       const mockResponse = {
-        choices: [{ message: { content: 'Regular URL analysis.' } }]
+        choices: [{ message: { content: 'Regular URL analysis.' } }],
       };
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse)
+        json: () => Promise.resolve(mockResponse),
       });
 
       await mind.analyzeImage('https://example.com/image.jpg', 'Analyze');
 
       const requestBody = JSON.parse(fetch.mock.calls[0][1].body);
-      expect(requestBody.messages[0].content[1].image_url.url).toBe('https://example.com/image.jpg');
+      expect(requestBody.messages[0].content[1].image_url.url).toBe(
+        'https://example.com/image.jpg'
+      );
     });
   });
 });

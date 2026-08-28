@@ -9,7 +9,7 @@ const WarpMind = require('../src/warpmind.js');
 const TEST_CONFIG = {
   baseURL: process.env.BASE_URL || 'https://api.openai.com',
   apiKey: process.env.API_KEY || '',
-  model: process.env.MODEL || 'gpt-4o-mini'
+  model: process.env.MODEL || 'gpt-4o-mini',
 };
 
 describe('Responses API - Basic respond()', () => {
@@ -21,7 +21,7 @@ describe('Responses API - Basic respond()', () => {
 
   test('should send a simple string message', async () => {
     const response = await mind.respond('Say "test successful" and nothing else');
-    
+
     expect(response).toHaveProperty('text');
     expect(response).toHaveProperty('id');
     expect(response).toHaveProperty('usage');
@@ -32,29 +32,29 @@ describe('Responses API - Basic respond()', () => {
 
   test('should accept instructions parameter', async () => {
     const response = await mind.respond('What should I do?', {
-      instructions: 'Always respond with "Follow the instructions"'
+      instructions: 'Always respond with "Follow the instructions"',
     });
-    
+
     expect(response.text).toContain('instruction');
   }, 30000);
 
   test('should support previous_response_id chaining', async () => {
     const first = await mind.respond('Remember the number 42');
     expect(first.id).toBeDefined();
-    
+
     const second = await mind.respond('What number did I just tell you?', {
-      previous_response_id: first.id
+      previous_response_id: first.id,
     });
-    
+
     expect(second.text).toContain('42');
   }, 60000);
 
   test('should accept array of messages (Chat Completions format)', async () => {
     const messages = [
       { role: 'system', content: 'You are a helpful assistant' },
-      { role: 'user', content: 'Say hello' }
+      { role: 'user', content: 'Say hello' },
     ];
-    
+
     const response = await mind.respond(messages);
     expect(response.text).toBeTruthy();
     expect(response.text.toLowerCase()).toContain('hello');
@@ -66,7 +66,7 @@ describe('Responses API - Tool Calling', () => {
 
   beforeEach(() => {
     mind = new WarpMind(TEST_CONFIG);
-    
+
     // Register a simple test tool
     mind.registerTool(
       'get_weather',
@@ -74,7 +74,7 @@ describe('Responses API - Tool Calling', () => {
         return {
           temperature: 22,
           condition: 'sunny',
-          location: args.location
+          location: args.location,
         };
       },
       {
@@ -84,25 +84,25 @@ describe('Responses API - Tool Calling', () => {
           properties: {
             location: {
               type: 'string',
-              description: 'City name'
-            }
+              description: 'City name',
+            },
           },
-          required: ['location']
-        }
+          required: ['location'],
+        },
       }
     );
   });
 
   test('should execute registered tools automatically', async () => {
     const response = await mind.respond('What is the weather in London?');
-    
+
     expect(response.text).toBeTruthy();
     expect(response.text.toLowerCase()).toContain('london');
     // Should contain weather information
     expect(
-      response.text.includes('22') || 
-      response.text.includes('sunny') || 
-      response.text.includes('weather')
+      response.text.includes('22') ||
+        response.text.includes('sunny') ||
+        response.text.includes('weather')
     ).toBe(true);
   }, 60000);
 });
@@ -116,20 +116,17 @@ describe('Responses API - Streaming', () => {
 
   test('should stream response chunks', async () => {
     const chunks = [];
-    
-    const response = await mind.streamRespond(
-      'Count from 1 to 5 slowly',
-      (event) => {
-        if (event.delta) {
-          chunks.push(event.delta);
-        }
+
+    const response = await mind.streamRespond('Count from 1 to 5 slowly', (event) => {
+      if (event.delta) {
+        chunks.push(event.delta);
       }
-    );
-    
+    });
+
     expect(chunks.length).toBeGreaterThan(0);
     expect(response.text).toBeTruthy();
     expect(response.id).toMatch(/^resp_/);
-    
+
     // Chunks should combine to full text
     const combinedChunks = chunks.join('');
     expect(combinedChunks).toBe(response.text);
@@ -137,7 +134,7 @@ describe('Responses API - Streaming', () => {
 
   test('should handle streaming with instructions', async () => {
     let chunkCount = 0;
-    
+
     const response = await mind.streamRespond(
       'Tell me a fact',
       (event) => {
@@ -146,10 +143,10 @@ describe('Responses API - Streaming', () => {
         }
       },
       {
-        instructions: 'Be concise'
+        instructions: 'Be concise',
       }
     );
-    
+
     expect(chunkCount).toBeGreaterThan(0);
     expect(response.text).toBeTruthy();
   }, 30000);
@@ -162,7 +159,7 @@ describe('Responses API - Conversation', () => {
   beforeEach(() => {
     mind = new WarpMind(TEST_CONFIG);
     conversation = mind.createConversation({
-      instructions: 'You are a helpful assistant. Keep track of what the user tells you.'
+      instructions: 'You are a helpful assistant. Keep track of what the user tells you.',
     });
   });
 
@@ -176,24 +173,24 @@ describe('Responses API - Conversation', () => {
   test('should maintain conversation context', async () => {
     const first = await conversation.respond('My name is Alice');
     expect(first.text).toBeTruthy();
-    
+
     const second = await conversation.respond('What is my name?');
     expect(second.text.toLowerCase()).toContain('alice');
-    
+
     expect(conversation.getHistory().length).toBeGreaterThan(0);
   }, 60000);
 
   test('should export and import conversation history', async () => {
     await conversation.respond('Remember the number 123');
-    
+
     const exported = conversation.exportHistory();
     expect(exported).toBeTruthy();
     expect(typeof exported).toBe('string');
-    
+
     // Create new conversation and import
     const newConversation = mind.createConversation();
     newConversation.importHistory(exported);
-    
+
     expect(newConversation.getHistory().length).toBe(conversation.getHistory().length);
     expect(newConversation.previousResponseId).toBe(conversation.previousResponseId);
   }, 30000);
@@ -201,7 +198,7 @@ describe('Responses API - Conversation', () => {
   test('should clear conversation history', async () => {
     await conversation.respond('Hello');
     expect(conversation.getHistory().length).toBeGreaterThan(0);
-    
+
     await conversation.clear();
     expect(conversation.getHistory().length).toBe(0);
     expect(conversation.previousResponseId).toBeNull();
@@ -209,16 +206,13 @@ describe('Responses API - Conversation', () => {
 
   test('should support streaming in conversations', async () => {
     let chunks = [];
-    
-    const response = await conversation.streamRespond(
-      'Count from 1 to 3',
-      (event) => {
-        if (event.delta) {
-          chunks.push(event.delta);
-        }
+
+    const response = await conversation.streamRespond('Count from 1 to 3', (event) => {
+      if (event.delta) {
+        chunks.push(event.delta);
       }
-    );
-    
+    });
+
     expect(chunks.length).toBeGreaterThan(0);
     expect(response.text).toBeTruthy();
     expect(conversation.getHistory().length).toBeGreaterThan(0);
@@ -235,7 +229,7 @@ describe('Responses API - Response Management', () => {
   test('should retrieve a response by ID', async () => {
     const response = await mind.respond('Say hello', { store: true });
     expect(response.id).toBeDefined();
-    
+
     // Retrieve the same response
     const retrieved = await mind.getResponse(response.id);
     expect(retrieved).toBeDefined();
@@ -245,13 +239,13 @@ describe('Responses API - Response Management', () => {
   test('should handle background responses with polling', async () => {
     const responseId = await mind.respondBackground('Count to 10 slowly');
     expect(responseId).toMatch(/^resp_/);
-    
+
     // Poll until complete
     const result = await mind.pollUntilComplete(responseId, {
       maxWaitMs: 60000,
-      initialDelayMs: 1000
+      initialDelayMs: 1000,
     });
-    
+
     expect(result.status).toBe('completed');
     expect(result.output).toBeDefined();
   }, 90000);
@@ -265,10 +259,8 @@ describe('Responses API - Backward Compatibility', () => {
   });
 
   test('should not break existing chat() method', async () => {
-    const response = await mind.chat([
-      { role: 'user', content: 'Say "old API works"' }
-    ]);
-    
+    const response = await mind.chat([{ role: 'user', content: 'Say "old API works"' }]);
+
     expect(response).toBeTruthy();
     expect(typeof response).toBe('string');
     expect(response.toLowerCase()).toContain('old api');
@@ -276,37 +268,28 @@ describe('Responses API - Backward Compatibility', () => {
 
   test('should not break existing streamChat() method', async () => {
     let text = '';
-    
-    await mind.streamChat(
-      [{ role: 'user', content: 'Count to 3' }],
-      (event) => {
-        if (event.type === 'chunk') {
-          text += event.content;
-        }
+
+    await mind.streamChat([{ role: 'user', content: 'Count to 3' }], (event) => {
+      if (event.type === 'chunk') {
+        text += event.content;
       }
-    );
-    
+    });
+
     expect(text).toBeTruthy();
   }, 30000);
 
   test('should not break existing tool registration', async () => {
-    mind.registerTool(
-      'test_tool',
-      async () => ({ success: true }),
-      {
-        description: 'Test tool',
-        parameters: { type: 'object', properties: {} }
-      }
-    );
-    
+    mind.registerTool('test_tool', async () => ({ success: true }), {
+      description: 'Test tool',
+      parameters: { type: 'object', properties: {} },
+    });
+
     expect(mind._tools.length).toBeGreaterThan(0);
-    
+
     // Should work with both APIs
-    const chatResponse = await mind.chat([
-      { role: 'user', content: 'Use test_tool' }
-    ]);
+    const chatResponse = await mind.chat([{ role: 'user', content: 'Use test_tool' }]);
     expect(chatResponse).toBeTruthy();
-    
+
     const respondResponse = await mind.respond('Use test_tool');
     expect(respondResponse.text).toBeTruthy();
   }, 60000);

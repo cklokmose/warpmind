@@ -11,7 +11,7 @@ describe('Warpmind streamChat with Tool Calling', () => {
     warpmind = new Warpmind({
       baseURL: 'http://localhost:8080/v1',
       apiKey: 'test-key',
-      memoryToolEnabled: false // Disable auto-registration of memory tool for clean testing
+      memoryToolEnabled: false, // Disable auto-registration of memory tool for clean testing
     });
   });
 
@@ -24,13 +24,13 @@ describe('Warpmind streamChat with Tool Calling', () => {
         parameters: {
           type: 'object',
           properties: {
-            input: { type: 'string' }
+            input: { type: 'string' },
           },
-          required: ['input']
+          required: ['input'],
         },
         handler: async (args) => {
           return { result: `processed: ${args.input}` };
-        }
+        },
       });
 
       // Mock fetch to verify tools are included
@@ -38,18 +38,21 @@ describe('Warpmind streamChat with Tool Calling', () => {
         ok: true,
         body: {
           getReader: () => ({
-            read: jest.fn()
+            read: jest
+              .fn()
               .mockResolvedValueOnce({
                 done: false,
-                value: new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n')
+                value: new TextEncoder().encode(
+                  'data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n'
+                ),
               })
               .mockResolvedValueOnce({
                 done: false,
-                value: new TextEncoder().encode('data: [DONE]\n\n')
+                value: new TextEncoder().encode('data: [DONE]\n\n'),
               })
-              .mockResolvedValueOnce({ done: true })
-          })
-        }
+              .mockResolvedValueOnce({ done: true }),
+          }),
+        },
       });
 
       await warpmind.streamChat('Test message', (chunk) => {});
@@ -60,9 +63,9 @@ describe('Warpmind streamChat with Tool Calling', () => {
           method: 'POST',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            'api-key': 'test-key'
+            'api-key': 'test-key',
           }),
-          body: expect.stringContaining('"tools"')
+          body: expect.stringContaining('"tools"'),
         })
       );
 
@@ -79,18 +82,21 @@ describe('Warpmind streamChat with Tool Calling', () => {
         ok: true,
         body: {
           getReader: () => ({
-            read: jest.fn()
+            read: jest
+              .fn()
               .mockResolvedValueOnce({
                 done: false,
-                value: new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n')
+                value: new TextEncoder().encode(
+                  'data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n'
+                ),
               })
               .mockResolvedValueOnce({
                 done: false,
-                value: new TextEncoder().encode('data: [DONE]\n\n')
+                value: new TextEncoder().encode('data: [DONE]\n\n'),
               })
-              .mockResolvedValueOnce({ done: true })
-          })
-        }
+              .mockResolvedValueOnce({ done: true }),
+          }),
+        },
       });
 
       await warpmind.streamChat('Test message', (chunk) => {});
@@ -108,41 +114,46 @@ describe('Warpmind streamChat with Tool Calling', () => {
         parameters: {
           type: 'object',
           properties: {
-            city: { type: 'string' }
+            city: { type: 'string' },
           },
-          required: ['city']
+          required: ['city'],
         },
         handler: async (args) => {
           return { temperature: 22, condition: 'sunny', city: args.city };
-        }
+        },
       });
 
       let callCount = 0;
       global.fetch = jest.fn().mockImplementation(() => {
         callCount++;
-        
+
         if (callCount === 1) {
           // First call - return streaming response with tool call
           return Promise.resolve({
             ok: true,
             body: {
               getReader: () => ({
-                read: jest.fn()
+                read: jest
+                  .fn()
                   .mockResolvedValueOnce({
                     done: false,
-                    value: new TextEncoder().encode('data: {"choices":[{"delta":{"role":"assistant"}}]}\n\n')
+                    value: new TextEncoder().encode(
+                      'data: {"choices":[{"delta":{"role":"assistant"}}]}\n\n'
+                    ),
                   })
                   .mockResolvedValueOnce({
                     done: false,
-                    value: new TextEncoder().encode('data: {"choices":[{"delta":{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"getWeather","arguments":"{\\"city\\":\\"London\\"}"}}]}}]}\n\n')
+                    value: new TextEncoder().encode(
+                      'data: {"choices":[{"delta":{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"getWeather","arguments":"{\\"city\\":\\"London\\"}"}}]}}]}\n\n'
+                    ),
                   })
                   .mockResolvedValueOnce({
                     done: false,
-                    value: new TextEncoder().encode('data: [DONE]\n\n')
+                    value: new TextEncoder().encode('data: [DONE]\n\n'),
                   })
-                  .mockResolvedValueOnce({ done: true })
-              })
-            }
+                  .mockResolvedValueOnce({ done: true }),
+              }),
+            },
           });
         } else {
           // Second call - return final response after tool execution
@@ -150,18 +161,21 @@ describe('Warpmind streamChat with Tool Calling', () => {
             ok: true,
             body: {
               getReader: () => ({
-                read: jest.fn()
+                read: jest
+                  .fn()
                   .mockResolvedValueOnce({
                     done: false,
-                    value: new TextEncoder().encode('data: {"choices":[{"delta":{"content":"The weather in London is sunny with a temperature of 22°C."}}]}\n\n')
+                    value: new TextEncoder().encode(
+                      'data: {"choices":[{"delta":{"content":"The weather in London is sunny with a temperature of 22°C."}}]}\n\n'
+                    ),
                   })
                   .mockResolvedValueOnce({
                     done: false,
-                    value: new TextEncoder().encode('data: [DONE]\n\n')
+                    value: new TextEncoder().encode('data: [DONE]\n\n'),
                   })
-                  .mockResolvedValueOnce({ done: true })
-              })
-            }
+                  .mockResolvedValueOnce({ done: true }),
+              }),
+            },
           });
         }
       });
@@ -173,12 +187,12 @@ describe('Warpmind streamChat with Tool Calling', () => {
 
       // Verify both API calls were made
       expect(fetch).toHaveBeenCalledTimes(2);
-      
+
       // Verify final result includes tool response
       expect(result).toContain('22°C');
-      
+
       // Verify chunks were emitted for the final response
-      const contentChunks = chunks.filter(chunk => chunk.content && chunk.content.length > 0);
+      const contentChunks = chunks.filter((chunk) => chunk.content && chunk.content.length > 0);
       expect(contentChunks.length).toBeGreaterThan(0);
     });
 
@@ -190,40 +204,45 @@ describe('Warpmind streamChat with Tool Calling', () => {
         parameters: {
           type: 'object',
           properties: {
-            depth: { type: 'number' }
+            depth: { type: 'number' },
           },
-          required: ['depth']
+          required: ['depth'],
         },
         handler: async (args) => {
           return { depth: args.depth + 1 };
-        }
+        },
       });
 
       let callCount = 0;
       global.fetch = jest.fn().mockImplementation(() => {
         callCount++;
-        
+
         // Always return a tool call to test depth limiting
         return Promise.resolve({
           ok: true,
           body: {
             getReader: () => ({
-              read: jest.fn()
+              read: jest
+                .fn()
                 .mockResolvedValueOnce({
                   done: false,
-                  value: new TextEncoder().encode('data: {"choices":[{"delta":{"role":"assistant"}}]}\n\n')
+                  value: new TextEncoder().encode(
+                    'data: {"choices":[{"delta":{"role":"assistant"}}]}\n\n'
+                  ),
                 })
                 .mockResolvedValueOnce({
                   done: false,
-                  value: new TextEncoder().encode(`data: {"choices":[{"delta":{"tool_calls":[{"id":"call_${callCount}","type":"function","function":{"name":"recursiveTool","arguments":"{\\"depth\\":${callCount}}"}}]}}]}\n\n`)
+                  value: new TextEncoder().encode(
+                    `data: {"choices":[{"delta":{"tool_calls":[{"id":"call_${callCount}","type":"function","function":{"name":"recursiveTool","arguments":"{\\"depth\\":${callCount}}"}}]}}]}\n\n`
+                  ),
                 })
                 .mockResolvedValueOnce({
                   done: false,
-                  value: new TextEncoder().encode('data: [DONE]\n\n')
+                  value: new TextEncoder().encode('data: [DONE]\n\n'),
                 })
-                .mockResolvedValueOnce({ done: true })
-            })
-          }
+                .mockResolvedValueOnce({ done: true }),
+            }),
+          },
         });
       });
 

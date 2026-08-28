@@ -11,7 +11,7 @@ describe('Exponential Back-off Integration Test', () => {
   beforeEach(() => {
     warpMind = new WarpMind({
       apiKey: 'test-key',
-      baseURL: 'https://api.test.com/v1'
+      baseURL: 'https://api.test.com/v1',
     });
   });
 
@@ -56,10 +56,10 @@ describe('Exponential Back-off Integration Test', () => {
 
   test('Timeout controller creates AbortController', () => {
     const { controller, timeoutId } = utils.createTimeoutController(1000);
-    
+
     expect(controller).toBeInstanceOf(AbortController);
     expect(timeoutId).toBeDefined();
-    
+
     // Clean up
     clearTimeout(timeoutId);
   });
@@ -74,7 +74,7 @@ describe('Exponential Back-off Integration Test', () => {
     // Mock fetch to immediately resolve
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ test: 'data' })
+      json: () => Promise.resolve({ test: 'data' }),
     });
 
     const result = await warpMind.makeRequest('/test', {}, { timeoutMs: 5000 });
@@ -82,7 +82,7 @@ describe('Exponential Back-off Integration Test', () => {
     expect(fetch).toHaveBeenCalledWith(
       'https://api.test.com/v1/test',
       expect.objectContaining({
-        signal: expect.any(AbortSignal)
+        signal: expect.any(AbortSignal),
       })
     );
   });

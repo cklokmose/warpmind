@@ -13,12 +13,12 @@ global.Audio = jest.fn(() => ({
   onended: null,
   onerror: null,
   src: '',
-  play: jest.fn().mockResolvedValue()
+  play: jest.fn().mockResolvedValue(),
 }));
 
 global.URL = {
   createObjectURL: jest.fn().mockReturnValue('mock-url'),
-  revokeObjectURL: jest.fn()
+  revokeObjectURL: jest.fn(),
 };
 
 // Mock global MediaRecorder for voiceChat
@@ -27,17 +27,19 @@ global.MediaRecorder = jest.fn(() => ({
   stop: jest.fn(),
   ondataavailable: null,
   onstop: null,
-  state: 'inactive'
+  state: 'inactive',
 }));
 
 global.navigator = {
   mediaDevices: {
     getUserMedia: jest.fn().mockResolvedValue({
-      getTracks: () => [{
-        stop: jest.fn()
-      }]
-    })
-  }
+      getTracks: () => [
+        {
+          stop: jest.fn(),
+        },
+      ],
+    }),
+  },
 };
 
 describe('Audio Module Direct Tests', () => {
@@ -50,7 +52,7 @@ describe('Audio Module Direct Tests', () => {
       baseURL: 'https://api.openai.com',
       makeRequest: jest.fn(),
       chat: jest.fn().mockResolvedValue('AI response text'),
-      _buildApiUrl: jest.fn((endpoint) => `https://api.openai.com/v1${endpoint}`)
+      _buildApiUrl: jest.fn((endpoint) => `https://api.openai.com/v1${endpoint}`),
     };
     audioModule = createAudioModule(mockClient);
     fetch.mockClear();
@@ -64,20 +66,20 @@ describe('Audio Module Direct Tests', () => {
       // Mock browser environment
       const originalModule = global.module;
       const originalWindow = global.window;
-      
+
       delete global.module;
       global.window = {
         createTimeoutController: jest.fn(),
-        TimeoutError: class MockTimeoutError extends Error {}
+        TimeoutError: class MockTimeoutError extends Error {},
       };
 
       // Force re-require to test browser path
       jest.resetModules();
       const createAudioModuleBrowser = require('../src/modules/audio');
-      
+
       expect(createAudioModuleBrowser).toBeDefined();
       expect(typeof createAudioModuleBrowser).toBe('function');
-      
+
       // Restore environment
       global.module = originalModule;
       global.window = originalWindow;
@@ -91,15 +93,16 @@ describe('Audio Module Direct Tests', () => {
         status: 400,
         statusText: 'Bad Request',
         json: () => Promise.reject(new Error('Not JSON')),
-        text: () => Promise.resolve('Plain text error message')
+        text: () => Promise.resolve('Plain text error message'),
       };
 
       fetch.mockResolvedValueOnce(mockResponse);
 
       const audioFile = new Blob(['test audio'], { type: 'audio/mp3' });
 
-      await expect(audioModule.speechToText(audioFile))
-        .rejects.toThrow('STT request failed: 400 Bad Request. Error details: Plain text error message');
+      await expect(audioModule.speechToText(audioFile)).rejects.toThrow(
+        'STT request failed: 400 Bad Request. Error details: Plain text error message'
+      );
     });
 
     it('should handle complete failure to parse error response', async () => {
@@ -108,15 +111,16 @@ describe('Audio Module Direct Tests', () => {
         status: 500,
         statusText: 'Internal Server Error',
         json: () => Promise.reject(new Error('Not JSON')),
-        text: () => Promise.reject(new Error('Cannot read text'))
+        text: () => Promise.reject(new Error('Cannot read text')),
       };
 
       fetch.mockResolvedValueOnce(mockResponse);
 
       const audioFile = new Blob(['test audio'], { type: 'audio/mp3' });
 
-      await expect(audioModule.speechToText(audioFile))
-        .rejects.toThrow('STT request failed: 500 Internal Server Error. Error details: Unable to parse error response');
+      await expect(audioModule.speechToText(audioFile)).rejects.toThrow(
+        'STT request failed: 500 Internal Server Error. Error details: Unable to parse error response'
+      );
     });
   });
 
@@ -126,14 +130,14 @@ describe('Audio Module Direct Tests', () => {
         onended: null,
         onerror: null,
         src: '',
-        play: jest.fn().mockResolvedValue()
+        play: jest.fn().mockResolvedValue(),
       };
       global.Audio.mockReturnValueOnce(mockAudio);
 
       const audioBlob = new Blob(['audio data'], { type: 'audio/mp3' });
-      
+
       const playPromise = audioModule.playAudio(audioBlob);
-      
+
       // Simulate audio ending
       setTimeout(() => {
         if (mockAudio.onended) mockAudio.onended();
@@ -151,14 +155,14 @@ describe('Audio Module Direct Tests', () => {
         onended: null,
         onerror: null,
         src: '',
-        play: jest.fn().mockResolvedValue()
+        play: jest.fn().mockResolvedValue(),
       };
       global.Audio.mockReturnValueOnce(mockAudio);
 
       const audioBlob = new Blob(['audio data'], { type: 'audio/mp3' });
-      
+
       const playPromise = audioModule.playAudio(audioBlob);
-      
+
       // Simulate audio error
       setTimeout(() => {
         if (mockAudio.onerror) mockAudio.onerror();
@@ -173,12 +177,12 @@ describe('Audio Module Direct Tests', () => {
         onended: null,
         onerror: null,
         src: '',
-        play: jest.fn().mockRejectedValue(new Error('Play failed'))
+        play: jest.fn().mockRejectedValue(new Error('Play failed')),
       };
       global.Audio.mockReturnValueOnce(mockAudio);
 
       const audioBlob = new Blob(['audio data'], { type: 'audio/mp3' });
-      
+
       await expect(audioModule.playAudio(audioBlob)).rejects.toThrow('Play failed');
     });
   });
@@ -187,7 +191,7 @@ describe('Audio Module Direct Tests', () => {
     it('should create voice chat controller with all methods', () => {
       const voiceChat = audioModule.createVoiceChat({
         onTranscriptReady: jest.fn(),
-        onAudioReady: jest.fn()
+        onAudioReady: jest.fn(),
       });
 
       expect(voiceChat).toHaveProperty('startRecording');
@@ -196,7 +200,7 @@ describe('Audio Module Direct Tests', () => {
       expect(voiceChat).toHaveProperty('getConversation');
       expect(voiceChat).toHaveProperty('clearConversation');
       expect(voiceChat).toHaveProperty('isRecording');
-      
+
       expect(typeof voiceChat.startRecording).toBe('function');
       expect(typeof voiceChat.stopRecordingAndRespond).toBe('function');
       expect(typeof voiceChat.stopRecording).toBe('function');
@@ -207,9 +211,11 @@ describe('Audio Module Direct Tests', () => {
 
     it('should handle voice chat recording lifecycle', async () => {
       const mockStream = {
-        getTracks: () => [{
-          stop: jest.fn()
-        }]
+        getTracks: () => [
+          {
+            stop: jest.fn(),
+          },
+        ],
       };
       global.navigator.mediaDevices.getUserMedia.mockResolvedValueOnce(mockStream);
 
@@ -218,7 +224,7 @@ describe('Audio Module Direct Tests', () => {
         stop: jest.fn(),
         ondataavailable: null,
         onstop: null,
-        state: 'inactive'
+        state: 'inactive',
       };
       global.MediaRecorder.mockReturnValueOnce(mockRecorder);
 
@@ -226,11 +232,11 @@ describe('Audio Module Direct Tests', () => {
       fetch
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ text: 'Hello test' })
+          json: async () => ({ text: 'Hello test' }),
         }) // STT response
         .mockResolvedValueOnce({
           ok: true,
-          blob: async () => new Blob(['TTS audio'], { type: 'audio/mp3' })
+          blob: async () => new Blob(['TTS audio'], { type: 'audio/mp3' }),
         }); // TTS response
 
       // Ensure mockClient has chat method
@@ -238,7 +244,7 @@ describe('Audio Module Direct Tests', () => {
 
       const voiceChat = audioModule.createVoiceChat({
         onTranscriptReady: jest.fn(),
-        onAudioReady: jest.fn()
+        onAudioReady: jest.fn(),
       });
 
       // Start recording
@@ -248,7 +254,7 @@ describe('Audio Module Direct Tests', () => {
 
       // Stop recording
       const stopPromise = voiceChat.stopRecording();
-      
+
       // Simulate data available and stop events
       const audioData = new Blob(['audio'], { type: 'audio/wav' });
       if (mockRecorder.ondataavailable) {
@@ -269,42 +275,44 @@ describe('Audio Module Direct Tests', () => {
 
       const voiceChat = audioModule.createVoiceChat({
         onTranscriptReady: jest.fn(),
-        onAudioReady: jest.fn()
+        onAudioReady: jest.fn(),
       });
 
-      await expect(voiceChat.startRecording())
-        .rejects.toThrow('Microphone access denied');
+      await expect(voiceChat.startRecording()).rejects.toThrow('Microphone access denied');
     });
 
     it('should handle MediaRecorder errors', async () => {
       const mockStream = {
-        getTracks: () => [{
-          stop: jest.fn()
-        }]
+        getTracks: () => [
+          {
+            stop: jest.fn(),
+          },
+        ],
       };
       global.navigator.mediaDevices.getUserMedia.mockResolvedValueOnce(mockStream);
-      
+
       global.MediaRecorder.mockImplementationOnce(() => {
         throw new Error('MediaRecorder not supported');
       });
 
       const voiceChat = audioModule.createVoiceChat({
         onTranscriptReady: jest.fn(),
-        onAudioReady: jest.fn()
+        onAudioReady: jest.fn(),
       });
 
-      await expect(voiceChat.startRecording())
-        .rejects.toThrow('MediaRecorder not supported');
+      await expect(voiceChat.startRecording()).rejects.toThrow('MediaRecorder not supported');
     });
 
     it('should handle stopRecordingAndRespond method', async () => {
       const mockOnTranscriptReady = jest.fn();
       const mockOnAudioReady = jest.fn();
-      
+
       const mockStream = {
-        getTracks: () => [{
-          stop: jest.fn()
-        }]
+        getTracks: () => [
+          {
+            stop: jest.fn(),
+          },
+        ],
       };
       global.navigator.mediaDevices.getUserMedia.mockResolvedValueOnce(mockStream);
 
@@ -313,7 +321,7 @@ describe('Audio Module Direct Tests', () => {
         stop: jest.fn(),
         ondataavailable: null,
         onstop: null,
-        state: 'recording'
+        state: 'recording',
       };
       global.MediaRecorder.mockReturnValueOnce(mockRecorder);
 
@@ -321,11 +329,11 @@ describe('Audio Module Direct Tests', () => {
       fetch
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ text: 'Hello, how are you?' })
+          json: async () => ({ text: 'Hello, how are you?' }),
         }) // STT response
         .mockResolvedValueOnce({
           ok: true,
-          blob: async () => new Blob(['TTS audio'], { type: 'audio/mp3' })
+          blob: async () => new Blob(['TTS audio'], { type: 'audio/mp3' }),
         }); // TTS response
 
       // Ensure mockClient has chat method
@@ -333,7 +341,7 @@ describe('Audio Module Direct Tests', () => {
 
       const voiceChat = audioModule.createVoiceChat({
         onTranscriptReady: mockOnTranscriptReady,
-        onAudioReady: mockOnAudioReady
+        onAudioReady: mockOnAudioReady,
       });
 
       // Start recording first
@@ -341,7 +349,7 @@ describe('Audio Module Direct Tests', () => {
 
       // Stop recording and respond
       const responsePromise = voiceChat.stopRecordingAndRespond('What is the weather?');
-      
+
       // Simulate recording events
       const audioData = new Blob(['audio'], { type: 'audio/wav' });
       if (mockRecorder.ondataavailable) {
@@ -363,7 +371,7 @@ describe('Audio Module Direct Tests', () => {
 
   describe('browser environment exports (line 412)', () => {
     it.skip('should export to window in browser environment', () => {
-      // This test is skipped because it's complex to mock browser environment properly  
+      // This test is skipped because it's complex to mock browser environment properly
       // The browser export functionality is tested in actual browser integration tests
     });
   });

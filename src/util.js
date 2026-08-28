@@ -26,7 +26,7 @@ function calculateRetryDelay(attempt, retryAfter) {
     const retryDelayMs = parseInt(retryAfter) * 1000; // Convert seconds to milliseconds
     return addJitter(retryDelayMs);
   }
-  
+
   const baseDelay = 500 * Math.pow(2, attempt); // 500ms × 2^attempt
   return addJitter(baseDelay);
 }
@@ -52,15 +52,15 @@ function createTimeoutController(timeoutMs) {
     // Return a fallback when AbortController is not available
     return {
       controller: null,
-      timeoutId: setTimeout(() => {}, timeoutMs)
+      timeoutId: setTimeout(() => {}, timeoutMs),
     };
   }
-  
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
   }, timeoutMs);
-  
+
   return { controller, timeoutId };
 }
 
@@ -70,7 +70,7 @@ function createTimeoutController(timeoutMs) {
  * @returns {Promise} - Promise that resolves after the delay
  */
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -95,7 +95,7 @@ function fileToBase64(file) {
       reject(new Error('File is required'));
       return;
     }
-    
+
     // Check if FileReader is available (browser environment)
     if (typeof FileReader !== 'undefined') {
       const reader = new FileReader();
@@ -107,7 +107,7 @@ function fileToBase64(file) {
       try {
         const fs = require('fs');
         const path = require('path');
-        
+
         const data = fs.readFileSync(file.path || file);
         const mimeType = file.type || 'application/octet-stream';
         const base64 = data.toString('base64');
@@ -129,7 +129,7 @@ if (typeof module !== 'undefined' && module.exports) {
     createTimeoutController,
     sleep,
     delayForRetry,
-    fileToBase64
+    fileToBase64,
   };
 } else if (typeof window !== 'undefined') {
   // Browser environment - attach to window for global access
@@ -140,6 +140,6 @@ if (typeof module !== 'undefined' && module.exports) {
     createTimeoutController,
     sleep,
     delayForRetry,
-    fileToBase64
+    fileToBase64,
   };
 }

@@ -7,7 +7,7 @@ const WarpMind = require('../src/warpmind.js');
 
 // Mock eventsource-parser
 jest.mock('eventsource-parser', () => ({
-  createParser: jest.fn()
+  createParser: jest.fn(),
 }));
 
 const { createParser } = require('eventsource-parser');
@@ -19,12 +19,12 @@ describe('WarpMind SSE Parser Tests', () => {
   beforeEach(() => {
     warpMind = new WarpMind({
       apiKey: 'test-key',
-      baseURL: 'https://api.test.com/v1'
+      baseURL: 'https://api.test.com/v1',
     });
 
     // Mock parser implementation
     mockParser = {
-      feed: jest.fn()
+      feed: jest.fn(),
     };
 
     createParser.mockImplementation((onEvent) => {
@@ -38,16 +38,21 @@ describe('WarpMind SSE Parser Tests', () => {
   describe('parseSSE Function', () => {
     test('should parse valid SSE events correctly', async () => {
       const mockReader = {
-        read: jest.fn()
-          .mockResolvedValueOnce({ 
-            done: false, 
-            value: new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n')
+        read: jest
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode(
+              'data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n'
+            ),
           })
-          .mockResolvedValueOnce({ 
-            done: false, 
-            value: new TextEncoder().encode('data: {"choices":[{"delta":{"content":" world"}}]}\n\n')
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode(
+              'data: {"choices":[{"delta":{"content":" world"}}]}\n\n'
+            ),
           })
-          .mockResolvedValueOnce({ done: true })
+          .mockResolvedValueOnce({ done: true }),
       };
 
       const events = [];
@@ -62,16 +67,16 @@ describe('WarpMind SSE Parser Tests', () => {
             if (chunk.includes('Hello')) {
               callback({
                 type: 'event',
-                data: '{"choices":[{"delta":{"content":"Hello"}}]}'
+                data: '{"choices":[{"delta":{"content":"Hello"}}]}',
               });
             }
             if (chunk.includes('world')) {
               callback({
-                type: 'event', 
-                data: '{"choices":[{"delta":{"content":" world"}}]}'
+                type: 'event',
+                data: '{"choices":[{"delta":{"content":" world"}}]}',
               });
             }
-          }
+          },
         };
       });
 
@@ -80,7 +85,7 @@ describe('WarpMind SSE Parser Tests', () => {
       expect(result).toEqual({
         text: 'Hello world',
         id: null,
-        usage: null
+        usage: null,
       });
       expect(onEvent).toHaveBeenCalledTimes(2);
       expect(events[0]).toEqual({ role: 'assistant', delta: 'Hello' });
@@ -89,12 +94,13 @@ describe('WarpMind SSE Parser Tests', () => {
 
     test('should handle [DONE] event correctly', async () => {
       const mockReader = {
-        read: jest.fn()
-          .mockResolvedValueOnce({ 
-            done: false, 
-            value: new TextEncoder().encode('data: [DONE]\n\n')
+        read: jest
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode('data: [DONE]\n\n'),
           })
-          .mockResolvedValueOnce({ done: true })
+          .mockResolvedValueOnce({ done: true }),
       };
 
       const onEvent = jest.fn();
@@ -104,10 +110,10 @@ describe('WarpMind SSE Parser Tests', () => {
           if (chunk.includes('[DONE]')) {
             callback({
               type: 'event',
-              data: '[DONE]'
+              data: '[DONE]',
             });
           }
-        }
+        },
       }));
 
       const result = await warpMind.parseSSE(mockReader, onEvent);
@@ -115,19 +121,20 @@ describe('WarpMind SSE Parser Tests', () => {
       expect(result).toEqual({
         text: '',
         id: null,
-        usage: null
+        usage: null,
       });
       expect(onEvent).not.toHaveBeenCalled();
     });
 
     test('should handle malformed JSON gracefully', async () => {
       const mockReader = {
-        read: jest.fn()
-          .mockResolvedValueOnce({ 
-            done: false, 
-            value: new TextEncoder().encode('data: invalid json\n\n')
+        read: jest
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode('data: invalid json\n\n'),
           })
-          .mockResolvedValueOnce({ done: true })
+          .mockResolvedValueOnce({ done: true }),
       };
 
       const onEvent = jest.fn();
@@ -138,10 +145,10 @@ describe('WarpMind SSE Parser Tests', () => {
           if (chunk.includes('invalid json')) {
             callback({
               type: 'event',
-              data: 'invalid json'
+              data: 'invalid json',
             });
           }
-        }
+        },
       }));
 
       const result = await warpMind.parseSSE(mockReader, onEvent);
@@ -149,22 +156,21 @@ describe('WarpMind SSE Parser Tests', () => {
       expect(result).toEqual({
         text: '',
         id: null,
-        usage: null
+        usage: null,
       });
       expect(onEvent).not.toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith('Failed to parse SSE event:', expect.any(String));
-      
+
       consoleSpy.mockRestore();
     });
 
     test('should accumulate full response correctly', async () => {
       const mockReader = {
-        read: jest.fn()
-          .mockResolvedValueOnce({ done: true })
+        read: jest.fn().mockResolvedValueOnce({ done: true }),
       };
 
       createParser.mockImplementation((callback) => ({
-        feed: jest.fn()
+        feed: jest.fn(),
       }));
 
       const result = await warpMind.parseSSE(mockReader);
@@ -172,7 +178,7 @@ describe('WarpMind SSE Parser Tests', () => {
       expect(result).toEqual({
         text: '',
         id: null,
-        usage: null
+        usage: null,
       });
     });
   });
@@ -187,27 +193,28 @@ describe('WarpMind SSE Parser Tests', () => {
         ok: true,
         body: {
           getReader: () => ({
-            read: jest.fn()
-              .mockResolvedValueOnce({ done: true })
-          })
-        }
+            read: jest.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
       };
 
       fetch.mockResolvedValue(mockResponse);
 
       // Mock parseSSE to simulate the internal accumulation behavior
-      const parseSSESpy = jest.spyOn(warpMind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
-        // Simulate the parseSSE calling onEvent and building fullResponse internally
-        onEvent({ role: 'assistant', delta: 'Test response' });
-        return 'Test response'; // parseSSE returns the accumulated response
-      });
+      const parseSSESpy = jest
+        .spyOn(warpMind, 'parseSSE')
+        .mockImplementation(async (reader, onEvent) => {
+          // Simulate the parseSSE calling onEvent and building fullResponse internally
+          onEvent({ role: 'assistant', delta: 'Test response' });
+          return 'Test response'; // parseSSE returns the accumulated response
+        });
 
       const onChunk = jest.fn();
       const result = await warpMind.streamChat('Hello', onChunk);
 
       expect(parseSSESpy).toHaveBeenCalled();
       expect(result).toBe('Test response');
-      
+
       parseSSESpy.mockRestore();
     });
 
@@ -215,12 +222,12 @@ describe('WarpMind SSE Parser Tests', () => {
       // Mock a hanging request
       const abortError = new Error('The operation was aborted');
       abortError.name = 'AbortError';
-      
+
       fetch.mockRejectedValue(abortError);
 
-      await expect(
-        warpMind.streamChat('Hello', null, { timeoutMs: 1000 })
-      ).rejects.toThrow('Request timed out after 1000ms');
+      await expect(warpMind.streamChat('Hello', null, { timeoutMs: 1000 })).rejects.toThrow(
+        'Request timed out after 1000ms'
+      );
     });
 
     test('should pass events to onChunk callback correctly', async () => {
@@ -228,9 +235,9 @@ describe('WarpMind SSE Parser Tests', () => {
         ok: true,
         body: {
           getReader: () => ({
-            read: jest.fn().mockResolvedValueOnce({ done: true })
-          })
-        }
+            read: jest.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
       };
 
       fetch.mockResolvedValue(mockResponse);
@@ -239,23 +246,25 @@ describe('WarpMind SSE Parser Tests', () => {
       const onChunk = jest.fn((chunk) => chunks.push(chunk));
 
       // Mock parseSSE to call the event callback which streamChat converts to enhanced format
-      const parseSSESpy = jest.spyOn(warpMind, 'parseSSE').mockImplementation(async (reader, onEvent) => {
-        // Simulate events - parseSSE calls onEvent with { role, delta }
-        onEvent({ role: 'assistant', delta: 'Hello' });
-        onEvent({ role: 'assistant', delta: ' world' });
-        return 'Hello world';
-      });
+      const parseSSESpy = jest
+        .spyOn(warpMind, 'parseSSE')
+        .mockImplementation(async (reader, onEvent) => {
+          // Simulate events - parseSSE calls onEvent with { role, delta }
+          onEvent({ role: 'assistant', delta: 'Hello' });
+          onEvent({ role: 'assistant', delta: ' world' });
+          return 'Hello world';
+        });
 
       const result = await warpMind.streamChat('Test', onChunk);
 
       expect(onChunk).toHaveBeenCalledTimes(2);
       // streamChat converts the parseSSE events to enhanced format: { type: "chunk", content }
       expect(chunks).toEqual([
-        { type: "chunk", content: "Hello" },
-        { type: "chunk", content: " world" }
+        { type: 'chunk', content: 'Hello' },
+        { type: 'chunk', content: ' world' },
       ]);
       expect(result).toBe('Hello world');
-      
+
       parseSSESpy.mockRestore();
     });
   });
@@ -263,19 +272,21 @@ describe('WarpMind SSE Parser Tests', () => {
   describe('Error Handling', () => {
     test('should throw error when reader fails', async () => {
       const mockReader = {
-        read: jest.fn().mockRejectedValue(new Error('Reader failed'))
+        read: jest.fn().mockRejectedValue(new Error('Reader failed')),
       };
 
       createParser.mockImplementation(() => ({
-        feed: jest.fn()
+        feed: jest.fn(),
       }));
 
-      await expect(warpMind.parseSSE(mockReader)).rejects.toThrow('SSE parsing failed: Reader failed');
+      await expect(warpMind.parseSSE(mockReader)).rejects.toThrow(
+        'SSE parsing failed: Reader failed'
+      );
     });
 
     test('should handle SSE parser creation errors', async () => {
       const mockReader = {
-        read: jest.fn().mockResolvedValueOnce({ done: true })
+        read: jest.fn().mockResolvedValueOnce({ done: true }),
       };
 
       createParser.mockImplementation(() => {

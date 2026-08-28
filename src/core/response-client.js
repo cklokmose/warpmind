@@ -17,11 +17,13 @@ class ResponseClient {
   static _convertInput(input) {
     // Case 1: String input → simple message item
     if (typeof input === 'string') {
-      return [{
-        type: 'message',
-        role: 'user',
-        content: [{ type: 'input_text', text: input }]
-      }];
+      return [
+        {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: input }],
+        },
+      ];
     }
 
     // Case 2: Already in Responses API format (array of items)
@@ -31,44 +33,52 @@ class ResponseClient {
 
     // Case 3: Chat Completions format (messages array)
     if (Array.isArray(input) && input.length > 0 && input[0].role) {
-      return input.map(msg => {
-        // Map developer role to instructions (handled separately)
-        if (msg.role === 'developer') {
-          return null; // Will be filtered out
-        }
+      return input
+        .map((msg) => {
+          // Map developer role to instructions (handled separately)
+          if (msg.role === 'developer') {
+            return null; // Will be filtered out
+          }
 
-        // Convert message format
-        const content = typeof msg.content === 'string'
-          ? [{ type: 'input_text', text: msg.content }]
-          : msg.content; // Already in content array format
+          // Convert message format
+          const content =
+            typeof msg.content === 'string'
+              ? [{ type: 'input_text', text: msg.content }]
+              : msg.content; // Already in content array format
 
-        return {
-          type: 'message',
-          role: msg.role === 'system' ? 'user' : msg.role, // System → user in Responses API
-          content: content
-        };
-      }).filter(item => item !== null);
+          return {
+            type: 'message',
+            role: msg.role === 'system' ? 'user' : msg.role, // System → user in Responses API
+            content: content,
+          };
+        })
+        .filter((item) => item !== null);
     }
 
     // Case 4: Single message object
     if (input.role && input.content) {
-      const content = typeof input.content === 'string'
-        ? [{ type: 'input_text', text: input.content }]
-        : input.content;
+      const content =
+        typeof input.content === 'string'
+          ? [{ type: 'input_text', text: input.content }]
+          : input.content;
 
-      return [{
-        type: 'message',
-        role: input.role === 'system' ? 'user' : input.role,
-        content: content
-      }];
+      return [
+        {
+          type: 'message',
+          role: input.role === 'system' ? 'user' : input.role,
+          content: content,
+        },
+      ];
     }
 
     // Fallback: treat as string
-    return [{
-      type: 'message',
-      role: 'user',
-      content: [{ type: 'input_text', text: String(input) }]
-    }];
+    return [
+      {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text: String(input) }],
+      },
+    ];
   }
 
   /**
@@ -78,14 +88,14 @@ class ResponseClient {
    */
   static _extractInstructions(messages) {
     if (!Array.isArray(messages)) return null;
-    
-    const developerMsg = messages.find(msg => msg.role === 'developer');
+
+    const developerMsg = messages.find((msg) => msg.role === 'developer');
     if (developerMsg) {
-      return typeof developerMsg.content === 'string' 
-        ? developerMsg.content 
+      return typeof developerMsg.content === 'string'
+        ? developerMsg.content
         : developerMsg.content[0]?.text;
     }
-    
+
     return null;
   }
 
@@ -100,9 +110,9 @@ class ResponseClient {
     }
 
     const textItems = output
-      .filter(item => item.type === 'message')
-      .flatMap(item => item.content?.filter(c => c.type === 'output_text') || [])
-      .map(c => c.text);
+      .filter((item) => item.type === 'message')
+      .flatMap((item) => item.content?.filter((c) => c.type === 'output_text') || [])
+      .map((c) => c.text);
 
     return textItems.length > 0 ? textItems.join('\n') : '';
   }
@@ -115,9 +125,10 @@ class ResponseClient {
   static _hasToolCalls(output) {
     if (!output || output.length === 0) return false;
 
-    return output.some(item => 
-      item.type === 'function_call' ||
-      (item.type === 'message' && item.content?.some(c => c.type === 'function_call'))
+    return output.some(
+      (item) =>
+        item.type === 'function_call' ||
+        (item.type === 'message' && item.content?.some((c) => c.type === 'function_call'))
     );
   }
 
@@ -137,11 +148,11 @@ class ResponseClient {
           type: 'function',
           function: {
             name: item.name,
-            arguments: item.arguments
-          }
+            arguments: item.arguments,
+          },
         });
       }
-      
+
       // Handle nested function_call in message content (alternative format)
       if (item.type === 'message' && item.content) {
         for (const content of item.content) {
@@ -149,7 +160,7 @@ class ResponseClient {
             toolCalls.push({
               id: content.id,
               name: content.name,
-              arguments: content.arguments
+              arguments: content.arguments,
             });
           }
         }
@@ -173,18 +184,18 @@ class ResponseClient {
         console.log('Executing tool call:', toolCall);
         const result = await mind._executeTool(toolCall);
         console.log('Tool result:', result);
-        
+
         results.push({
           type: 'function_call_output',
           call_id: toolCall.id,
-          output: JSON.stringify(result)
+          output: JSON.stringify(result),
         });
       } catch (error) {
         console.error('Tool execution error:', error);
         results.push({
           type: 'function_call_output',
           call_id: toolCall.id,
-          output: JSON.stringify({ error: error.message })
+          output: JSON.stringify({ error: error.message }),
         });
       }
     }
@@ -204,15 +215,13 @@ class ResponseClient {
     const convertedInput = this._convertInput(input);
 
     // Extract instructions from developer role if present
-    const extractedInstructions = Array.isArray(input) 
-      ? this._extractInstructions(input) 
-      : null;
+    const extractedInstructions = Array.isArray(input) ? this._extractInstructions(input) : null;
 
     // Build request payload
     const payload = {
       model: options.model || mind.model,
       input: convertedInput,
-      ...options
+      ...options,
     };
 
     // Set instructions (prefer extracted over options)
@@ -224,11 +233,11 @@ class ResponseClient {
 
     // Add tools if registered (Responses API uses different format than Chat Completions)
     if (mind._tools && mind._tools.length > 0) {
-      payload.tools = mind._tools.map(tool => ({
+      payload.tools = mind._tools.map((tool) => ({
         type: 'function',
         name: tool.schema.function.name,
         description: tool.schema.function.description,
-        parameters: tool.schema.function.parameters
+        parameters: tool.schema.function.parameters,
       }));
     }
 
@@ -245,10 +254,7 @@ class ResponseClient {
 
       // Continue conversation with tool results only
       // Don't include previous response.output - use previous_response_id instead
-      const followUpInput = [
-        ...convertedInput,
-        ...toolResults
-      ];
+      const followUpInput = [...convertedInput, ...toolResults];
 
       payload.input = followUpInput;
       if (response.id) {
@@ -276,7 +282,7 @@ class ResponseClient {
     return {
       text: this._extractText(response.output),
       id: response.id,
-      usage: response.usage
+      usage: response.usage,
     };
   }
 
@@ -293,16 +299,14 @@ class ResponseClient {
     const convertedInput = this._convertInput(input);
 
     // Extract instructions
-    const extractedInstructions = Array.isArray(input) 
-      ? this._extractInstructions(input) 
-      : null;
+    const extractedInstructions = Array.isArray(input) ? this._extractInstructions(input) : null;
 
     // Build request payload
     const payload = {
       model: options.model || mind.model,
       input: convertedInput,
       stream: true,
-      ...options
+      ...options,
     };
 
     // Set instructions
@@ -314,14 +318,14 @@ class ResponseClient {
 
     // Add tools (Responses API format) - but respect tool_choice: 'none'
     if (mind._tools && mind._tools.length > 0 && options.tool_choice !== 'none') {
-      payload.tools = mind._tools.map(tool => ({
+      payload.tools = mind._tools.map((tool) => ({
         type: 'function',
         name: tool.schema.function.name,
         description: tool.schema.function.description,
-        parameters: tool.schema.function.parameters
+        parameters: tool.schema.function.parameters,
       }));
     }
-    
+
     // Remove tool_choice from payload if set to 'none' (don't send it to API)
     if (payload.tool_choice === 'none') {
       delete payload.tool_choice;
@@ -329,9 +333,9 @@ class ResponseClient {
 
     // Prepare headers
     const headers = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     };
-    
+
     if (mind.authType === 'bearer') {
       headers['Authorization'] = `Bearer ${mind.apiKey}`;
     } else {
@@ -343,16 +347,18 @@ class ResponseClient {
     const response = await fetch(url, {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+      throw new Error(
+        `API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`
+      );
     }
 
     const reader = response.body.getReader();
-    
+
     // Use the SSE parser (it now handles Responses API format)
     const { parseSSE } = require('../streaming/sse-parser.js');
     const result = await parseSSE(reader, onChunk);

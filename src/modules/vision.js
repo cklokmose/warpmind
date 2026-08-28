@@ -32,12 +32,12 @@ function createVisionModule(client) {
      * @param {number} options.timeoutMs - Request timeout in milliseconds
      * @returns {Promise<Object>} - AI response object with image analysis
      */
-    async analyzeImage(image, prompt = "What do you see in this image?", options = {}) {
+    async analyzeImage(image, prompt = 'What do you see in this image?', options = {}) {
       let imageContent;
-      const detail = options.detail || "low";
-      
+      const detail = options.detail || 'low';
+
       // Validate detail parameter
-      if (detail !== "low" && detail !== "high") {
+      if (detail !== 'low' && detail !== 'high') {
         throw new Error('options.detail must be "low" or "high"');
       }
 
@@ -46,19 +46,19 @@ function createVisionModule(client) {
         // URL or base64 string
         if (image.startsWith('data:image/')) {
           imageContent = {
-            type: "image_url",
+            type: 'image_url',
             image_url: {
               url: image,
-              detail: detail
-            }
+              detail: detail,
+            },
           };
         } else {
           imageContent = {
-            type: "image_url",
+            type: 'image_url',
             image_url: {
               url: image,
-              detail: detail
-            }
+              detail: detail,
+            },
           };
         }
       } else if (image && image.tagName === 'IMG') {
@@ -67,27 +67,28 @@ function createVisionModule(client) {
         const blob = await response.blob();
         const base64 = await fileToBase64(blob);
         imageContent = {
-          type: "image_url",
+          type: 'image_url',
           image_url: {
             url: base64,
-            detail: detail
-          }
+            detail: detail,
+          },
         };
-      } else if (image && (
-        (typeof File !== 'undefined' && image instanceof File) || 
-        (typeof Blob !== 'undefined' && image instanceof Blob) ||
-        (image.constructor && image.constructor.name === 'File') ||
-        (image.constructor && image.constructor.name === 'Blob') ||
-        (image.type && image.arrayBuffer) // Duck typing for File/Blob-like objects
-      )) {
+      } else if (
+        image &&
+        ((typeof File !== 'undefined' && image instanceof File) ||
+          (typeof Blob !== 'undefined' && image instanceof Blob) ||
+          (image.constructor && image.constructor.name === 'File') ||
+          (image.constructor && image.constructor.name === 'Blob') ||
+          (image.type && image.arrayBuffer)) // Duck typing for File/Blob-like objects
+      ) {
         // Convert File/Blob to base64
         const base64 = await fileToBase64(image);
         imageContent = {
-          type: "image_url",
+          type: 'image_url',
           image_url: {
             url: base64,
-            detail: detail
-          }
+            detail: detail,
+          },
         };
       } else {
         throw new Error('Image must be a URL string, HTML img element, File, or Blob object');
@@ -95,29 +96,28 @@ function createVisionModule(client) {
 
       const messages = [
         {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            imageContent
-          ]
-        }
+          role: 'user',
+          content: [{ type: 'text', text: prompt }, imageContent],
+        },
       ];
 
       // Extract only valid chat options, excluding vision-specific options like 'detail'
       const chatOptions = {
-        model: options.model || 'gpt-4o'
+        model: options.model || 'gpt-4o',
       };
-      
+
       // Only pass through recognized chat options
       if (options.temperature !== undefined) chatOptions.temperature = options.temperature;
       if (options.max_tokens !== undefined) chatOptions.max_tokens = options.max_tokens;
       if (options.top_p !== undefined) chatOptions.top_p = options.top_p;
-      if (options.frequency_penalty !== undefined) chatOptions.frequency_penalty = options.frequency_penalty;
-      if (options.presence_penalty !== undefined) chatOptions.presence_penalty = options.presence_penalty;
+      if (options.frequency_penalty !== undefined)
+        chatOptions.frequency_penalty = options.frequency_penalty;
+      if (options.presence_penalty !== undefined)
+        chatOptions.presence_penalty = options.presence_penalty;
       if (options.timeoutMs !== undefined) chatOptions.timeoutMs = options.timeoutMs;
 
       return await client.chat(messages, chatOptions);
-    }
+    },
   };
 }
 

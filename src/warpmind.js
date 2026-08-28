@@ -4,7 +4,13 @@
  */
 
 // Import utility functions for better modularity
-let addJitter, calculateRetryDelay, shouldRetry, createTimeoutController, sleep, delayForRetry, fileToBase64;
+let addJitter,
+  calculateRetryDelay,
+  shouldRetry,
+  createTimeoutController,
+  sleep,
+  delayForRetry,
+  fileToBase64;
 
 // Import base client and TimeoutError
 const { BaseClient, TimeoutError } = require('./core/base-client.js');
@@ -15,7 +21,7 @@ const { parseSSE, createParser } = require('./streaming/sse-parser.js');
 // Import audio module factory
 let createAudioModule;
 
-// Import vision module factory  
+// Import vision module factory
 let createVisionModule;
 
 // Import data processing module factory
@@ -33,66 +39,68 @@ let ToolCallTracker;
 if (typeof module !== 'undefined' && module.exports) {
   // Node.js environment
   const utils = require('./util.js');
-  ({ 
-    addJitter, 
-    calculateRetryDelay, 
-    shouldRetry, 
-    createTimeoutController, 
-    sleep, 
+  ({
+    addJitter,
+    calculateRetryDelay,
+    shouldRetry,
+    createTimeoutController,
+    sleep,
     delayForRetry,
-    fileToBase64
+    fileToBase64,
   } = utils);
-  
+
   // Import audio module in Node.js
   createAudioModule = require('./modules/audio.js');
-  
+
   // Import vision module in Node.js
   createVisionModule = require('./modules/vision.js');
-  
+
   // Import data processing module in Node.js
   createDataProcessingModule = require('./modules/data-processing.js');
-  
+
   // Import memory module in Node.js
   createMemoryModule = require('./modules/memory.js');
-  
+
   // Import tool call tracker in Node.js
   ToolCallTracker = require('./modules/tool-call-tracker.js');
-  
+
   // Import PDF loader module in Node.js
   createPdfLoaderModule = require('./modules/pdf-loader.js');
 } else {
   // Browser environment - webpack should bundle util.js
   try {
     const utils = require('./util.js');
-    ({ 
-      addJitter, 
-      calculateRetryDelay, 
-      shouldRetry, 
-      createTimeoutController, 
-      sleep, 
+    ({
+      addJitter,
+      calculateRetryDelay,
+      shouldRetry,
+      createTimeoutController,
+      sleep,
       delayForRetry,
-      fileToBase64
+      fileToBase64,
     } = utils);
-    
+
     // Import audio module in browser
     createAudioModule = require('./modules/audio.js');
-    
+
     // Import vision module in browser
     createVisionModule = require('./modules/vision.js');
-    
+
     // Import data processing module in browser
     createDataProcessingModule = require('./modules/data-processing.js');
-    
+
     // Import memory module in browser
     createMemoryModule = require('./modules/memory.js');
-    
+
     // Import PDF loader module in browser
     createPdfLoaderModule = require('./modules/pdf-loader.js');
-    
+
     // Import tool call tracker in browser
     ToolCallTracker = require('./modules/tool-call-tracker.js');
   } catch (error) {
-    throw new Error('Utility functions are required. Please ensure util.js is bundled with your application.');
+    throw new Error(
+      'Utility functions are required. Please ensure util.js is bundled with your application.'
+    );
   }
 }
 
@@ -106,7 +114,9 @@ class WarpMind extends BaseClient {
         config.apiKey = savedApiKey;
       } else {
         // Prompt user for API key
-        const apiKey = prompt('WarpMind API Key Required\n\nPlease enter your API key to continue:');
+        const apiKey = prompt(
+          'WarpMind API Key Required\n\nPlease enter your API key to continue:'
+        );
         if (apiKey && apiKey.trim()) {
           config.apiKey = apiKey.trim();
           // Save to localStorage for future use
@@ -116,46 +126,46 @@ class WarpMind extends BaseClient {
         }
       }
     }
-    
+
     super(config); // Call BaseClient constructor
-    
+
     console.log('WarpMind initialized with config:', {
       ...config,
-      apiKey: config.apiKey ? '***' : 'missing'
+      apiKey: config.apiKey ? '***' : 'missing',
     });
 
     // Initialize tool registry
     this._tools = [];
-    
+
     // Initialize tool call tracker
     this._toolCallTracker = new ToolCallTracker();
-    
+
     // Memory tool configuration
     this._memoryToolConfig = {
       enabled: config.memoryToolEnabled !== false, // Default to true if memory module is present
       explicitOnly: config.memoryToolExplicitOnly !== false, // Default to true
-      maxResults: config.memoryToolMaxResults || 5
+      maxResults: config.memoryToolMaxResults || 5,
     };
-    
+
     // Bind the parseSSE function to this instance for backward compatibility
     this.parseSSE = parseSSE.bind(this);
-    
+
     // Integrate audio module methods
     const audioMethods = createAudioModule(this);
     Object.assign(this, audioMethods);
-    
+
     // Integrate vision module methods
     const visionMethods = createVisionModule(this);
     Object.assign(this, visionMethods);
-    
+
     // Integrate data processing module methods
     const dataProcessingMethods = createDataProcessingModule(this);
     Object.assign(this, dataProcessingMethods);
-    
+
     // Integrate PDF loader module methods
     const pdfLoaderMethods = createPdfLoaderModule(this);
     Object.assign(this, pdfLoaderMethods);
-    
+
     // Integrate memory module methods
     const memoryMethods = createMemoryModule(this);
     Object.assign(this, memoryMethods);
@@ -238,20 +248,20 @@ class WarpMind extends BaseClient {
    */
   async _chatWithTools(messages, options = {}, depth = 0) {
     const MAX_TOOL_CALL_DEPTH = 2;
-    
+
     // Track tool calls for metadata if requested
     const toolCallsMetadata = [];
     const startTime = performance.now();
-    
+
     const requestData = {
       model: options.model || this.model,
       messages: messages,
-      temperature: options.temperature !== undefined ? options.temperature : this.temperature
+      temperature: options.temperature !== undefined ? options.temperature : this.temperature,
     };
 
     // Include tools if registered and not at max depth
     if (this._tools.length > 0 && depth < MAX_TOOL_CALL_DEPTH) {
-      requestData.tools = this._tools.map(t => t.schema);
+      requestData.tools = this._tools.map((t) => t.schema);
       requestData.tool_choice = 'auto'; // Let the model decide when to use tools
     }
 
@@ -264,16 +274,16 @@ class WarpMind extends BaseClient {
     delete filteredOptions.onToolResult;
     delete filteredOptions.onToolError;
     delete filteredOptions.returnMetadata;
-    
+
     Object.assign(requestData, filteredOptions);
 
     const requestOptions = {
-      timeoutMs: options.timeoutMs
+      timeoutMs: options.timeoutMs,
     };
 
     const response = await this.makeRequest('/chat/completions', requestData, requestOptions);
     const message = response.choices[0]?.message;
-    
+
     if (!message) {
       throw new Error('No message in response');
     }
@@ -281,16 +291,19 @@ class WarpMind extends BaseClient {
     // Check if the assistant wants to call tools
     if (message.tool_calls && message.tool_calls.length > 0 && depth < MAX_TOOL_CALL_DEPTH) {
       // Add the assistant's message to the conversation
-      const newMessages = [...messages, {
-        role: 'assistant',
-        content: message.content,
-        tool_calls: message.tool_calls
-      }];
+      const newMessages = [
+        ...messages,
+        {
+          role: 'assistant',
+          content: message.content,
+          tool_calls: message.tool_calls,
+        },
+      ];
 
       // Execute each tool call
       for (const toolCall of message.tool_calls) {
         let toolCallMetadata = null;
-        
+
         try {
           const result = await this._executeTool(toolCall, {
             onToolCall: (callData) => {
@@ -300,7 +313,7 @@ class WarpMind extends BaseClient {
                   id: callData.callId,
                   name: callData.name,
                   parameters: callData.parameters,
-                  timestamp: callData.timestamp
+                  timestamp: callData.timestamp,
                 };
               }
               // Call user callback
@@ -333,28 +346,28 @@ class WarpMind extends BaseClient {
               if (options.onToolError) {
                 options.onToolError(errorData);
               }
-            }
+            },
           });
-          
+
           // Add tool result to messages
           newMessages.push({
             role: 'tool',
             tool_call_id: toolCall.id,
-            content: JSON.stringify(result ?? null)
+            content: JSON.stringify(result ?? null),
           });
         } catch (error) {
           // Add error result to messages
           newMessages.push({
             role: 'tool',
             tool_call_id: toolCall.id,
-            content: JSON.stringify({ error: error.message })
+            content: JSON.stringify({ error: error.message }),
           });
         }
       }
 
       // Recursively call chat to let the model respond to tool results
       const recursiveResult = await this._chatWithTools(newMessages, options, depth + 1);
-      
+
       // If returnMetadata is requested and this is the top-level call, wrap the result
       if (options.returnMetadata && depth === 0) {
         const totalDuration = Math.round(performance.now() - startTime);
@@ -363,17 +376,17 @@ class WarpMind extends BaseClient {
           metadata: {
             toolCalls: toolCallsMetadata,
             totalDuration,
-            tokensUsed: response.usage?.total_tokens || null
-          }
+            tokensUsed: response.usage?.total_tokens || null,
+          },
         };
       }
-      
+
       return recursiveResult;
     }
 
     // No tool calls or max depth reached, return the content
     const finalResponse = message.content || '';
-    
+
     // If returnMetadata is requested and this is the top-level call, wrap the result
     if (options.returnMetadata && depth === 0) {
       const totalDuration = Math.round(performance.now() - startTime);
@@ -382,11 +395,11 @@ class WarpMind extends BaseClient {
         metadata: {
           toolCalls: toolCallsMetadata,
           totalDuration,
-          tokensUsed: response.usage?.total_tokens || null
-        }
+          tokensUsed: response.usage?.total_tokens || null,
+        },
       };
     }
-    
+
     return finalResponse;
   }
 
@@ -400,15 +413,19 @@ class WarpMind extends BaseClient {
   async complete(prompt, options = {}) {
     // Convert prompt to chat format with system prompt for completion behavior
     const messages = [
-      { role: 'system', content: 'Complete the text directly and concisely without explanation or additional commentary.' },
-      { role: 'user', content: prompt }
+      {
+        role: 'system',
+        content:
+          'Complete the text directly and concisely without explanation or additional commentary.',
+      },
+      { role: 'user', content: prompt },
     ];
-    
+
     const requestData = {
       model: options.model || this.model,
       messages: messages,
       temperature: options.temperature !== undefined ? options.temperature : this.temperature,
-      max_tokens: options.max_tokens !== undefined ? options.max_tokens : 50
+      max_tokens: options.max_tokens !== undefined ? options.max_tokens : 50,
     };
 
     // Add other options, but filter out our custom ones to avoid conflicts
@@ -417,11 +434,11 @@ class WarpMind extends BaseClient {
     delete filteredOptions.temperature;
     delete filteredOptions.timeoutMs;
     delete filteredOptions.max_tokens;
-    
+
     Object.assign(requestData, filteredOptions);
 
     const requestOptions = {
-      timeoutMs: options.timeoutMs
+      timeoutMs: options.timeoutMs,
     };
 
     const response = await this.makeRequest('/chat/completions', requestData, requestOptions);
@@ -467,17 +484,17 @@ class WarpMind extends BaseClient {
    */
   async _streamChatWithTools(messages, onChunk, options = {}, depth = 0) {
     const MAX_TOOL_CALL_DEPTH = 2;
-    
+
     const requestData = {
       model: options.model || this.model,
       messages: messages,
       temperature: options.temperature !== undefined ? options.temperature : this.temperature,
-      stream: true
+      stream: true,
     };
 
     // Include tools if registered and not at max depth
     if (this._tools.length > 0 && depth < MAX_TOOL_CALL_DEPTH) {
-      requestData.tools = this._tools.map(t => t.schema);
+      requestData.tools = this._tools.map((t) => t.schema);
       requestData.tool_choice = 'auto'; // Let the model decide when to use tools
     }
 
@@ -490,20 +507,20 @@ class WarpMind extends BaseClient {
     delete filteredOptions.onToolCall;
     delete filteredOptions.onToolResult;
     delete filteredOptions.onToolError;
-    
+
     Object.assign(requestData, filteredOptions);
 
     const timeoutMs = options.timeoutMs !== undefined ? options.timeoutMs : this.defaultTimeoutMs;
     const { controller, timeoutId } = createTimeoutController(timeoutMs);
-    
+
     // Internal accumulator for full response
     let fullResponse = '';
     let currentMessage = { role: 'assistant', content: '', tool_calls: [] };
     let hasToolCalls = false;
-    
+
     try {
       const headers = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       };
 
       if (this.authType === 'bearer') {
@@ -516,7 +533,7 @@ class WarpMind extends BaseClient {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(requestData),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       // Don't clear timeout yet - we need it for the streaming phase too
@@ -524,39 +541,42 @@ class WarpMind extends BaseClient {
       if (!response.ok) {
         clearTimeout(timeoutId);
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+        throw new Error(
+          `API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`
+        );
       }
 
       const reader = response.body.getReader();
-      
+
       // Use the new SSE parser with enhanced event callback
       await this.parseSSE(reader, (event) => {
         // Handle different types of streaming events
-        if (event.delta !== undefined && event.delta !== null) { // Check for both undefined and null
+        if (event.delta !== undefined && event.delta !== null) {
+          // Check for both undefined and null
           const deltaContent = event.delta || ''; // Ensure it's a string
           fullResponse += deltaContent;
           currentMessage.content += deltaContent;
-          
+
           // Emit chunk in the new enhanced format immediately to callback
           if (onChunk) {
             onChunk({
-              type: "chunk",
-              content: deltaContent
+              type: 'chunk',
+              content: deltaContent,
             });
           }
         }
-        
+
         // Handle tool calls delta - merge into existing tool calls
         if (event.tool_calls) {
           hasToolCalls = true;
           if (!currentMessage.tool_calls) {
             currentMessage.tool_calls = [];
           }
-          
+
           // Merge tool call deltas properly
           for (const delta of event.tool_calls) {
             const index = delta.index !== undefined ? delta.index : 0; // Default to 0 if no index
-            
+
             // Initialize tool call at this index if it doesn't exist
             if (!currentMessage.tool_calls[index]) {
               currentMessage.tool_calls[index] = {
@@ -564,13 +584,13 @@ class WarpMind extends BaseClient {
                 type: 'function',
                 function: {
                   name: '',
-                  arguments: ''
-                }
+                  arguments: '',
+                },
               };
             }
-            
+
             const toolCall = currentMessage.tool_calls[index];
-            
+
             // Merge the delta
             if (delta.id) {
               toolCall.id = delta.id;
@@ -592,27 +612,34 @@ class WarpMind extends BaseClient {
 
       // Clear timeout only after streaming completes
       clearTimeout(timeoutId);
-      
+
       // Check if we need to handle tool calls
-      if (hasToolCalls && currentMessage.tool_calls && currentMessage.tool_calls.length > 0 && depth < MAX_TOOL_CALL_DEPTH) {
+      if (
+        hasToolCalls &&
+        currentMessage.tool_calls &&
+        currentMessage.tool_calls.length > 0 &&
+        depth < MAX_TOOL_CALL_DEPTH
+      ) {
         // Filter out incomplete tool calls and validate
-        const validToolCalls = currentMessage.tool_calls.filter(toolCall => {
-          return toolCall && 
-                 toolCall.id && 
-                 toolCall.function && 
-                 toolCall.function.name &&
-                 toolCall.function.arguments !== undefined;
+        const validToolCalls = currentMessage.tool_calls.filter((toolCall) => {
+          return (
+            toolCall &&
+            toolCall.id &&
+            toolCall.function &&
+            toolCall.function.name &&
+            toolCall.function.arguments !== undefined
+          );
         });
-        
+
         if (validToolCalls.length === 0) {
           // No valid tool calls, return current response
           return fullResponse;
         }
-        
+
         // Update the message with only valid tool calls
         currentMessage.tool_calls = validToolCalls;
         // Note: Messages with tool_calls should not be shown in UI
-        
+
         // Add the assistant's message to the conversation
         const newMessages = [...messages, currentMessage];
 
@@ -622,21 +649,21 @@ class WarpMind extends BaseClient {
             const result = await this._executeTool(toolCall, {
               onToolCall: options.onToolCall,
               onToolResult: options.onToolResult,
-              onToolError: options.onToolError
+              onToolError: options.onToolError,
             });
-            
+
             // Add tool result to messages (these should not be shown in UI)
             newMessages.push({
               role: 'tool',
               tool_call_id: toolCall.id,
-              content: JSON.stringify(result ?? null)
+              content: JSON.stringify(result ?? null),
             });
           } catch (error) {
             // Add error result to messages (these should not be shown in UI)
             newMessages.push({
               role: 'tool',
               tool_call_id: toolCall.id,
-              content: JSON.stringify({ error: error.message })
+              content: JSON.stringify({ error: error.message }),
             });
           }
         }
@@ -644,26 +671,31 @@ class WarpMind extends BaseClient {
         // Make a final call with tool_choice: "none" to get the user-facing response
         const finalOptions = {
           ...options,
-          tool_choice: 'none' // Force final response without more tool calls
+          tool_choice: 'none', // Force final response without more tool calls
         };
-        
+
         // Remove tools from final options to ensure no more tool calls
         delete finalOptions.tools;
-        
+
         // Recursively call to get final response
-        const toolResponse = await this._streamChatWithTools(newMessages, onChunk, finalOptions, depth + 1);
+        const toolResponse = await this._streamChatWithTools(
+          newMessages,
+          onChunk,
+          finalOptions,
+          depth + 1
+        );
         return fullResponse + toolResponse;
       }
-      
+
       // Return the accumulated full response
       return fullResponse;
     } catch (error) {
       clearTimeout(timeoutId);
-      
+
       if (error.name === 'AbortError') {
         throw new TimeoutError(`Request timed out after ${timeoutMs}ms`);
       }
-      
+
       throw error;
     }
   }
@@ -680,34 +712,34 @@ class WarpMind extends BaseClient {
     if (!tool.name || typeof tool.name !== 'string') {
       throw new Error('Tool name must be a non-empty string');
     }
-    
+
     if (!tool.description || typeof tool.description !== 'string') {
       throw new Error('Tool description must be a non-empty string');
     }
-    
+
     if (!tool.parameters || typeof tool.parameters !== 'object') {
       throw new Error('Tool parameters must be an object (JSON schema)');
     }
-    
+
     if (!tool.handler || typeof tool.handler !== 'function') {
       throw new Error('Tool handler must be a function');
     }
-    
+
     // Check for duplicate tool names
-    if (this._tools.find(t => t.schema.function.name === tool.name)) {
+    if (this._tools.find((t) => t.schema.function.name === tool.name)) {
       throw new Error(`Tool with name '${tool.name}' is already registered`);
     }
-    
+
     // Create the tool schema for OpenAI API
     const schema = {
       type: 'function',
       function: {
         name: tool.name,
         description: tool.description,
-        parameters: tool.parameters
-      }
+        parameters: tool.parameters,
+      },
     };
-    
+
     // Store both schema and handler
     this._tools.push({ schema, handler: tool.handler });
   }
@@ -722,7 +754,7 @@ class WarpMind extends BaseClient {
       throw new Error('Tool name must be a non-empty string');
     }
 
-    const toolIndex = this._tools.findIndex(t => t.schema.function.name === toolName);
+    const toolIndex = this._tools.findIndex((t) => t.schema.function.name === toolName);
     if (toolIndex !== -1) {
       this._tools.splice(toolIndex, 1);
       return true;
@@ -739,7 +771,7 @@ class WarpMind extends BaseClient {
     if (!toolName || typeof toolName !== 'string') {
       return false;
     }
-    return this._tools.some(t => t.schema.function.name === toolName);
+    return this._tools.some((t) => t.schema.function.name === toolName);
   }
 
   /**
@@ -747,7 +779,7 @@ class WarpMind extends BaseClient {
    * @returns {Array<string>} - Array of tool names
    */
   getRegisteredTools() {
-    return this._tools.map(t => t.schema.function.name);
+    return this._tools.map((t) => t.schema.function.name);
   }
 
   /**
@@ -764,60 +796,60 @@ class WarpMind extends BaseClient {
    * @returns {Promise<any>} - Result from tool execution
    */
   async _executeTool(toolCall, callbacks = {}) {
-    const tool = this._tools.find(t => t.schema.function.name === toolCall.function.name);
-    
+    const tool = this._tools.find((t) => t.schema.function.name === toolCall.function.name);
+
     if (!tool) {
       throw new Error(`Tool '${toolCall.function.name}' not found`);
     }
-    
+
     let trackedCall = null;
-    
+
     try {
       // Parse the arguments from JSON
       const args = JSON.parse(toolCall.function.arguments);
-      
+
       // Start tracking the tool call
       trackedCall = this._toolCallTracker.startCall(toolCall.function.name, args);
-      
+
       // Call onToolCall callback if provided
       this._safeCallCallback(callbacks.onToolCall, {
         callId: trackedCall.callId,
         name: trackedCall.name,
         parameters: trackedCall.parameters,
-        timestamp: trackedCall.timestamp
+        timestamp: trackedCall.timestamp,
       });
-      
+
       // Execute the tool handler
       const result = await tool.handler(args);
-      
+
       // Complete the tracked call
       const completedCall = this._toolCallTracker.completeCall(trackedCall.callId, result);
-      
+
       // Call onToolResult callback if provided
       this._safeCallCallback(callbacks.onToolResult, {
         callId: completedCall.callId,
         name: completedCall.name,
         result: completedCall.result,
         duration: completedCall.duration,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-      
+
       return result;
     } catch (error) {
       // Mark call as failed if it was started
       if (trackedCall) {
         const errorCall = this._toolCallTracker.errorCall(trackedCall.callId, error);
-        
+
         // Call onToolError callback if provided
         this._safeCallCallback(callbacks.onToolError, {
           callId: errorCall.callId,
           name: errorCall.name,
           error: errorCall.error,
           duration: errorCall.duration,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       }
-      
+
       throw new Error(`Tool execution failed: ${error.message}`);
     }
   }
@@ -853,23 +885,23 @@ class WarpMind extends BaseClient {
 
     const requestData = {
       model: options.model || 'warp/embedding',
-      input: text
+      input: text,
     };
 
     // Add other options, but filter out our custom ones to avoid conflicts
     const filteredOptions = { ...options };
     delete filteredOptions.model;
     delete filteredOptions.timeoutMs;
-    
+
     Object.assign(requestData, filteredOptions);
 
     const requestOptions = {
-      timeoutMs: options.timeoutMs
+      timeoutMs: options.timeoutMs,
     };
 
     try {
       const response = await this.makeRequest('/embeddings', requestData, requestOptions);
-      
+
       if (!response.data || !response.data[0] || !response.data[0].embedding) {
         throw new Error('Invalid embedding response format');
       }
@@ -938,7 +970,7 @@ class WarpMind extends BaseClient {
   async getResponse(responseId, options = {}) {
     return await this.makeRequest(`/responses/${responseId}`, null, {
       method: 'GET',
-      queryParams: options
+      queryParams: options,
     });
   }
 
@@ -949,7 +981,7 @@ class WarpMind extends BaseClient {
    */
   async deleteResponse(responseId) {
     return await this.makeRequest(`/responses/${responseId}`, null, {
-      method: 'DELETE'
+      method: 'DELETE',
     });
   }
 
@@ -960,7 +992,7 @@ class WarpMind extends BaseClient {
    */
   async cancelResponse(responseId) {
     return await this.makeRequest(`/responses/${responseId}/cancel`, null, {
-      method: 'POST'
+      method: 'POST',
     });
   }
 
@@ -991,7 +1023,7 @@ class WarpMind extends BaseClient {
 
     while (Date.now() - startTime < maxWaitMs) {
       // Wait before checking
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
 
       // Get response status
       const response = await this.getResponse(responseId);
@@ -1028,7 +1060,7 @@ if (typeof module !== 'undefined' && module.exports) {
     shouldRetry,
     createTimeoutController,
     sleep,
-    delayForRetry
+    delayForRetry,
   };
 } else if (typeof window !== 'undefined') {
   window.WarpMind = WarpMind;
@@ -1040,7 +1072,7 @@ if (typeof module !== 'undefined' && module.exports) {
     shouldRetry,
     createTimeoutController,
     sleep,
-    delayForRetry
+    delayForRetry,
   };
 }
 
