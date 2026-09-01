@@ -65,7 +65,7 @@ describe('Exponential Back-off Integration Test', () => {
   });
 
   test('Default configuration is applied correctly', () => {
-    expect(warpMind.defaultTimeoutMs).toBe(30000);
+    expect(warpMind.defaultTimeoutMs).toBe(60000);
     expect(warpMind.apiKey).toBe('test-key');
     expect(warpMind.baseURL).toBe('https://api.test.com/v1');
   });

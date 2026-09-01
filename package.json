@@ -13,7 +13,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:ci": "jest --ci --runInBand --reporters=default --reporters=jest-junit --coverageReporters=text-summary --coverageReporters=cobertura --coverageReporters=lcov"
   },
   "keywords": [
     "openai",
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "jest-junit": "^17.0.0",
     "prettier": "^3.9.6",
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
@@ -50,5 +52,10 @@
       "**/tests/**/*.test.js"
     ],
     "verbose": true
+  },
+  "jest-junit": {
+    "outputName": "junit.xml",
+    "classNameTemplate": "{filepath}",
+    "titleTemplate": "{title}"
   }
 }

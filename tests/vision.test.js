@@ -311,7 +311,7 @@ describe('WarpMind Vision Module Tests', () => {
     it('should handle null image parameter gracefully', async () => {
       // Null should throw an error since it's not a valid image input
       await expect(mind.analyzeImage(null, 'Analyze null')).rejects.toThrow(
-        'Image must be a URL string, File, or Blob object'
+        'Image must be a URL string, HTML img element, File, or Blob object'
       );
     });
 

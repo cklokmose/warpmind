@@ -12,7 +12,12 @@ const TEST_CONFIG = {
   model: process.env.MODEL || 'gpt-4o-mini',
 };
 
-describe('Responses API - Basic respond()', () => {
+// This suite talks to a real Responses API endpoint and asserts on real model
+// output, so it only runs when an API_KEY is provided. Without one (e.g. in CI)
+// the suites are reported as skipped rather than failing.
+const describeLive = TEST_CONFIG.apiKey ? describe : describe.skip;
+
+describeLive('Responses API - Basic respond()', () => {
   let mind;
 
   beforeEach(() => {
@@ -61,7 +66,7 @@ describe('Responses API - Basic respond()', () => {
   }, 30000);
 });
 
-describe('Responses API - Tool Calling', () => {
+describeLive('Responses API - Tool Calling', () => {
   let mind;
 
   beforeEach(() => {
@@ -107,7 +112,7 @@ describe('Responses API - Tool Calling', () => {
   }, 60000);
 });
 
-describe('Responses API - Streaming', () => {
+describeLive('Responses API - Streaming', () => {
   let mind;
 
   beforeEach(() => {
@@ -152,7 +157,7 @@ describe('Responses API - Streaming', () => {
   }, 30000);
 });
 
-describe('Responses API - Conversation', () => {
+describeLive('Responses API - Conversation', () => {
   let mind;
   let conversation;
 
@@ -219,7 +224,7 @@ describe('Responses API - Conversation', () => {
   }, 30000);
 });
 
-describe('Responses API - Response Management', () => {
+describeLive('Responses API - Response Management', () => {
   let mind;
 
   beforeEach(() => {
@@ -251,7 +256,7 @@ describe('Responses API - Response Management', () => {
   }, 90000);
 });
 
-describe('Responses API - Backward Compatibility', () => {
+describeLive('Responses API - Backward Compatibility', () => {
   let mind;
 
   beforeEach(() => {

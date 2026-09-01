@@ -9,6 +9,7 @@ dist/
 
 # Test coverage
 coverage/
+junit.xml
 
 # Environment variables
 .env
