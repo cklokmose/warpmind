@@ -29,7 +29,7 @@ class BaseClient {
     this.baseURL = config.baseURL || 'https://api.openai.com';
     this.apiKey = config.apiKey || '';
     this.model = config.model || 'gpt-4o';
-    this.temperature = config.temperature || 0.7;
+    this.temperature = config.temperature || 1.0;
     this.defaultTimeoutMs = config.defaultTimeoutMs || 60000;
     this.customHeaders = config.customHeaders || {}; // Support for custom headers
     this.authType = config.authType || 'default';
