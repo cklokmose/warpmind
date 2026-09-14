@@ -637,7 +637,7 @@ function createPdfLoaderModule(client) {
       const {
         id = null,
         chunkTokens = 400,
-        embedModel = 'text-embedding-3-small',
+        embedModel = 'warp/embedding',
         onProgress = null,
         pageRange = null  // [startPage, endPage] or { start: number, end: number }
       } = options;
@@ -1482,7 +1482,7 @@ function createPdfLoaderModule(client) {
         }
 
         // Generate embedding for query
-        const queryEmbedding = await this._generateEmbedding(query, 'text-embedding-3-small');
+        const queryEmbedding = await this._generateEmbedding(query, 'warp/embedding');
 
         // Calculate similarities
         const similarities = chunks.map(chunk => ({

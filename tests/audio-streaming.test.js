@@ -51,7 +51,7 @@ describe('WarpMind Audio Streaming Tests', () => {
             'api-key': 'test-key'
           },
           body: JSON.stringify({
-            model: 'tts-1',
+            model: 'warp/tts',
             input: 'Hello world',
             voice: 'alloy',
             response_format: 'mp3',
@@ -105,7 +105,7 @@ describe('WarpMind Audio Streaming Tests', () => {
         'https://api.test.com/v1/audio/speech',
         expect.objectContaining({
           body: JSON.stringify({
-            model: 'tts-1',
+            model: 'warp/tts',
             input: 'Hello world',
             voice: 'alloy',
             response_format: 'opus', // Should default to opus for streaming

@@ -842,7 +842,7 @@ class WarpMind extends BaseClient {
    * Generate embeddings for text using the embeddings API
    * @param {string} text - The text to generate embeddings for
    * @param {Object} options - Optional parameters
-   * @param {string} options.model - The embedding model to use (default: 'text-embedding-3-small')
+   * @param {string} options.model - The embedding model to use (default: 'warp/embedding')
    * @param {number} options.timeoutMs - Request timeout in milliseconds
    * @returns {Promise<number[]>} - The embedding vector as an array of numbers
    */
@@ -852,7 +852,7 @@ class WarpMind extends BaseClient {
     }
 
     const requestData = {
-      model: options.model || 'text-embedding-3-small',
+      model: options.model || 'warp/embedding',
       input: text
     };
 

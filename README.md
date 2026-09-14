@@ -264,7 +264,7 @@ const embedding = await mind.embed("Text", {
 ```
 
 Options:
-- `model`: Embedding model to use (default: 'text-embedding-3-small')
+- `model`: Embedding model to use (default: 'warp/embedding')
 - `timeoutMs`: Request timeout in milliseconds
 
 Returns a normalized vector array for semantic similarity calculations. Used internally by the memory and PDF systems.
@@ -913,7 +913,7 @@ const pdfFile = fileInput.files[0];
 const pdfId = await mind.readPdf(pdfFile, {
     id: 'research-paper',                     // Optional custom ID
     chunkTokens: 400,                        // Text chunk size
-    embedModel: 'text-embedding-3-small',    // Embedding model
+    embedModel: 'warp/embedding',            // Embedding model
     pageRange: [1, 50],                      // Process specific pages (optional)
     onProgress: (progress) => console.log(`${Math.round(progress * 100)}%`)
 });

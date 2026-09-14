@@ -29,7 +29,7 @@ function createAudioModule(client) {
      * Convert text to speech using TTS
      * @param {string} text - Text to convert to speech
      * @param {Object} options - Optional parameters
-     * @param {string} options.model - TTS model (default: 'tts-1')
+     * @param {string} options.model - TTS model (default: 'warp/tts')
      * @param {string} options.voice - Voice to use: alloy, echo, fable, onyx, nova, shimmer (default: 'alloy')
      * @param {string} options.format - Audio format: mp3, opus, aac, flac (default: 'mp3')
      * @param {number} options.speed - Speech speed: 0.25 to 4.0 (default: 1.0)
@@ -44,7 +44,7 @@ function createAudioModule(client) {
       }
 
       const requestData = {
-        model: options.model || 'tts-1',
+        model: options.model || 'warp/tts',
         input: text,
         voice: options.voice || 'alloy',
         response_format: options.format || 'mp3',
@@ -127,7 +127,7 @@ function createAudioModule(client) {
      * Transcribe audio to text using speech-to-text
      * @param {File|Blob} audioFile - Audio file to transcribe
      * @param {Object} options - Optional parameters
-     * @param {string} options.model - STT model (default: 'whisper-1')
+     * @param {string} options.model - STT model (default: 'warp/stt')
      * @param {string} options.language - Language code (optional)
      * @param {string} options.prompt - Prompt to guide transcription (optional)
      * @param {number} options.temperature - Sampling temperature (optional)
@@ -150,7 +150,7 @@ function createAudioModule(client) {
       // Ensure the file has a proper name and extension
       const fileName = audioFile.name || 'audio.wav';
       formData.append('file', audioFile, fileName);
-      formData.append('model', options.model || 'whisper-1');
+      formData.append('model', options.model || 'warp/stt');
       
       // Optional parameters - only add if they exist
       if (options.language) {
