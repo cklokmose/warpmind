@@ -407,7 +407,7 @@ class WarpMind extends BaseClient {
     const requestData = {
       model: options.model || this.model,
       messages: messages,
-      temperature: options.temperature !== undefined ? options.temperature : 0.1,
+      temperature: options.temperature !== undefined ? options.temperature : this.temperature,
       max_tokens: options.max_tokens !== undefined ? options.max_tokens : 50
     };
 
