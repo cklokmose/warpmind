@@ -52,8 +52,14 @@ function createDataProcessingModule(client) {
             response_format: { type: "json_object" }
           });
 
+          let jsonText = response.trim();
+          const fenceMatch = jsonText.match(/^```[a-zA-Z]*\s*([\s\S]*?)\s*```$/);
+          if (fenceMatch) {
+            jsonText = fenceMatch[1].trim();
+          }
+
           try {
-            const result = JSON.parse(response);
+            const result = JSON.parse(jsonText);
 
             // Validate that the response contains all keys from the schema
             if (Object.keys(schema).length > 0) {

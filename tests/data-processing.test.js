@@ -51,6 +51,25 @@ describe('WarpMind Data Processing Module Tests', () => {
       );
     });
 
+    it('should strip markdown code fences around JSON responses', async () => {
+      const mockResponse = {
+        choices: [{ message: { content: '```json\n{"name": "John", "age": 30}\n```' } }]
+      };
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      });
+
+      const result = await mind.process(
+        "Analyze this person data",
+        null,
+        { name: "Full name", age: "Age in years" }
+      );
+
+      expect(result).toEqual({ name: "John", age: 30 });
+    });
+
     it('should process string data correctly', async () => {
       const mockResponse = {
         choices: [{ message: { content: '{"summary": "test data"}' } }]
